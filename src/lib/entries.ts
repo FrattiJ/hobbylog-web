@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { searchCatalog, searchTypeFor } from './search'
 
 export interface WebEntry {
   id: string
@@ -30,13 +31,22 @@ export async function addEntry(userId: string, data: {
   title: string
   hobby_category: string
   status: string
+  cover_url?: string | null
+  external_id?: string | null
+  external_source?: string | null
+  progress_total?: number | null
+  metadata?: Record<string, unknown>
 }): Promise<void> {
   const { error } = await supabase.from('web_entries').insert({
     user_id: userId,
     title: data.title,
     hobby_category: data.hobby_category,
     status: data.status,
-    metadata: { added_via: 'web' },
+    cover_url: data.cover_url ?? null,
+    external_id: data.external_id ?? null,
+    external_source: data.external_source ?? null,
+    progress_total: data.progress_total ?? null,
+    metadata: { added_via: 'web', ...(data.metadata ?? {}) },
   })
   if (error) throw error
 }
@@ -84,4 +94,33 @@ export async function importFromDesktop(userId: string): Promise<number> {
   const { error: insErr } = await supabase.from('web_entries').insert(rows)
   if (insErr) throw insErr
   return rows.length
+}
+
+// Backfill missing cover art (and metadata) for searchable entries by looking up
+// the title through the server-side catalog. Fixes the lite import's missing covers.
+export async function backfillCovers(onProgress?: (done: number, total: number) => void): Promise<number> {
+  const entries = await listEntries()
+  const targets = entries.filter((e) => !e.cover_url && searchTypeFor(e.hobby_category))
+  let updated = 0
+  for (let i = 0; i < targets.length; i++) {
+    const e = targets[i]
+    try {
+      const type = searchTypeFor(e.hobby_category)!
+      const results = await searchCatalog(type, e.title)
+      const lower = e.title.toLowerCase()
+      const hit = results.find((r) => r.title.toLowerCase() === lower) ?? results[0]
+      if (hit?.cover_url) {
+        await supabase.from('web_entries').update({
+          cover_url: hit.cover_url,
+          external_id: hit.external_id,
+          external_source: hit.external_source,
+          metadata: { ...(e.metadata ?? {}), ...hit.metadata },
+          updated_at: new Date().toISOString(),
+        }).eq('id', e.id)
+        updated++
+      }
+    } catch { /* skip this one */ }
+    onProgress?.(i + 1, targets.length)
+  }
+  return updated
 }
