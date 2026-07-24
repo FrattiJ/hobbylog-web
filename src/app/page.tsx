@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import Backlog from '@/components/Backlog'
 
 const CLIP = 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)'
 const ACCENT = '#7c3aed'
@@ -73,6 +74,11 @@ export default function Home() {
     )
   }
 
+  // Logged in → the real backlog app
+  if (session) {
+    return <Backlog session={session} onSignOut={signOut} />
+  }
+
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
       <div style={gridBg} />
@@ -82,13 +88,13 @@ export default function Home() {
         <div style={{ marginBottom: 24 }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: ACCENT, letterSpacing: '0.25em', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'status-blink 1.5s ease-in-out infinite' }} />
-            {session ? 'SYSTEM ONLINE' : 'SYSTEM / ACCESS'}
+            SYSTEM / ACCESS
           </p>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.1em', margin: 0 }}>
             HOBBYLOG
           </h1>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.7 }}>
-            {session ? 'Your backlog, anywhere.' : 'One backlog for games, movies, books, and everything else.'}
+            One backlog for games, movies, books, and everything else.
           </p>
         </div>
 
@@ -97,54 +103,34 @@ export default function Home() {
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 24, position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: ACCENT, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
 
-            {session ? (
-              <div>
-                <p style={{ ...label, marginBottom: 4 }}>SIGNED IN AS</p>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--text-hi)', margin: '0 0 20px', wordBreak: 'break-all' }}>{session.user.email}</p>
+            <p style={label}>EMAIL</p>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" style={{ ...inp, marginBottom: 16 }} />
+            <p style={label}>PASSWORD</p>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"
+              onKeyDown={(e) => { if (e.key === 'Enter' && email && password) signIn() }}
+              style={{ ...inp, marginBottom: 20 }} />
 
-                <div style={{ padding: '16px 18px', background: 'rgba(124,58,237,0.08)', border: `1px solid ${ACCENT}33`, borderLeft: `3px solid ${ACCENT}`, marginBottom: 20 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 6px' }}>FOUNDATION ONLINE</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.7 }}>
-                    Accounts + theming are live on the web. Your backlog, import from the desktop app, and the full UI land in the next phases.
-                  </p>
-                </div>
-
-                <button onClick={signOut} style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
-                  SIGN OUT
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={label}>EMAIL</p>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" style={{ ...inp, marginBottom: 16 }} />
-                <p style={label}>PASSWORD</p>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"
-                  onKeyDown={(e) => { if (e.key === 'Enter' && email && password) signIn() }}
-                  style={{ ...inp, marginBottom: 20 }} />
-
-                {message && (
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, lineHeight: 1.6, margin: '0 0 16px', color: message.kind === 'error' ? '#f87171' : '#22c55e' }}>
-                    {message.kind === 'error' ? '✗ ' : '✓ '}{message.text}
-                  </p>
-                )}
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={signIn} disabled={busy || !email || !password}
-                    style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`, cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
-                    {busy ? '…' : 'SIGN IN'}
-                  </button>
-                  <button onClick={signUp} disabled={busy || !email || !password}
-                    style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
-                    CREATE ACCOUNT
-                  </button>
-                </div>
-              </div>
+            {message && (
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, lineHeight: 1.6, margin: '0 0 16px', color: message.kind === 'error' ? '#f87171' : '#22c55e' }}>
+                {message.kind === 'error' ? '✗ ' : '✓ '}{message.text}
+              </p>
             )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={signIn} disabled={busy || !email || !password}
+                style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`, cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
+                {busy ? '…' : 'SIGN IN'}
+              </button>
+              <button onClick={signUp} disabled={busy || !email || !password}
+                style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
+                CREATE ACCOUNT
+              </button>
+            </div>
           </div>
         </div>
 
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', textAlign: 'center', margin: '18px 0 0' }}>
-          HOBBYLOG WEB · PHASE 1 FOUNDATION
+          HOBBYLOG WEB
         </p>
       </div>
     </main>
