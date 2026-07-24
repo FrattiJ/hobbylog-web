@@ -68,7 +68,7 @@ export default function Home() {
       <main style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={gridBg} />
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.2em', zIndex: 1 }}>
-          INITIALIZING…
+          INITIALIZING...
         </span>
       </main>
     )
