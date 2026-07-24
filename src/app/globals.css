@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/* ── Font variables ─────────────────────────────────────────────────────────── */
+:root {
+  --font-display: 'Orbitron', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+
+  --bg-base:     #080a0e;
+  --bg-card:     #0d1117;
+  --bg-panel:    #090c10;
+  --border-dim:  #1a2a3a;
+  --text-hi:     #f0f4f8;
+  --text-mid:    #9ca3af;
+  --text-dim:    #4a6a8a;
+  --text-mute:   #2a3a4a;
+  --overlay:     rgba(8, 10, 14, 0.92);
+}
+
+/* ── Light theme ────────────────────────────────────────────────────────────── */
+:root[data-theme='light'] {
+  --bg-base:     #dde4ec;
+  --bg-card:     #eef2f7;
+  --bg-panel:    #e4eaf1;
+  --border-dim:  #b4c2d2;
+  --text-hi:     #10161d;
+  --text-mid:    #3e4c5c;
+  --text-dim:    #44607c;
+  --text-mute:   #7e92a8;
+  --overlay:     rgba(221, 228, 236, 0.92);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-hi);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Typography helpers ─────────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* Page headings */
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.05em; }
+
+/* Monospace labels */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────────────────── */
+@keyframes mech-enter {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes scan-line {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%);  }
+}
+
+@keyframes pulse-bar {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Staggered entrance ─────────────────────────────────────────────────────── */
+.mech-enter {
+  animation: mech-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Skeleton shimmer ───────────────────────────────────────────────────────── */
+.mech-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+.mech-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-dim) 20%, transparent), transparent);
+  animation: scan-line 1.6s ease-in-out infinite;
+}
+
+/* ── Input reset ────────────────────────────────────────────────────────────── */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
+
+/* ── Recharts overrides ─────────────────────────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: var(--border-dim); }
+.recharts-text { fill: var(--text-dim); font-size: 11px; font-family: var(--font-mono); }
+.recharts-legend-item-text { color: var(--text-mid) !important; font-family: var(--font-mono) !important; font-size: 11px !important; }
+.recharts-tooltip-wrapper { font-family: var(--font-mono) !important; }
