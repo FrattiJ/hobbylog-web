@@ -107,22 +107,40 @@ export async function clearAllData(): Promise<void> {
   notifyEntriesChanged()
 }
 
-// ── Profile (lite: username from auth, enabled hobbies in localStorage) ─────────
+// ── Profile (cloud: tracked hobbies + onboarding state, synced across devices) ──
 
-const ENABLED_KEY = 'hobbylog-enabled-hobbies'
+export type WebProfile = Profile & { onboarded: boolean }
 
-export async function getProfile(): Promise<Profile> {
-  const { data } = await supabase.auth.getUser()
-  const email = data.user?.email ?? 'operator'
+export async function getProfile(): Promise<WebProfile> {
+  const { data: u } = await supabase.auth.getUser()
+  const userId = u.user?.id ?? ''
+  const username = (u.user?.email ?? 'operator').split('@')[0].toUpperCase()
   let enabled: HobbyCategory[] | null = null
-  if (typeof window !== 'undefined') {
-    try { const raw = localStorage.getItem(ENABLED_KEY); if (raw) enabled = JSON.parse(raw) } catch {}
+  let onboarded = false
+  if (userId) {
+    const { data: row } = await supabase.from('web_profile').select('enabled_hobbies, onboarded').eq('user_id', userId).maybeSingle()
+    if (row) {
+      enabled = (row.enabled_hobbies as HobbyCategory[]) ?? null
+      onboarded = (row.onboarded as boolean) ?? false
+    } else {
+      // First read — create the profile. Existing users (with entries) skip onboarding.
+      const { count } = await supabase.from('web_entries').select('id', { count: 'exact', head: true }).eq('user_id', userId)
+      onboarded = (count ?? 0) > 0
+      await supabase.from('web_profile').insert({ user_id: userId, username, onboarded })
+    }
   }
-  return { id: data.user?.id ?? '1', username: email.split('@')[0].toUpperCase(), avatar_url: null, bio: null, enabled_hobbies: enabled, created_at: '' }
+  return { id: userId || '1', username, avatar_url: null, bio: null, enabled_hobbies: enabled, created_at: '', onboarded }
 }
 
 export async function setEnabledHobbies(ids: HobbyCategory[]): Promise<void> {
-  if (typeof window !== 'undefined') localStorage.setItem(ENABLED_KEY, JSON.stringify(ids))
+  const userId = await currentUserId()
+  await supabase.from('web_profile').upsert({ user_id: userId, enabled_hobbies: ids })
+  notifyProfileChanged()
+}
+
+export async function completeOnboarding(ids: HobbyCategory[]): Promise<void> {
+  const userId = await currentUserId()
+  await supabase.from('web_profile').upsert({ user_id: userId, enabled_hobbies: ids, onboarded: true })
   notifyProfileChanged()
 }
 

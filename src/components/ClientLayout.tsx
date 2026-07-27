@@ -5,16 +5,18 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import Sidebar from './Sidebar'
 import LoginScreen from './LoginScreen'
+import OnboardingSelector from './OnboardingSelector'
 import { HobbyContext } from './HobbyContext'
 import { HOBBIES } from '@/lib/hobbies'
-import { getProfile, setEnabledHobbies, PROFILE_CHANGED_EVENT } from '@/lib/db'
+import { getProfile, setEnabledHobbies, completeOnboarding, PROFILE_CHANGED_EVENT, type WebProfile } from '@/lib/db'
 import { getTheme, applyTheme } from '@/lib/theme'
-import type { HobbyCategory, Profile } from '@/types/database'
+import type { HobbyCategory } from '@/types/database'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<WebProfile | null>(null)
+  const [profileReady, setProfileReady] = useState(false)
   const [enabledIds, setEnabledIds] = useState<HobbyCategory[]>(HOBBIES.map((h) => h.id))
 
   useEffect(() => {
@@ -28,11 +30,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     getProfile().then((p) => {
       setProfile(p)
       if (p.enabled_hobbies) setEnabledIds(p.enabled_hobbies)
-    }).catch(() => {})
+      setProfileReady(true)
+    }).catch(() => { setProfileReady(true) })
   }, [])
 
   useEffect(() => {
-    if (!session) return
+    if (!session) { setProfile(null); setProfileReady(false); return }
     loadProfile()
     window.addEventListener(PROFILE_CHANGED_EVENT, loadProfile)
     return () => window.removeEventListener(PROFILE_CHANGED_EVENT, loadProfile)
@@ -43,17 +46,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     setEnabledIds(ids)
   }, [])
 
+  const handleOnboardingComplete = useCallback(async (ids: HobbyCategory[]) => {
+    await completeOnboarding(ids)
+    setEnabledIds(ids)
+    loadProfile()
+  }, [loadProfile])
+
   const enabledHobbies = HOBBIES.filter((h) => enabledIds.includes(h.id))
 
-  if (!ready) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.2em' }}>INITIALIZING…</span>
-      </div>
-    )
-  }
+  const loading = (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.2em' }}>INITIALIZING…</span>
+    </div>
+  )
 
+  if (!ready) return loading
   if (!session) return <LoginScreen />
+  if (!profileReady) return loading
+  if (profile && !profile.onboarded) return <OnboardingSelector onComplete={handleOnboardingComplete} />
 
   return (
     <HobbyContext.Provider value={{ enabledIds, enabledHobbies, setEnabledIds: handleSetEnabledIds }}>
