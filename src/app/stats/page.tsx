@@ -9,7 +9,7 @@ import StatCard from '@/components/StatCard'
 import { CLIP } from '@/components/MechCard'
 import { HOBBIES } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
-import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { getAllEntries, getGlobalStats, ENTRIES_CHANGED_EVENT, type GlobalStats } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 import { calcHours } from '@/lib/hours'
 
@@ -17,10 +17,12 @@ export default function StatsPage() {
   const { enabledHobbies } = useHobbies()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  const [global, setGlobal] = useState<GlobalStats | null>(null)
 
   useEffect(() => {
     const load = () => getAllEntries().then(setEntries).finally(() => setLoading(false))
     load()
+    getGlobalStats().then(setGlobal).catch(() => {})
     window.addEventListener(ENTRIES_CHANGED_EVENT, load)
     return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
   }, [])
@@ -101,6 +103,54 @@ export default function StatsPage() {
         <StatCard label="Total Entries"   value={entries.length}                            accent="#2563eb" index={2} />
         <StatCard label="Avg Rating"      value={avgRating ? avgRating.toFixed(1) : '—'}   accent="#d97706" sub="out of 10" index={3} />
       </div>
+
+      {/* ── You vs everyone ── */}
+      {global && global.user_count > 0 && (
+        <div style={{ marginBottom: 24, padding: '1px', clipPath: CLIP, background: '#22c55e55' }}>
+          <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 20, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#22c55e', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 4px', letterSpacing: '0.1em' }}>YOU VS THE FIELD</h2>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 18px', letterSpacing: '0.08em' }}>
+              how you stack up against {global.user_count} operator{global.user_count === 1 ? '' : 's'} on hobbylog
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { label: 'AVG RATING', mine: avgRating ?? 0, avg: global.avg_rating ?? 0, unit: '', accent: '#d97706' },
+                { label: 'HOURS FINISHED', mine: finishedHours, avg: global.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
+                { label: 'COMPLETED', mine: completed.length, avg: global.avg_completed ?? 0, unit: '', accent: '#22c55e' },
+              ].map((m) => {
+                const max = Math.max(m.mine, m.avg, 0.001)
+                const delta = Math.round((m.mine - m.avg) * 10) / 10
+                const fmt = (n: number) => (Number.isInteger(n) ? `${n}` : n.toFixed(1)) + m.unit
+                return (
+                  <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em', width: 120, flexShrink: 0 }}>{m.label}</span>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-mute)', width: 28, flexShrink: 0, letterSpacing: '0.1em' }}>YOU</span>
+                        <div style={{ flex: 1, height: 8, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                          <div style={{ height: '100%', width: `${(m.mine / max) * 100}%`, background: m.accent, transition: 'width 0.4s ease' }} />
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-hi)', fontWeight: 700, width: 52, textAlign: 'right' }}>{fmt(m.mine)}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-mute)', width: 28, flexShrink: 0, letterSpacing: '0.1em' }}>AVG</span>
+                        <div style={{ flex: 1, height: 8, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                          <div style={{ height: '100%', width: `${(m.avg / max) * 100}%`, background: 'var(--text-dim)', opacity: 0.6, transition: 'width 0.4s ease' }} />
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', width: 52, textAlign: 'right' }}>{fmt(m.avg)}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, width: 56, textAlign: 'right', flexShrink: 0, color: delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : 'var(--text-dim)' }}>
+                      {delta > 0 ? '+' : ''}{fmt(delta)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Row 2: Category bar + Status donut ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>

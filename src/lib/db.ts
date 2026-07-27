@@ -256,6 +256,21 @@ export async function getFriendEntries(friendId: string): Promise<Entry[]> {
   return (data ?? []).map(parseEntry)
 }
 
+// ── Global benchmark (aggregate across all users, anonymous) ────────────────────
+
+export interface GlobalStats {
+  avg_rating: number | null
+  avg_completed: number | null
+  avg_finished_hours: number | null
+  user_count: number
+}
+
+export async function getGlobalStats(): Promise<GlobalStats> {
+  const { data, error } = await supabase.rpc('global_stats')
+  if (error) throw error
+  return data as GlobalStats
+}
+
 // ── Sessions ────────────────────────────────────────────────────────────────
 
 export async function getSessionsByEntry(entryId: string): Promise<Session[]> {
