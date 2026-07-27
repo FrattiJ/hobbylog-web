@@ -115,7 +115,6 @@ export default function StatsPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
-                { label: 'AVG RATING', mine: avgRating ?? 0, avg: global.avg_rating ?? 0, unit: '', accent: '#d97706' },
                 { label: 'HOURS FINISHED', mine: finishedHours, avg: global.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
                 { label: 'COMPLETED', mine: completed.length, avg: global.avg_completed ?? 0, unit: '', accent: '#22c55e' },
               ].map((m) => {

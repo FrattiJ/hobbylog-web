@@ -27,12 +27,12 @@ export async function GET(req: NextRequest) {
     })
     valid = /is_valid\s*:\s*true/i.test(await r.text())
   } catch {
-    return NextResponse.redirect(`${base}/settings?steam_error=network`)
+    return NextResponse.redirect(`${base}/import?steam_error=network`)
   }
-  if (!valid) return NextResponse.redirect(`${base}/settings?steam_error=verify`)
+  if (!valid) return NextResponse.redirect(`${base}/import?steam_error=verify`)
 
   const steamId = (params.get('openid.claimed_id') ?? '').match(/(\d{17})\/?$/)?.[1]
-  if (!steamId) return NextResponse.redirect(`${base}/settings?steam_error=noid`)
+  if (!steamId) return NextResponse.redirect(`${base}/import?steam_error=noid`)
 
   // Best-effort persona name for a friendly "Connected as …" label.
   let persona = ''
@@ -45,5 +45,5 @@ export async function GET(req: NextRequest) {
 
   const out = new URLSearchParams({ steam_linked: steamId })
   if (persona) out.set('steam_name', persona)
-  return NextResponse.redirect(`${base}/settings?${out.toString()}`)
+  return NextResponse.redirect(`${base}/import?${out.toString()}`)
 }

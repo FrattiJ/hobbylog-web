@@ -271,6 +271,14 @@ export async function getGlobalStats(): Promise<GlobalStats> {
   return data as GlobalStats
 }
 
+// How the whole site rated one catalog item (matched by external source + id).
+export interface CommunityRating { avg: number | null; count: number }
+export async function getCommunityRating(source: string, extId: string): Promise<CommunityRating> {
+  const { data, error } = await supabase.rpc('community_rating', { p_source: source, p_ext: extId })
+  if (error) throw error
+  return data as CommunityRating
+}
+
 // ── Sessions ────────────────────────────────────────────────────────────────
 
 export async function getSessionsByEntry(entryId: string): Promise<Session[]> {

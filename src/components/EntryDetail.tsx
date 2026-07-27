@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText } from 'lucide-react'
 import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
-import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, type Photo } from '@/lib/db'
+import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor } from '@/lib/search'
@@ -36,8 +36,15 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   const [sessions, setSessions] = useState<Session[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [community, setCommunity] = useState<CommunityRating | null>(null)
   const [sHours, setSHours] = useState(''); const [sMinutes, setSMinutes] = useState('')
   const [sProgress, setSProgress] = useState(''); const [sNotes, setSNotes] = useState('')
+
+  useEffect(() => {
+    if (entry.external_source && entry.external_id) {
+      getCommunityRating(entry.external_source, entry.external_id).then(setCommunity).catch(() => {})
+    }
+  }, [entry.external_source, entry.external_id])
 
   const loadExtras = useCallback(() => {
     getSessionsByEntry(entry.id).then(setSessions).catch(() => {})
@@ -209,6 +216,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({hobby?.progressUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
                 <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
               </div>
+
+              {community && community.count > 0 && community.avg != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                  <span style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>THE CROWD</span>
+                  <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill="#d97706" /> {community.avg}/10</span>
+                  <span style={{ color: 'var(--text-dim)' }}>· {community.count} other{community.count === 1 ? '' : 's'}</span>
+                  {rating && (
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: parseFloat(rating) >= community.avg ? '#22c55e' : '#ef4444' }}>
+                      you {parseFloat(rating) - community.avg >= 0 ? '+' : ''}{Math.round((parseFloat(rating) - community.avg) * 10) / 10}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {progressPct !== null && (
                 <div>

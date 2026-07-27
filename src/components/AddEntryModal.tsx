@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib/hobbies'
 import { insertEntry } from '@/lib/db'
-import { searchCatalog, searchTypeFor, type CatalogHit } from '@/lib/search'
+import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
 import { CLIP } from './MechCard'
 import type { HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 
@@ -26,9 +26,11 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
   const [status, setStatus] = useState<EntryStatus>('backlog')
   const [rating, setRating] = useState('')
   const [progressTotal, setProgressTotal] = useState('')
+  const [gameTTB, setGameTTB] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
 
@@ -38,6 +40,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
     : searchTypeFor(hobbyId)
   const totalUnit = hobbyId === 'books'
     ? (bookSubtype === 'audiobook' ? 'min' : BOOK_SUBTYPE_MAP[bookSubtype].progressUnit)
+    : hobbyId === 'movies' ? 'min'
+    : hobbyId === 'tv' ? 'ep'
     : hobby.progressUnit
 
   // Search-as-you-type
@@ -52,18 +56,34 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
     return () => clearTimeout(t)
   }, [query, searchType, selected])
 
-  function pick(hit: CatalogHit) {
+  async function pick(hit: CatalogHit) {
     setSelected(hit)
     setTitle(hit.title)
     setCoverUrl(hit.cover_url ?? '')
-    if (hit.progress_total != null) {
-      // Audiobooks track listening runtime — estimate minutes from page count (~26 pg/hr)
-      const total = hobbyId === 'books' && bookSubtype === 'audiobook'
-        ? Math.round((hit.progress_total / 26) * 60)
-        : hit.progress_total
-      setProgressTotal(String(total))
-    }
     setResults([])
+
+    // Games: RAWG returns a community time-to-beat (hours) in the hit metadata.
+    if (hobbyId === 'games' && hit.metadata?.time_to_beat != null) {
+      setGameTTB(String(hit.metadata.time_to_beat))
+    }
+
+    let total = hit.progress_total
+    // Movies/TV: fetch per-title details (runtime, episode count) for the picked item.
+    if (hobbyId === 'movies' || hobbyId === 'tv') {
+      setEnriching(true)
+      const d = await fetchCatalogDetails(hobbyId === 'movies' ? 'movie' : 'tv', hit.external_id)
+      setEnriching(false)
+      if (d.progress_total != null) total = d.progress_total
+      setSelected({ ...hit, metadata: { ...hit.metadata, ...d.metadata } })
+    }
+
+    if (total != null) {
+      // Audiobooks track listening runtime — estimate minutes from page count (~26 pg/hr)
+      const shown = hobbyId === 'books' && bookSubtype === 'audiobook'
+        ? Math.round((total / 26) * 60)
+        : total
+      setProgressTotal(String(shown))
+    }
   }
 
   async function save() {
@@ -78,11 +98,15 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
         progress_current: 0,
-        progress_total: progressTotal ? parseFloat(progressTotal) : null,
+        progress_total: hobbyId === 'games' ? null : (progressTotal ? parseFloat(progressTotal) : null),
         cover_url: coverUrl.trim() || null,
         external_id: selected?.external_id ?? null,
         external_source: selected?.external_source ?? null,
-        metadata: { added_via: 'web', ...(selected?.metadata ?? {}) },
+        metadata: {
+          added_via: 'web',
+          ...(selected?.metadata ?? {}),
+          ...(hobbyId === 'games' && gameTTB ? { time_to_beat: parseFloat(gameTTB) } : {}),
+        },
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
         current_season: null, current_episode: null, priority: null,
         date_started: status === 'in_progress' ? today : null,
@@ -175,8 +199,17 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
               <input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={label}>TOTAL ({totalUnit})</p>
-              <input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} />
+              {hobbyId === 'games' ? (
+                <>
+                  <p style={label}>TIME TO BEAT (hrs)</p>
+                  <input type="number" min={0} step={0.5} value={gameTTB} onChange={(e) => setGameTTB(e.target.value)} placeholder={enriching ? '…' : '—'} style={inp} />
+                </>
+              ) : (
+                <>
+                  <p style={label}>TOTAL ({totalUnit})</p>
+                  <input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder={enriching ? 'fetching…' : '—'} style={inp} />
+                </>
+              )}
             </div>
           </div>
 

@@ -23,3 +23,19 @@ export async function searchCatalog(type: string, q: string): Promise<CatalogHit
   const data = await res.json()
   return (data.results ?? []) as CatalogHit[]
 }
+
+export interface CatalogDetails {
+  progress_total: number | null
+  metadata: Record<string, unknown>
+}
+
+// Per-title enrichment for a single picked result (movie runtime, TV episode count).
+export async function fetchCatalogDetails(type: string, id: string): Promise<CatalogDetails> {
+  try {
+    const res = await fetch(`/api/details?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`)
+    if (!res.ok) return { progress_total: null, metadata: {} }
+    return (await res.json()) as CatalogDetails
+  } catch {
+    return { progress_total: null, metadata: {} }
+  }
+}

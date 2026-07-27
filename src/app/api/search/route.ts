@@ -38,6 +38,9 @@ async function searchGames(q: string): Promise<CatalogHit[]> {
         platforms: Array.isArray(g.platforms) ? (g.platforms as Raw[]).map((p) => (p.platform as Raw)?.name).filter(Boolean).join(', ') : undefined,
         rating: (g.rating as number) || undefined,
         release_year: year ?? undefined,
+        // RAWG's community-average playtime (hours) → time-to-beat, so backlog-hour
+        // estimates work. (HLTB, used on desktop, blocks server-side calls.)
+        time_to_beat: (g.playtime as number) || undefined,
       },
     }
   })

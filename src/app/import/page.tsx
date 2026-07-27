@@ -2,29 +2,35 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
-import { supabase } from '@/lib/supabaseClient'
-import { getAllEntries, bulkInsertEntries } from '@/lib/db'
-import { importFromDesktop, backfillCovers } from '@/lib/entries'
+import { getAllEntries, bulkInsertEntries, getProfile, linkSteam, unlinkSteam } from '@/lib/db'
+import { backfillCovers } from '@/lib/entries'
+import { syncSteamPlaytime, importSteamLibrary } from '@/lib/steam'
 import {
   parseMAL, parseLetterboxd, parseGoodreads, enrichMALWithJikan, type PreviewEntry,
 } from '@/lib/importParsers'
 
 const ACCENT = '#7c3aed'
+const STEAM_CYAN = '#0891b2'
 
-type ImportTab = 'mal' | 'letterboxd' | 'goodreads'
+const STEAM_ERRORS: Record<string, string> = {
+  verify: 'Steam sign-in could not be verified. Please try again.',
+  noid: 'Steam did not return an account id. Please try again.',
+  network: 'Could not reach Steam. Please try again in a moment.',
+}
 
-const TABS: { id: ImportTab; label: string; accent: string; accept: string; hint: string }[] = [
+type ImportTab = 'mal' | 'letterboxd' | 'goodreads' | 'steam'
+
+const TABS: { id: ImportTab; label: string; accent: string; accept?: string; hint?: string }[] = [
   { id: 'mal', label: 'MY ANIME LIST', accent: '#2e51a2', accept: '.xml',
     hint: 'Export from MyAnimeList → Account → Export Data → Export Anime/Manga List, then unzip it. Imports anime as TV Shows and manga as Books.' },
   { id: 'letterboxd', label: 'LETTERBOXD', accent: '#00c030', accept: '.csv',
     hint: 'Export from Letterboxd → Settings → Import & Export → Export Your Data. Upload watchlist.csv (→ Backlog), ratings.csv, or diary.csv (→ Completed).' },
   { id: 'goodreads', label: 'GOODREADS', accent: '#d97706', accept: '.csv',
     hint: 'Export from Goodreads → My Books → Import and Export → Export Library. Imports all shelves (to-read, reading, read).' },
+  { id: 'steam', label: 'STEAM', accent: STEAM_CYAN },
 ]
 
 export default function ImportPage() {
-  const [userId, setUserId] = useState<string | null>(null)
-
   // Service-file importer state
   const [tab, setTab] = useState<ImportTab>('mal')
   const [stage, setStage] = useState<'idle' | 'parsed' | 'importing' | 'done'>('idle')
@@ -36,13 +42,35 @@ export default function ImportPage() {
   const [enrichStatus, setEnrichStatus] = useState<{ current: number; total: number } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Utility-card state (desktop final sync + cover backfill)
+  // Steam state
+  const [steamId, setSteamId] = useState<string | null>(null)
+  const [steamPersona, setSteamPersona] = useState<string | null>(null)
+  const [steamBusy, setSteamBusy] = useState(false)
+  const [steamMsg, setSteamMsg] = useState<string | null>(null)
+  const [steamProgress, setSteamProgress] = useState<{ done: number; total: number } | null>(null)
+
+  // Cover-backfill state
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [coverProgress, setCoverProgress] = useState<{ done: number; total: number } | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
+    getProfile().then((p) => { setSteamId(p.steam_id); setSteamPersona(p.steam_persona) }).catch(() => {})
+    // Handle the redirect back from "Sign in through Steam".
+    const q = new URLSearchParams(window.location.search)
+    const linked = q.get('steam_linked')
+    const err = q.get('steam_error')
+    if (linked && /^\d{17}$/.test(linked)) {
+      const persona = q.get('steam_name')
+      setTab('steam')
+      linkSteam(linked, persona).then(() => {
+        setSteamId(linked); setSteamPersona(persona)
+        setSteamMsg(`Steam connected${persona ? ` as ${persona}` : ''}. Sync your playtime below.`)
+      })
+    } else if (err) {
+      setTab('steam'); setSteamMsg(STEAM_ERRORS[err] ?? 'Steam sign-in failed. Please try again.')
+    }
+    if (linked || err) window.history.replaceState(null, '', '/import')
   }, [])
 
   const active = TABS.find((t) => t.id === tab)!
@@ -74,7 +102,6 @@ export default function ImportPage() {
     const seen = new Set(existing.map((e) => `${e.hobby_category}::${e.title.toLowerCase()}`))
     let toInsert = preview.filter((e) => !seen.has(`${e.hobby_category}::${e.title.toLowerCase()}`))
     const skipped = preview.length - toInsert.length
-    // Enrich after dedupe so re-imports don't burn Jikan quota on skipped entries
     if (tab === 'mal' && enrich) {
       toInsert = await enrichMALWithJikan(toInsert, (current, total) => setEnrichStatus({ current, total }))
       setEnrichStatus(null)
@@ -83,14 +110,27 @@ export default function ImportPage() {
     setResult({ imported, skipped }); setStage('done')
   }
 
-  async function runDesktopSync() {
-    if (!userId) return
-    setBusy(true); setNote(null)
+  function connectSteam() { window.location.href = '/api/steam/login' }
+  async function disconnectSteam() {
+    await unlinkSteam(); setSteamId(null); setSteamPersona(null); setSteamMsg('Steam disconnected.')
+  }
+  async function runSteamSync() {
+    if (!steamId) return
+    setSteamBusy(true); setSteamMsg(null)
     try {
-      const n = await importFromDesktop(userId)
-      setNote(n > 0 ? `Synced ${n} entr${n === 1 ? 'y' : 'ies'} from your desktop (new + backfilled).` : 'Nothing new — your library is already up to date.')
-    } catch (e) { setNote(`Sync failed: ${(e as Error).message}`) }
-    setBusy(false)
+      const n = await syncSteamPlaytime(steamId)
+      setSteamMsg(n > 0 ? `Updated playtime on ${n} game${n === 1 ? '' : 's'}.` : 'Everything already up to date.')
+    } catch (e) { setSteamMsg((e as Error).message) }
+    setSteamBusy(false)
+  }
+  async function runSteamImport() {
+    if (!steamId) return
+    setSteamBusy(true); setSteamMsg(null); setSteamProgress({ done: 0, total: 0 })
+    try {
+      const n = await importSteamLibrary(steamId, (done, total) => setSteamProgress({ done, total }))
+      setSteamMsg(n > 0 ? `Imported ${n} new game${n === 1 ? '' : 's'} from Steam.` : 'No new games — your Steam library is already here.')
+    } catch (e) { setSteamMsg((e as Error).message) }
+    setSteamProgress(null); setSteamBusy(false)
   }
 
   async function runBackfill() {
@@ -105,7 +145,7 @@ export default function ImportPage() {
   const byCat = preview.reduce<Record<string, number>>((acc, e) => { acc[e.hobby_category] = (acc[e.hobby_category] ?? 0) + 1; return acc }, {})
   const panel: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderTop: `2px solid ${active.accent}`, padding: 20, marginBottom: 16 }
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: 20, marginBottom: 16 }
-  const utilBtn = (color: string): React.CSSProperties => ({ padding: '10px 18px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', color, background: `${color}22`, border: `1px solid ${color}`, borderLeft: `3px solid ${color}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 })
+  const steamBtn = (filled: boolean): React.CSSProperties => ({ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: STEAM_CYAN, background: filled ? `${STEAM_CYAN}22` : 'transparent', border: `1px solid ${filled ? STEAM_CYAN : STEAM_CYAN + '88'}`, borderLeft: filled ? `3px solid ${STEAM_CYAN}` : `1px solid ${STEAM_CYAN}88`, cursor: steamBusy ? 'wait' : 'pointer', opacity: steamBusy ? 0.6 : 1 })
 
   return (
     <div style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
@@ -124,8 +164,43 @@ export default function ImportPage() {
         ))}
       </div>
 
-      {/* Upload */}
-      {stage === 'idle' && (
+      {/* ── Steam tab ── */}
+      {tab === 'steam' && (
+        <div style={panel}>
+          {steamId ? (
+            <>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: STEAM_CYAN, display: 'inline-block' }} />
+                Connected{steamPersona ? ` as ${steamPersona}` : ''}
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 14px' }}>SteamID {steamId}</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={runSteamSync} disabled={steamBusy} style={steamBtn(true)}>⟳ SYNC PLAYTIME</button>
+                <button onClick={runSteamImport} disabled={steamBusy} style={steamBtn(false)}>⬇ IMPORT NEW GAMES</button>
+                <button onClick={disconnectSteam} disabled={steamBusy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: steamBusy ? 'wait' : 'pointer' }}>DISCONNECT</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>
+                Link your Steam account to pull in your library and keep game playtime in sync — one click, no setup.
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7, opacity: 0.85 }}>
+                Your Steam <span style={{ color: 'var(--text-mid)' }}>Game Details</span> privacy must be set to Public (Profile → Edit Profile → Privacy Settings) for playtime to be readable.
+              </p>
+              <button onClick={connectSteam}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', color: STEAM_CYAN, background: `${STEAM_CYAN}22`, border: `1px solid ${STEAM_CYAN}`, borderLeft: `3px solid ${STEAM_CYAN}`, cursor: 'pointer' }}>
+                ▶ CONNECT STEAM
+              </button>
+            </>
+          )}
+          {steamProgress && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: STEAM_CYAN, marginTop: 12 }}>{steamProgress.done}/{steamProgress.total}…</p>}
+          {steamMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', marginTop: 12, lineHeight: 1.6 }}>{steamMsg}</p>}
+        </div>
+      )}
+
+      {/* ── File upload ── */}
+      {tab !== 'steam' && stage === 'idle' && (
         <div style={panel}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.7, margin: '0 0 18px' }}>{active.hint}</p>
           {tab === 'mal' && (
@@ -138,7 +213,7 @@ export default function ImportPage() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
           <button onClick={() => fileRef.current?.click()}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: '36px 20px', background: `${active.accent}08`, border: `1px dashed ${active.accent}55`, color: active.accent, fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.12em', cursor: 'pointer' }}>
-            <Upload size={16} /> SELECT {active.accept.replace('.', '').toUpperCase()} FILE
+            <Upload size={16} /> SELECT {active.accept?.replace('.', '').toUpperCase()} FILE
           </button>
         </div>
       )}
@@ -150,7 +225,7 @@ export default function ImportPage() {
       )}
 
       {/* Preview */}
-      {stage === 'parsed' && (
+      {tab !== 'steam' && stage === 'parsed' && (
         <div style={panel}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 10 }}>PREVIEW</p>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 900, color: active.accent, letterSpacing: '0.06em', marginBottom: 14, lineHeight: 1 }}>
@@ -178,7 +253,7 @@ export default function ImportPage() {
       )}
 
       {/* Importing */}
-      {stage === 'importing' && (
+      {tab !== 'steam' && stage === 'importing' && (
         <div style={panel}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 14 }}>
             {enrichStatus ? 'FETCHING ARTWORK FROM MYANIMELIST…' : 'IMPORTING…'}
@@ -193,7 +268,7 @@ export default function ImportPage() {
       )}
 
       {/* Done */}
-      {stage === 'done' && result && (
+      {tab !== 'steam' && stage === 'done' && result && (
         <div style={{ ...panel, borderTopColor: '#22c55e' }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 10 }}>IMPORT COMPLETE</p>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: '#22c55e', letterSpacing: '0.06em', marginBottom: 6, lineHeight: 1 }}>{result.imported} RECORDS ADDED</p>
@@ -205,31 +280,17 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* Steam pointer */}
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.7, margin: '4px 2px 28px' }}>
-        Bringing in your Steam games? Connect your account in <span style={{ color: '#0891b2' }}>Settings → Steam</span> for one-click playtime sync.
-      </p>
-
       {/* Utility tools */}
-      <div style={{ borderTop: '1px solid var(--border-dim)', paddingTop: 24 }}>
-        <div style={{ ...card, borderLeftColor: '#d97706' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 6px' }}>FINAL SYNC FROM DESKTOP</h2>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.7, margin: '0 0 14px' }}>
-            <span style={{ color: '#d97706' }}>⚠ One-time:</span> if you&apos;re sunsetting the desktop app, run this once to pull everything —
-            ratings, reviews, notes, covers, times. Open the desktop app (v0.3.3+) first so it uploads the latest.
-          </p>
-          <button onClick={runDesktopSync} disabled={busy} style={utilBtn('#d97706')}>⬇ RUN FINAL DESKTOP SYNC</button>
-        </div>
-
+      <div style={{ borderTop: '1px solid var(--border-dim)', paddingTop: 24, marginTop: 12 }}>
         <div style={card}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 6px' }}>FETCH MISSING COVERS</h2>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.7, margin: '0 0 14px' }}>
             Looks up cover art for any entry still missing one, via the built-in catalog search.
           </p>
-          <button onClick={runBackfill} disabled={busy} style={utilBtn(ACCENT)}>✦ FETCH COVERS</button>
+          <button onClick={runBackfill} disabled={busy}
+            style={{ padding: '10px 18px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>✦ FETCH COVERS</button>
           {coverProgress && <span style={{ marginLeft: 12, fontFamily: 'var(--font-mono)', fontSize: 12, color: ACCENT }}>{coverProgress.done}/{coverProgress.total}…</span>}
         </div>
-
         {note && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', letterSpacing: '0.04em' }}>{note}</p>}
       </div>
     </div>
