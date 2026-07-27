@@ -62,6 +62,33 @@ async function searchTMDB(q: string, type: 'movie' | 'tv'): Promise<CatalogHit[]
   })
 }
 
+async function searchManga(q: string): Promise<CatalogHit[]> {
+  // Jikan (MyAnimeList) returns the whole series, not individual volumes like OpenLibrary
+  const r = await fetch(`https://api.jikan.moe/v4/manga?q=${encodeURIComponent(q)}&limit=12&sfw=true`)
+  if (!r.ok) throw new Error(`Jikan ${r.status}`)
+  const d = await r.json()
+  return ((d.data as Raw[]) ?? []).map((m) => {
+    const images = m.images as Record<string, Record<string, string>> | undefined
+    const published = m.published as Record<string, unknown> | undefined
+    const prop = published?.prop as Record<string, Record<string, unknown>> | undefined
+    const year = (prop?.from?.year as number) ?? null
+    return {
+      external_id: String(m.mal_id),
+      external_source: 'jikan',
+      title: String(m.title_english ?? m.title),
+      cover_url: images?.jpg?.large_image_url ?? images?.jpg?.image_url ?? null,
+      year,
+      progress_total: (m.chapters as number) || null,
+      metadata: {
+        author: Array.isArray(m.authors) ? (m.authors as Raw[])[0]?.name as string : undefined,
+        rating: (m.score as number) || undefined,
+        volumes: (m.volumes as number) || undefined,
+        release_year: year ?? undefined,
+      },
+    }
+  })
+}
+
 async function searchBooks(q: string): Promise<CatalogHit[]> {
   const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=key,title,author_name,cover_i,first_publish_year,number_of_pages_median&limit=12`)
   if (!r.ok) throw new Error(`OpenLibrary ${r.status}`)
@@ -85,6 +112,7 @@ export async function GET(req: NextRequest) {
     let results: CatalogHit[] = []
     if (type === 'games') results = await searchGames(q)
     else if (type === 'movie' || type === 'tv') results = await searchTMDB(q, type)
+    else if (type === 'manga') results = await searchManga(q)
     else if (type === 'books') results = await searchBooks(q)
     return NextResponse.json({ results })
   } catch (e) {

@@ -45,13 +45,14 @@ export default function ImportPage() {
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>IMPORT</h1>
       </div>
 
-      <div style={card}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 6px' }}>SYNC FROM DESKTOP</h2>
+      <div style={{ ...card, borderLeftColor: '#d97706' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 6px' }}>FINAL SYNC FROM DESKTOP</h2>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.7, margin: '0 0 14px' }}>
-          Pulls your entries from the desktop app — now including ratings, reviews, notes, cover art, and time-to-beat.
-          Open your desktop app (v0.3.3+) once so it uploads the latest, then run this.
+          <span style={{ color: '#d97706' }}>⚠ One-time:</span> if you&apos;re sunsetting the desktop app, run this once to pull everything —
+          ratings, reviews, notes, covers, times. Open the desktop app (v0.3.3+) first so it uploads the latest.
+          Once you&apos;ve got everything, this can be removed.
         </p>
-        <button onClick={runImport} disabled={busy} style={btn('#22c55e')}>⬇ IMPORT FROM DESKTOP</button>
+        <button onClick={runImport} disabled={busy} style={btn('#d97706')}>⬇ RUN FINAL DESKTOP SYNC</button>
       </div>
 
       <div style={card}>

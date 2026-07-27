@@ -32,7 +32,13 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
 
-  const searchType = searchTypeFor(hobbyId)
+  // Book subtype drives the search source: manga -> Jikan (series), others -> OpenLibrary
+  const searchType = hobbyId === 'books'
+    ? (bookSubtype === 'manga' ? 'manga' : BOOK_SUBTYPE_MAP[bookSubtype].api === 'openlibrary' ? 'books' : null)
+    : searchTypeFor(hobbyId)
+  const totalUnit = hobbyId === 'books'
+    ? (bookSubtype === 'audiobook' ? 'min' : BOOK_SUBTYPE_MAP[bookSubtype].progressUnit)
+    : hobby.progressUnit
 
   // Search-as-you-type
   useEffect(() => {
@@ -50,7 +56,13 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
     setSelected(hit)
     setTitle(hit.title)
     setCoverUrl(hit.cover_url ?? '')
-    if (hit.progress_total != null) setProgressTotal(String(hit.progress_total))
+    if (hit.progress_total != null) {
+      // Audiobooks track listening runtime — estimate minutes from page count (~26 pg/hr)
+      const total = hobbyId === 'books' && bookSubtype === 'audiobook'
+        ? Math.round((hit.progress_total / 26) * 60)
+        : hit.progress_total
+      setProgressTotal(String(total))
+    }
     setResults([])
   }
 
@@ -163,7 +175,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
               <input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={label}>TOTAL ({hobby.progressUnit})</p>
+              <p style={label}>TOTAL ({totalUnit})</p>
               <input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} />
             </div>
           </div>

@@ -258,7 +258,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             ))}
           </div>
 
-          <PhotoGallery entryId={entry.id} accent={accent} photos={photos} onPhotosChange={setPhotos} />
+          {/* Photos only for creative/manual hobbies (Projects, Fitness, Art) */}
+          {hobby?.manualOnly && <PhotoGallery entryId={entry.id} accent={accent} photos={photos} onPhotosChange={setPhotos} />}
         </div>
       </div>
     </div>
