@@ -22,7 +22,7 @@ function EntryInner() {
   if (loading) return <div style={{ padding: 40, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', letterSpacing: '0.2em' }}>LOADING…</div>
   if (!entry) return <div style={{ padding: 40, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>Entry not found.</div>
 
-  return <EntryDetail entry={entry} onClose={() => router.push('/dashboard')} onChanged={load} />
+  return <EntryDetail entry={entry} onBack={() => router.push(`/${entry.hobby_category}`)} onChanged={load} />
 }
 
 export default function EntryPage() {
