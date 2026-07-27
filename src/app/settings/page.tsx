@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Moon, Sun, Check, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, linkSteam, unlinkSteam } from '@/lib/db'
+import { clearAllData, getProfile, linkSteam, unlinkSteam, setUsername } from '@/lib/db'
 import { syncSteamPlaytime, importSteamLibrary } from '@/lib/steam'
 import { getTheme, setTheme, type Theme } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
@@ -26,6 +26,10 @@ export default function SettingsPage() {
   const [clearConfirm, setClearConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
+  const [username, setUsernameState] = useState('')
+  const [usernameMsg, setUsernameMsg] = useState<string | null>(null)
+  const [savingName, setSavingName] = useState(false)
+
   const [steamId, setSteamId] = useState<string | null>(null)
   const [steamPersona, setSteamPersona] = useState<string | null>(null)
   const [steamBusy, setSteamBusy] = useState(false)
@@ -34,7 +38,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
-    getProfile().then((p) => { setSteamId(p.steam_id); setSteamPersona(p.steam_persona) }).catch(() => {})
+    getProfile().then((p) => { setSteamId(p.steam_id); setSteamPersona(p.steam_persona); setUsernameState(p.username ?? '') }).catch(() => {})
 
     // Handle the redirect back from "Sign in through Steam".
     const q = new URLSearchParams(window.location.search)
@@ -51,6 +55,15 @@ export default function SettingsPage() {
     }
     if (linked || err) window.history.replaceState(null, '', '/settings')
   }, [])
+
+  async function saveUsername() {
+    setSavingName(true); setUsernameMsg(null)
+    try {
+      await setUsername(username)
+      setUsernameMsg('Username saved — friends can find you by this handle.')
+    } catch (e) { setUsernameMsg((e as Error).message) }
+    setSavingName(false)
+  }
 
   function connectSteam() { window.location.href = '/api/steam/login' }
 
@@ -106,7 +119,17 @@ export default function SettingsPage() {
       {/* Account */}
       <div style={card}>
         <h2 style={h2}>ACCOUNT</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 14px' }}>{email}</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>{email}</p>
+
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>USERNAME</p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: usernameMsg ? 8 : 16, flexWrap: 'wrap' }}>
+          <input value={username} onChange={(e) => setUsernameState(e.target.value)} placeholder="pick_a_handle" spellCheck={false}
+            style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none' }} />
+          <button onClick={saveUsername} disabled={savingName}
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: savingName ? 'wait' : 'pointer', opacity: savingName ? 0.6 : 1 }}>SAVE</button>
+        </div>
+        {usernameMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{usernameMsg}</p>}
+
         <button onClick={() => supabase.auth.signOut()}
           style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>SIGN OUT</button>
       </div>

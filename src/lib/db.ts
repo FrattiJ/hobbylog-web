@@ -31,13 +31,17 @@ function parseEntry(r: Row): Entry {
 // ── Entries ───────────────────────────────────────────────────────────────────
 
 export async function getAllEntries(): Promise<Entry[]> {
-  const { data, error } = await supabase.from('web_entries').select('*').order('updated_at', { ascending: false })
+  // Scope to the current user: friends-read RLS means an unscoped query would
+  // also return friends' entries. "My library" must always filter by user_id.
+  const userId = await currentUserId()
+  const { data, error } = await supabase.from('web_entries').select('*').eq('user_id', userId).order('updated_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map(parseEntry)
 }
 
 export async function getEntriesByHobby(hobby: HobbyCategory): Promise<Entry[]> {
-  const { data, error } = await supabase.from('web_entries').select('*').eq('hobby_category', hobby).order('updated_at', { ascending: false })
+  const userId = await currentUserId()
+  const { data, error } = await supabase.from('web_entries').select('*').eq('user_id', userId).eq('hobby_category', hobby).order('updated_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map(parseEntry)
 }
@@ -161,6 +165,96 @@ export async function completeOnboarding(ids: HobbyCategory[]): Promise<void> {
 }
 
 export async function updateProfile(): Promise<void> { notifyProfileChanged() }
+
+export async function setUsername(username: string): Promise<void> {
+  const userId = await currentUserId()
+  const clean = username.trim()
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(clean)) throw new Error('Usernames are 3–20 characters: letters, numbers, or underscore.')
+  const { error } = await supabase.from('web_profile').upsert({ user_id: userId, username: clean })
+  if (error) {
+    if (error.code === '23505') throw new Error('That username is already taken.')
+    throw error
+  }
+  notifyProfileChanged()
+}
+
+// ── Social: friends ────────────────────────────────────────────────────────────
+
+export interface UserRef { user_id: string; username: string }
+export interface FriendView { id: string; user_id: string; username: string }
+interface FriendshipRow { id: string; requester: string; addressee: string; status: 'pending' | 'accepted' | 'declined' }
+
+export async function searchUsers(q: string): Promise<UserRef[]> {
+  const { data, error } = await supabase.rpc('search_users', { q: q.trim() })
+  if (error) throw error
+  return (data ?? []) as UserRef[]
+}
+
+async function usernamesFor(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map()
+  const { data } = await supabase.rpc('usernames_for', { ids })
+  const m = new Map<string, string>()
+  for (const r of (data ?? []) as UserRef[]) m.set(r.user_id, r.username)
+  return m
+}
+
+export async function getUsername(userId: string): Promise<string> {
+  return (await usernamesFor([userId])).get(userId) ?? 'operator'
+}
+
+export async function sendFriendRequest(addresseeId: string): Promise<void> {
+  const requester = await currentUserId()
+  const { error } = await supabase.from('friendships').insert({ requester, addressee: addresseeId })
+  if (error) {
+    if (error.code === '23505') throw new Error('You already have a request or friendship with this user.')
+    throw error
+  }
+}
+
+export async function listFriends(): Promise<FriendView[]> {
+  const me = await currentUserId()
+  const { data } = await supabase.from('friendships').select('*').eq('status', 'accepted')
+  const rows = (data ?? []) as FriendshipRow[]
+  const otherIds = rows.map((r) => (r.requester === me ? r.addressee : r.requester))
+  const names = await usernamesFor(otherIds)
+  return rows.map((r) => {
+    const other = r.requester === me ? r.addressee : r.requester
+    return { id: r.id, user_id: other, username: names.get(other) ?? 'unknown' }
+  })
+}
+
+export async function listIncomingRequests(): Promise<FriendView[]> {
+  const me = await currentUserId()
+  const { data } = await supabase.from('friendships').select('*').eq('status', 'pending').eq('addressee', me)
+  const rows = (data ?? []) as FriendshipRow[]
+  const names = await usernamesFor(rows.map((r) => r.requester))
+  return rows.map((r) => ({ id: r.id, user_id: r.requester, username: names.get(r.requester) ?? 'unknown' }))
+}
+
+export async function listOutgoingRequests(): Promise<FriendView[]> {
+  const me = await currentUserId()
+  const { data } = await supabase.from('friendships').select('*').eq('status', 'pending').eq('requester', me)
+  const rows = (data ?? []) as FriendshipRow[]
+  const names = await usernamesFor(rows.map((r) => r.addressee))
+  return rows.map((r) => ({ id: r.id, user_id: r.addressee, username: names.get(r.addressee) ?? 'unknown' }))
+}
+
+export async function respondToRequest(id: string, accept: boolean): Promise<void> {
+  await supabase.from('friendships').update({ status: accept ? 'accepted' : 'declined', updated_at: new Date().toISOString() }).eq('id', id)
+  notifyProfileChanged()
+}
+
+export async function removeFriend(id: string): Promise<void> {
+  await supabase.from('friendships').delete().eq('id', id)
+  notifyProfileChanged()
+}
+
+// A friend's library — accepted-friend RLS on web_entries permits this read.
+export async function getFriendEntries(friendId: string): Promise<Entry[]> {
+  const { data, error } = await supabase.from('web_entries').select('*').eq('user_id', friendId).order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(parseEntry)
+}
 
 // ── Sessions ────────────────────────────────────────────────────────────────
 
