@@ -109,7 +109,7 @@ export async function clearAllData(): Promise<void> {
 
 // ── Profile (cloud: tracked hobbies + onboarding state, synced across devices) ──
 
-export type WebProfile = Profile & { onboarded: boolean }
+export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null }
 
 export async function getProfile(): Promise<WebProfile> {
   const { data: u } = await supabase.auth.getUser()
@@ -117,11 +117,15 @@ export async function getProfile(): Promise<WebProfile> {
   const username = (u.user?.email ?? 'operator').split('@')[0].toUpperCase()
   let enabled: HobbyCategory[] | null = null
   let onboarded = false
+  let steam_id: string | null = null
+  let steam_persona: string | null = null
   if (userId) {
-    const { data: row } = await supabase.from('web_profile').select('enabled_hobbies, onboarded').eq('user_id', userId).maybeSingle()
+    const { data: row } = await supabase.from('web_profile').select('enabled_hobbies, onboarded, steam_id, steam_persona').eq('user_id', userId).maybeSingle()
     if (row) {
       enabled = (row.enabled_hobbies as HobbyCategory[]) ?? null
       onboarded = (row.onboarded as boolean) ?? false
+      steam_id = (row.steam_id as string) ?? null
+      steam_persona = (row.steam_persona as string) ?? null
     } else {
       // First read — create the profile. Existing users (with entries) skip onboarding.
       const { count } = await supabase.from('web_entries').select('id', { count: 'exact', head: true }).eq('user_id', userId)
@@ -129,7 +133,19 @@ export async function getProfile(): Promise<WebProfile> {
       await supabase.from('web_profile').insert({ user_id: userId, username, onboarded })
     }
   }
-  return { id: userId || '1', username, avatar_url: null, bio: null, enabled_hobbies: enabled, created_at: '', onboarded }
+  return { id: userId || '1', username, avatar_url: null, bio: null, enabled_hobbies: enabled, created_at: '', onboarded, steam_id, steam_persona }
+}
+
+export async function linkSteam(steamId: string, persona: string | null): Promise<void> {
+  const userId = await currentUserId()
+  await supabase.from('web_profile').upsert({ user_id: userId, steam_id: steamId, steam_persona: persona })
+  notifyProfileChanged()
+}
+
+export async function unlinkSteam(): Promise<void> {
+  const userId = await currentUserId()
+  await supabase.from('web_profile').update({ steam_id: null, steam_persona: null }).eq('user_id', userId)
+  notifyProfileChanged()
 }
 
 export async function setEnabledHobbies(ids: HobbyCategory[]): Promise<void> {
