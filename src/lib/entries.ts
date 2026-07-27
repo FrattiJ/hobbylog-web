@@ -12,8 +12,12 @@ export interface WebEntry {
   progress_current: number | null
   progress_total: number | null
   cover_url: string | null
+  external_id: string | null
+  external_source: string | null
   priority: number | null
   metadata: Record<string, unknown> | null
+  date_started: string | null
+  date_completed: string | null
   created_at: string
   updated_at: string
 }
@@ -58,6 +62,33 @@ export async function setEntryStatus(id: string, status: string): Promise<void> 
   if (status === 'in_progress') patch.date_started = today
   const { error } = await supabase.from('web_entries').update(patch).eq('id', id)
   if (error) throw error
+}
+
+// Generic field update from the entry detail editor
+export async function updateEntry(id: string, patch: Partial<WebEntry>): Promise<void> {
+  const { error } = await supabase.from('web_entries')
+    .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+
+// Re-fetch cover + metadata for an entry by looking its title up in the catalog.
+// Fills a missing cover and refreshes metadata/total; returns the applied patch.
+export async function refetchDetails(entry: WebEntry): Promise<Partial<WebEntry> | null> {
+  const type = searchTypeFor(entry.hobby_category)
+  if (!type) return null
+  const results = await searchCatalog(type, entry.title)
+  const lower = entry.title.toLowerCase()
+  const hit = results.find((r) => r.title.toLowerCase() === lower) ?? results[0]
+  if (!hit) return null
+  const patch: Partial<WebEntry> = {
+    cover_url: entry.cover_url || hit.cover_url,
+    external_id: hit.external_id,
+    external_source: hit.external_source,
+    progress_total: entry.progress_total ?? hit.progress_total,
+    metadata: { ...(entry.metadata ?? {}), ...hit.metadata },
+  }
+  await updateEntry(entry.id, patch)
+  return patch
 }
 
 export async function deleteEntry(id: string): Promise<void> {

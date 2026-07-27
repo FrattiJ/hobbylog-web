@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { HOBBIES, HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { listEntries, addEntry, setEntryStatus, deleteEntry, importFromDesktop, backfillCovers, type WebEntry } from '@/lib/entries'
 import { searchCatalog, searchTypeFor, type CatalogHit } from '@/lib/search'
+import EntryDetail from './EntryDetail'
 
 const CLIP = 'polygon(12px 0%, 100% 0%, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0% 100%, 0% 12px)'
 const ACCENT = '#7c3aed'
@@ -53,6 +54,7 @@ export default function Backlog({ session, onSignOut }: { session: Session; onSi
   const [newStatus, setNewStatus] = useState('backlog')
   const [results, setResults] = useState<CatalogHit[]>([])
   const [searching, setSearching] = useState(false)
+  const [detail, setDetail] = useState<WebEntry | null>(null)
   const searchSeq = useRef(0)
 
   const userId = session.user.id
@@ -240,13 +242,15 @@ export default function Backlog({ session, onSignOut }: { session: Session; onSi
             const accent = hobby?.accent ?? ACCENT
             return (
               <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px 8px 8px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${accent}` }}>
-                <Cover url={e.cover_url} title={e.title} accent={accent} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.08em', marginTop: 2 }}>
-                    {(hobby?.pluralLabel ?? e.hobby_category).toUpperCase()}
-                    {e.priority != null ? ` · #${e.priority}` : ''}
-                    {e.progress_total ? ` · ${e.progress_current ?? 0}/${e.progress_total}` : ''}
+                <div onClick={() => setDetail(e)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                  <Cover url={e.cover_url} title={e.title} accent={accent} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.08em', marginTop: 2 }}>
+                      {(hobby?.pluralLabel ?? e.hobby_category).toUpperCase()}
+                      {e.priority != null ? ` · #${e.priority}` : ''}
+                      {e.progress_total ? ` · ${e.progress_current ?? 0}/${e.progress_total}` : ''}
+                    </div>
                   </div>
                 </div>
                 <select value={e.status} onChange={async (ev) => { await setEntryStatus(e.id, ev.target.value); load() }}
@@ -260,6 +264,14 @@ export default function Backlog({ session, onSignOut }: { session: Session; onSi
           })}
         </div>
       </div>
+
+      {detail && (
+        <EntryDetail
+          entry={detail}
+          onClose={() => setDetail(null)}
+          onChanged={load}
+        />
+      )}
     </div>
   )
 }
