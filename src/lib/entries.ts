@@ -96,35 +96,59 @@ export async function deleteEntry(id: string): Promise<void> {
   if (error) throw error
 }
 
-// One-time import of the desktop library snapshot (pushed by the desktop app).
-// Non-destructive and re-runnable: only inserts titles not already present.
-// Brings titles/status/rank now; covers, notes, ratings arrive in a later phase.
+// Full-fidelity import of the desktop library (pushed by desktop v0.3.3+).
+// New titles are inserted complete; already-imported entries have their empty
+// fields backfilled (rating, notes, cover, HLTB times, dates) without clobbering
+// anything you've since edited on the web. Re-runnable.
 export async function importFromDesktop(userId: string): Promise<number> {
   const { data: lib, error } = await supabase.from('library').select('*')
   if (error) throw error
   if (!lib || lib.length === 0) return 0
 
-  const { data: existing } = await supabase
-    .from('web_entries').select('title, hobby_category').eq('user_id', userId)
-  const have = new Set((existing ?? []).map((e) => `${e.hobby_category}::${String(e.title).toLowerCase()}`))
+  const { data: existing } = await supabase.from('web_entries').select('*').eq('user_id', userId)
+  const byKey = new Map<string, WebEntry>()
+  for (const e of (existing ?? []) as WebEntry[]) byKey.set(`${e.hobby_category}::${e.title.toLowerCase()}`, e)
 
-  const rows = lib
-    .filter((l) => !have.has(`${l.hobby_category}::${String(l.title).toLowerCase()}`))
-    .map((l) => ({
-      user_id: userId,
-      title: l.title,
-      hobby_category: l.hobby_category,
-      status: l.status,
-      progress_current: l.progress_current,
-      progress_total: l.progress_total,
-      priority: l.priority,
-      metadata: { imported_from: 'desktop' },
-    }))
+  const inserts: Record<string, unknown>[] = []
+  let touched = 0
 
-  if (rows.length === 0) return 0
-  const { error: insErr } = await supabase.from('web_entries').insert(rows)
-  if (insErr) throw insErr
-  return rows.length
+  for (const l of lib) {
+    const key = `${l.hobby_category}::${String(l.title).toLowerCase()}`
+    const cur = byKey.get(key)
+    if (!cur) {
+      inserts.push({
+        user_id: userId,
+        title: l.title, hobby_category: l.hobby_category, status: l.status,
+        progress_current: l.progress_current, progress_total: l.progress_total, priority: l.priority,
+        rating: l.rating, notes: l.notes, cover_url: l.cover_url,
+        book_subtype: l.book_subtype, current_season: l.current_season, current_episode: l.current_episode,
+        date_started: l.date_started, date_completed: l.date_completed,
+        metadata: { imported_from: 'desktop', ...(l.metadata ?? {}) },
+      })
+    } else {
+      // Fill only fields that are empty on the web; desktop fills gaps, web edits win.
+      const patch: Record<string, unknown> = {}
+      if (cur.rating == null && l.rating != null) patch.rating = l.rating
+      if (!cur.notes && l.notes) patch.notes = l.notes
+      if (!cur.cover_url && l.cover_url) patch.cover_url = l.cover_url
+      if (cur.progress_total == null && l.progress_total != null) patch.progress_total = l.progress_total
+      if (cur.date_started == null && l.date_started) patch.date_started = l.date_started
+      if (cur.date_completed == null && l.date_completed) patch.date_completed = l.date_completed
+      // Merge metadata: desktop values fill any keys the web copy is missing (e.g. time_to_beat)
+      const merged = { ...(l.metadata ?? {}), ...(cur.metadata ?? {}) }
+      if (JSON.stringify(merged) !== JSON.stringify(cur.metadata ?? {})) patch.metadata = merged
+      if (Object.keys(patch).length > 0) {
+        await supabase.from('web_entries').update(patch).eq('id', cur.id)
+        touched++
+      }
+    }
+  }
+
+  if (inserts.length > 0) {
+    const { error: insErr } = await supabase.from('web_entries').insert(inserts)
+    if (insErr) throw insErr
+  }
+  return inserts.length + touched
 }
 
 // Backfill missing cover art (and metadata) for searchable entries by looking up
