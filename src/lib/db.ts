@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import type { Entry, HobbyCategory, Profile } from '@/types/database'
+import type { Entry, HobbyCategory, Profile, Session } from '@/types/database'
 
 // Web data layer: mirrors the desktop app's src/lib/db.ts API surface, but backed by
 // Supabase (web_entries) so the desktop UI components port over almost unchanged.
@@ -128,13 +128,65 @@ export async function setEnabledHobbies(ids: HobbyCategory[]): Promise<void> {
 
 export async function updateProfile(): Promise<void> { notifyProfileChanged() }
 
-// ── App notes (per-user, localStorage for now) ─────────────────────────────────
+// ── Sessions ────────────────────────────────────────────────────────────────
 
-const NOTES_KEY = 'hobbylog-notes'
-export async function getNotes(): Promise<string> {
-  if (typeof window === 'undefined') return ''
-  return localStorage.getItem(NOTES_KEY) ?? ''
+export async function getSessionsByEntry(entryId: string): Promise<Session[]> {
+  const { data } = await supabase.from('web_sessions').select('*').eq('entry_id', entryId).order('date', { ascending: false })
+  return (data ?? []) as Session[]
 }
+
+export async function insertSession(data: Omit<Session, 'id' | 'created_at'>): Promise<Session> {
+  const user_id = await currentUserId()
+  const { data: row, error } = await supabase.from('web_sessions').insert({
+    user_id, entry_id: data.entry_id, date: data.date,
+    duration_minutes: data.duration_minutes ?? null, progress_logged: data.progress_logged ?? null,
+    notes: data.notes ?? null,
+  }).select().single()
+  if (error) throw error
+  notifyEntriesChanged()
+  return row as Session
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  await supabase.from('web_sessions').delete().eq('id', id)
+  notifyEntriesChanged()
+}
+
+// ── Photos ──────────────────────────────────────────────────────────────────
+
+export interface Photo {
+  id: string
+  entry_id: string
+  data_url: string
+  caption: string | null
+  photo_type: string
+  created_at: string
+}
+
+export async function getPhotosByEntry(entryId: string): Promise<Photo[]> {
+  const { data } = await supabase.from('web_photos').select('*').eq('entry_id', entryId).order('created_at', { ascending: true })
+  return (data ?? []) as Photo[]
+}
+
+export async function insertPhoto(data: { entry_id: string; data_url: string; caption: string | null; photo_type: string }): Promise<Photo> {
+  const user_id = await currentUserId()
+  const { data: row, error } = await supabase.from('web_photos').insert({ user_id, ...data }).select().single()
+  if (error) throw error
+  return row as Photo
+}
+
+export async function deletePhoto(id: string): Promise<void> {
+  await supabase.from('web_photos').delete().eq('id', id)
+}
+
+// ── App notes (per-user, cloud-synced) ─────────────────────────────────────────
+
+export async function getNotes(): Promise<string> {
+  const { data } = await supabase.from('web_notes').select('content').maybeSingle()
+  return (data?.content as string) ?? ''
+}
+
 export async function saveNotes(content: string): Promise<void> {
-  if (typeof window !== 'undefined') localStorage.setItem(NOTES_KEY, content)
+  const user_id = await currentUserId()
+  await supabase.from('web_notes').upsert({ user_id, content, updated_at: new Date().toISOString() })
 }

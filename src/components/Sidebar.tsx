@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BarChart2, Search,
   Settings, SlidersHorizontal, Plus, Clock, Download, NotebookPen,
@@ -10,6 +11,8 @@ import type { Profile } from '@/types/database'
 import { HOBBY_PATHS } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from './hobbyIcons'
 import { useHobbies } from './HobbyContext'
+import QuickAddPanel from './QuickAddPanel'
+import QuickLogModal from './QuickLogModal'
 
 interface NavItemProps {
   href: string
@@ -58,11 +61,12 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function Sidebar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname()
-  const router = useRouter()
+  const [showAdd, setShowAdd] = useState(false)
+  const [showLog, setShowLog] = useState(false)
   const { enabledHobbies } = useHobbies()
-  const firstHobby = enabledHobbies[0]?.id ?? 'games'
 
   return (
+    <>
     <aside style={{ position: 'fixed', left: 0, top: 0, height: '100vh', width: 220, background: 'var(--bg-panel)', borderRight: '1px solid var(--border-dim)', display: 'flex', flexDirection: 'column', zIndex: 60, overflowY: 'auto' }}>
       {/* Logo block */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border-dim)', position: 'relative' }}>
@@ -87,11 +91,11 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
       {/* Quick actions (route to a hobby page for now) */}
       <SectionLabel>ACTIONS</SectionLabel>
       <div style={{ padding: '4px 12px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <button onClick={() => router.push(HOBBY_PATHS[firstHobby])}
+        <button onClick={() => setShowAdd(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#7c3aed18', border: '1px solid #7c3aed44', borderLeft: '2px solid #7c3aed', color: '#7c3aed', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', width: '100%' }}>
           <Plus size={11} /> ADD ENTRY
         </button>
-        <button onClick={() => router.push(HOBBY_PATHS[firstHobby])}
+        <button onClick={() => setShowLog(true)}
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#0891b218', border: '1px solid #0891b244', borderLeft: '2px solid #0891b2', color: '#0891b2', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', width: '100%' }}>
           <Clock size={11} /> LOG SESSION
         </button>
@@ -138,5 +142,9 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         </div>
       </div>
     </aside>
+
+    {showAdd && <QuickAddPanel onClose={() => setShowAdd(false)} />}
+    {showLog && <QuickLogModal onClose={() => setShowLog(false)} />}
+    </>
   )
 }

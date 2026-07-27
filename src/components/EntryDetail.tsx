@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
+import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, type Photo } from '@/lib/db'
+import PhotoGallery from './PhotoGallery'
 import { searchTypeFor } from '@/lib/search'
-import type { HobbyCategory } from '@/types/database'
+import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
 const STATUSES = ['backlog', 'in_progress', 'completed', 'dropped']
@@ -26,6 +28,39 @@ export default function EntryDetail({ entry, onClose, onChanged }: {
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [sHours, setSHours] = useState('')
+  const [sMinutes, setSMinutes] = useState('')
+  const [sProgress, setSProgress] = useState('')
+  const [sNotes, setSNotes] = useState('')
+
+  const loadExtras = useCallback(() => {
+    getSessionsByEntry(entry.id).then(setSessions).catch(() => {})
+    getPhotosByEntry(entry.id).then(setPhotos).catch(() => {})
+  }, [entry.id])
+  useEffect(() => { loadExtras() }, [loadExtras])
+
+  async function addSession() {
+    const dur = (parseInt(sHours) || 0) * 60 + (parseInt(sMinutes) || 0)
+    const prog = sProgress ? parseFloat(sProgress) : null
+    if (!dur && prog == null && !sNotes.trim()) return
+    setBusy(true); setNote(null)
+    try {
+      await insertSession({ entry_id: entry.id, date: new Date().toISOString().split('T')[0], duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
+      if (prog && prog > 0) {
+        const cur = Math.round(((parseFloat(progressCurrent) || 0) + prog) * 10) / 10
+        setProgressCurrent(String(cur))
+        await updateEntry(entry.id, { progress_current: cur })
+      }
+      setSHours(''); setSMinutes(''); setSProgress(''); setSNotes('')
+      loadExtras(); onChanged()
+    } catch (e) { setNote(`Session failed: ${(e as Error).message}`) }
+    setBusy(false)
+  }
+
+  async function removeSession(id: string) { await deleteSession(id); loadExtras() }
 
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
@@ -158,6 +193,35 @@ export default function EntryDetail({ entry, onClose, onChanged }: {
             <p style={label}>COVER IMAGE URL</p>
             <input type="url" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://…" style={{ ...inp, marginBottom: 4 }} />
           </div>
+        </div>
+
+        {/* Session log + photos */}
+        <div style={{ padding: '0 18px 4px' }}>
+          <p style={{ ...label, marginBottom: 10 }}>SESSION LOG</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+            <input type="number" min={0} value={sHours} onChange={(e) => setSHours(e.target.value)} placeholder="Hrs" style={{ ...inp, width: 64 }} />
+            <input type="number" min={0} value={sMinutes} onChange={(e) => setSMinutes(e.target.value)} placeholder="Min" style={{ ...inp, width: 64 }} />
+            <input type="number" min={0} value={sProgress} onChange={(e) => setSProgress(e.target.value)} placeholder={`+${hobby?.progressUnit ?? 'prog'}`} style={{ ...inp, width: 90 }} />
+            <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="Session notes…" style={{ ...inp, flex: '1 1 120px' }} />
+            <button onClick={addSession} disabled={busy}
+              style={{ padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: 'pointer' }}>LOG</button>
+          </div>
+          {sessions.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {sessions.map((s) => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}
+                    {s.progress_logged ? `· +${s.progress_logged} ` : ''}
+                    {s.notes ?? ''}
+                  </span>
+                  <button onClick={() => removeSession(s.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <PhotoGallery entryId={entry.id} accent={accent} photos={photos} onPhotosChange={setPhotos} />
         </div>
 
         {note && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', padding: '0 18px', margin: '0 0 10px' }}>{note}</p>}
