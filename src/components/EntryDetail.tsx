@@ -7,7 +7,7 @@ import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/e
 import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
-import { searchTypeFor } from '@/lib/search'
+import { searchTypeFor, computeTVProgress } from '@/lib/search'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
@@ -26,6 +26,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [rating, setRating] = useState(entry.rating?.toString() ?? '')
   const [progressCurrent, setProgressCurrent] = useState(entry.progress_current?.toString() ?? '0')
   const [progressTotal, setProgressTotal] = useState(entry.progress_total?.toString() ?? '')
+  const [season, setSeason] = useState(entry.current_season?.toString() ?? '')
+  const [episode, setEpisode] = useState(entry.current_episode?.toString() ?? '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
   const [editingCover, setEditingCover] = useState(false)
@@ -58,6 +60,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const progressPct = effectiveTotal ? Math.round(((parseFloat(progressCurrent) || 0) / effectiveTotal) * 100) : null
   const isCompleted = status === 'completed'
   const canRefetch = searchTypeFor(entry.hobby_category) !== null
+  const isTV = entry.hobby_category === 'tv'
+  const tmdbId = entry.external_source === 'tmdb' ? entry.external_id : null
 
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
@@ -75,12 +79,26 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     setBusy(true); setNote(null)
     const today = new Date().toISOString().split('T')[0]
     try {
+      let progressValue = progressCurrent ? parseFloat(progressCurrent) : 0
+      const tvFields: { current_season?: number | null; current_episode?: number | null } = {}
+      if (isTV) {
+        const s = season ? parseInt(season, 10) : null
+        const e = episode ? parseInt(episode, 10) : null
+        tvFields.current_season = s
+        tvFields.current_episode = e
+        // With a TMDB id, "Season S, Episode E" auto-computes episodes watched.
+        if (tmdbId && s && e) {
+          const eps = await computeTVProgress(tmdbId, s, e)
+          if (eps != null) { progressValue = eps; setProgressCurrent(String(eps)) }
+        }
+      }
       await updateEntry(entry.id, {
         status,
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
-        progress_current: progressCurrent ? parseFloat(progressCurrent) : 0,
+        progress_current: progressValue,
         progress_total: progressTotal ? parseFloat(progressTotal) : null,
+        ...tvFields,
         date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
         date_started: status === 'in_progress' && !entry.date_started ? today : entry.date_started,
       })
@@ -210,6 +228,18 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   })}
                 </div>
               </div>
+
+              {isTV && (
+                <div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>SEASON</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>EPISODE</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} /></div>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                    {tmdbId ? 'Saving converts season + episode into total episodes watched automatically.' : 'Add this show via search to auto-convert; otherwise set Progress below by hand.'}
+                  </p>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>

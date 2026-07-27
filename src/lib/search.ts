@@ -39,3 +39,15 @@ export async function fetchCatalogDetails(type: string, id: string): Promise<Cat
     return { progress_total: null, metadata: {} }
   }
 }
+
+// Total episodes watched given a TMDB show id + "Season S, Episode E".
+export async function computeTVProgress(tmdbId: string, season: number, episode: number): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/tv-progress?id=${encodeURIComponent(tmdbId)}&season=${season}&episode=${episode}`)
+    if (!res.ok) return null
+    const d = await res.json()
+    return typeof d.episodes === 'number' ? d.episodes : null
+  } catch {
+    return null
+  }
+}

@@ -16,6 +16,9 @@ export interface WebEntry {
   external_source: string | null
   priority: number | null
   metadata: Record<string, unknown> | null
+  book_subtype: string | null
+  current_season: number | null
+  current_episode: number | null
   date_started: string | null
   date_completed: string | null
   created_at: string
