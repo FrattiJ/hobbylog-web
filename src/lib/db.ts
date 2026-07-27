@@ -1,0 +1,140 @@
+import { supabase } from './supabaseClient'
+import type { Entry, HobbyCategory, Profile } from '@/types/database'
+
+// Web data layer: mirrors the desktop app's src/lib/db.ts API surface, but backed by
+// Supabase (web_entries) so the desktop UI components port over almost unchanged.
+
+export const ENTRIES_CHANGED_EVENT = 'entries-changed'
+export const PROFILE_CHANGED_EVENT = 'profile-changed'
+
+function notifyEntriesChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ENTRIES_CHANGED_EVENT))
+}
+function notifyProfileChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT))
+}
+
+async function currentUserId(): Promise<string> {
+  const { data } = await supabase.auth.getUser()
+  return data.user?.id ?? ''
+}
+
+type Row = Record<string, unknown>
+function parseEntry(r: Row): Entry {
+  return {
+    ...(r as unknown as Entry),
+    metadata: (r.metadata as Record<string, unknown>) ?? {},
+    progress_current: (r.progress_current as number) ?? 0,
+  }
+}
+
+// ── Entries ───────────────────────────────────────────────────────────────────
+
+export async function getAllEntries(): Promise<Entry[]> {
+  const { data, error } = await supabase.from('web_entries').select('*').order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(parseEntry)
+}
+
+export async function getEntriesByHobby(hobby: HobbyCategory): Promise<Entry[]> {
+  const { data, error } = await supabase.from('web_entries').select('*').eq('hobby_category', hobby).order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(parseEntry)
+}
+
+export async function getEntryById(id: string): Promise<Entry | null> {
+  const { data } = await supabase.from('web_entries').select('*').eq('id', id).maybeSingle()
+  return data ? parseEntry(data) : null
+}
+
+const INSERT_FIELDS = [
+  'hobby_category', 'title', 'status', 'rating', 'notes', 'progress_current', 'progress_total',
+  'cover_url', 'external_id', 'external_source', 'metadata', 'book_subtype', 'current_season',
+  'current_episode', 'priority', 'date_started', 'date_completed',
+] as const
+
+async function nextBacklogPriority(hobby: HobbyCategory): Promise<number> {
+  const { data } = await supabase.from('web_entries').select('priority').eq('hobby_category', hobby).eq('status', 'backlog').order('priority', { ascending: false }).limit(1)
+  return ((data?.[0]?.priority as number) ?? 0) + 1
+}
+
+export async function insertEntry(data: Omit<Entry, 'id' | 'created_at' | 'updated_at'>): Promise<Entry> {
+  const user_id = await currentUserId()
+  const row: Row = { user_id }
+  for (const f of INSERT_FIELDS) row[f] = (data as Row)[f] ?? null
+  if (data.status === 'backlog' && data.priority == null) row.priority = await nextBacklogPriority(data.hobby_category)
+  if (row.metadata == null) row.metadata = {}
+  const { data: inserted, error } = await supabase.from('web_entries').insert(row).select().single()
+  if (error) throw error
+  notifyEntriesChanged()
+  return parseEntry(inserted)
+}
+
+export async function updateEntry(id: string, data: Partial<Entry> & { metadata_patch?: Record<string, unknown> }): Promise<Entry> {
+  const patch: Row = {}
+  const UPDATABLE = ['status', 'rating', 'notes', 'progress_current', 'progress_total', 'cover_url', 'book_subtype', 'current_season', 'current_episode', 'priority', 'date_started', 'date_completed', 'external_id', 'external_source']
+  for (const k of UPDATABLE) if (k in data) patch[k] = (data as Row)[k]
+  if (data.metadata_patch) {
+    const existing = await getEntryById(id)
+    patch.metadata = { ...(existing?.metadata ?? {}), ...data.metadata_patch }
+  }
+  patch.updated_at = new Date().toISOString()
+  const { error } = await supabase.from('web_entries').update(patch).eq('id', id)
+  if (error) throw error
+  notifyEntriesChanged()
+  return (await getEntryById(id))!
+}
+
+export async function deleteEntry(id: string): Promise<void> {
+  await supabase.from('web_entries').delete().eq('id', id)
+  notifyEntriesChanged()
+}
+
+export async function setEntryPriorities(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from('web_entries').update({ priority: i + 1 }).eq('id', id)))
+  notifyEntriesChanged()
+}
+
+export async function bulkInsertEntries(list: Array<Omit<Entry, 'id' | 'created_at' | 'updated_at'>>, onProgress?: (n: number) => void): Promise<number> {
+  let n = 0
+  for (const d of list) { await insertEntry(d); onProgress?.(++n) }
+  return n
+}
+
+export async function clearAllData(): Promise<void> {
+  const user_id = await currentUserId()
+  await supabase.from('web_entries').delete().eq('user_id', user_id)
+  notifyEntriesChanged()
+}
+
+// ── Profile (lite: username from auth, enabled hobbies in localStorage) ─────────
+
+const ENABLED_KEY = 'hobbylog-enabled-hobbies'
+
+export async function getProfile(): Promise<Profile> {
+  const { data } = await supabase.auth.getUser()
+  const email = data.user?.email ?? 'operator'
+  let enabled: HobbyCategory[] | null = null
+  if (typeof window !== 'undefined') {
+    try { const raw = localStorage.getItem(ENABLED_KEY); if (raw) enabled = JSON.parse(raw) } catch {}
+  }
+  return { id: data.user?.id ?? '1', username: email.split('@')[0].toUpperCase(), avatar_url: null, bio: null, enabled_hobbies: enabled, created_at: '' }
+}
+
+export async function setEnabledHobbies(ids: HobbyCategory[]): Promise<void> {
+  if (typeof window !== 'undefined') localStorage.setItem(ENABLED_KEY, JSON.stringify(ids))
+  notifyProfileChanged()
+}
+
+export async function updateProfile(): Promise<void> { notifyProfileChanged() }
+
+// ── App notes (per-user, localStorage for now) ─────────────────────────────────
+
+const NOTES_KEY = 'hobbylog-notes'
+export async function getNotes(): Promise<string> {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(NOTES_KEY) ?? ''
+}
+export async function saveNotes(content: string): Promise<void> {
+  if (typeof window !== 'undefined') localStorage.setItem(NOTES_KEY, content)
+}

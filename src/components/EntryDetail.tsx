@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
 import { searchTypeFor } from '@/lib/search'
+import type { HobbyCategory } from '@/types/database'
 
 const ACCENT = '#7c3aed'
 const STATUSES = ['backlog', 'in_progress', 'completed', 'dropped']
@@ -14,7 +15,7 @@ export default function EntryDetail({ entry, onClose, onChanged }: {
   onClose: () => void
   onChanged: () => void
 }) {
-  const hobby = HOBBY_MAP[entry.hobby_category]
+  const hobby = HOBBY_MAP[entry.hobby_category as HobbyCategory]
   const accent = hobby?.accent ?? ACCENT
 
   const [status, setStatus] = useState(entry.status)

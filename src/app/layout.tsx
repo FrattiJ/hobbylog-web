@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Orbitron, Share_Tech_Mono } from 'next/font/google'
 import './globals.css'
+import ClientLayout from '@/components/ClientLayout'
 
 const orbitron = Orbitron({
   variable: '--font-display',
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable}`}>
-      <body>{children}</body>
+      <body><ClientLayout>{children}</ClientLayout></body>
     </html>
   )
 }
