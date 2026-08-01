@@ -12,7 +12,7 @@ export default function QuickAddPanel({ onClose, onAdded }: { onClose: () => voi
   const { enabledHobbies } = useHobbies()
 
   if (selected) {
-    return <AddEntryModal hobbyId={selected} onClose={onClose} onAdded={() => { onAdded?.() }} />
+    return <AddEntryModal hobbyId={selected} onClose={onClose} onAdded={() => { onAdded?.() }} onBack={() => setSelected(null)} />
   }
 
   return (

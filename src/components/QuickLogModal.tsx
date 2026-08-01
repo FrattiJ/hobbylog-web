@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { getAllEntries, insertSession, updateEntry } from '@/lib/db'
+import { getAllEntries, insertSession, updateEntry, normalizeBacklogPriorities } from '@/lib/db'
 import { HOBBY_MAP } from '@/lib/hobbies'
 import { CLIP } from './MechCard'
 import type { Entry } from '@/types/database'
@@ -42,6 +42,8 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
         update.progress_current = Math.round(Math.min((selected.progress_current || 0) + inc, total) * 10) / 10
       }
       if (Object.keys(update).length) await updateEntry(selected.id, update)
+      // Logging moves a backlog item to In Progress — close the rank gap it leaves.
+      if (selected.status === 'backlog') await normalizeBacklogPriorities(selected.hobby_category)
       setDone(true); onLogged?.()
       setTimeout(onClose, 1000)
     } catch { setBusy(false) }

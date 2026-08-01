@@ -1,17 +1,18 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, ArrowLeft } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib/hobbies'
-import { insertEntry } from '@/lib/db'
+import { insertEntry, moveEntryToRank } from '@/lib/db'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
 import { CLIP } from './MechCard'
 import type { HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 
-export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
+export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   hobbyId: HobbyCategory
   onClose: () => void
   onAdded: () => void
+  onBack?: () => void
 }) {
   const hobby = HOBBY_MAP[hobbyId]
   const accent = hobby.accent
@@ -29,6 +30,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
   const [gameTTB, setGameTTB] = useState('')
   const [volumeCurrent, setVolumeCurrent] = useState('')
   const [volumeTotal, setVolumeTotal] = useState('')
+  const [rankInput, setRankInput] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -97,7 +99,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
     setSaving(true); setError(null)
     const today = new Date().toISOString().split('T')[0]
     try {
-      await insertEntry({
+      const created = await insertEntry({
         hobby_category: hobbyId,
         title: title.trim(),
         status,
@@ -122,6 +124,11 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
         date_started: status === 'in_progress' ? today : null,
         date_completed: status === 'completed' ? today : null,
       })
+      // Optional backlog rank override — otherwise it stays at the bottom.
+      if (status === 'backlog' && rankInput.trim()) {
+        const r = parseInt(rankInput, 10)
+        if (!isNaN(r) && r > 0) await moveEntryToRank(hobbyId, created.id, r)
+      }
       onAdded()
       onClose()
     } catch { setError('Failed to save.'); setSaving(false) }
@@ -142,11 +149,16 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
         <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 20, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: accent, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', margin: 0 }}>NEW RECORD /</p>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.1em', margin: 0 }}>
-                {(hobbyId === 'books' ? BOOK_SUBTYPE_MAP[bookSubtype].label : hobby.label).toUpperCase()}
-              </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              {onBack && (
+                <button onClick={onBack} title="Pick a different category" style={{ color: accent, background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }}><ArrowLeft size={16} /></button>
+              )}
+              <div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', margin: 0 }}>NEW RECORD /</p>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.1em', margin: 0 }}>
+                  {(hobbyId === 'books' ? BOOK_SUBTYPE_MAP[bookSubtype].label : hobby.label).toUpperCase()}
+                </h2>
+              </div>
             </div>
             <button onClick={onClose} style={{ color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
           </div>
@@ -202,6 +214,13 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
               ))}
             </div>
           </div>
+
+          {status === 'backlog' && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={label}>BACKLOG RANK (optional)</p>
+              <input type="number" min={1} value={rankInput} onChange={(e) => setRankInput(e.target.value)} placeholder="added to the bottom" style={inp} />
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
             <div style={{ flex: 1 }}>

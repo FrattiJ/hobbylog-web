@@ -99,6 +99,29 @@ export async function setEntryPriorities(orderedIds: string[]): Promise<void> {
   notifyEntriesChanged()
 }
 
+// Renumber a hobby's backlog to 1..N (closing gaps left when an item leaves the
+// backlog or is deleted). Call after any status change / delete affecting backlog.
+export async function normalizeBacklogPriorities(hobby: HobbyCategory): Promise<void> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_entries').select('id')
+    .eq('user_id', userId).eq('hobby_category', hobby).eq('status', 'backlog')
+    .order('priority', { ascending: true, nullsFirst: false })
+  const ids = (data ?? []).map((r) => r.id as string)
+  if (ids.length) await setEntryPriorities(ids)
+}
+
+// Place one backlog entry at a specific 1-based rank, shifting the rest around it.
+export async function moveEntryToRank(hobby: HobbyCategory, entryId: string, rank: number): Promise<void> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_entries').select('id')
+    .eq('user_id', userId).eq('hobby_category', hobby).eq('status', 'backlog')
+    .order('priority', { ascending: true, nullsFirst: false })
+  const ids = (data ?? []).map((r) => r.id as string).filter((id) => id !== entryId)
+  const idx = Math.max(0, Math.min(ids.length, rank - 1))
+  ids.splice(idx, 0, entryId)
+  await setEntryPriorities(ids)
+}
+
 export async function bulkInsertEntries(list: Array<Omit<Entry, 'id' | 'created_at' | 'updated_at'>>, onProgress?: (n: number) => void): Promise<number> {
   let n = 0
   for (const d of list) { await insertEntry(d); onProgress?.(++n) }

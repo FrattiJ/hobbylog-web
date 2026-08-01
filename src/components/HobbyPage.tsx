@@ -61,7 +61,10 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() => loadSavedFilters(hobbyId).subtype ?? 'all')
   const [search, setSearch] = useState('')
   const [rankMode, setRankMode] = useState(false)
-  const [sortBy, setSortBy] = useState<SortOption>(() => loadSavedFilters(hobbyId).sortBy ?? 'recent')
+  // Time-to-Beat only makes sense for games.
+  const sortOptions = SORT_OPTIONS.filter((o) => o.id !== 'ttb' || hobbyId === 'games')
+  const savedSort = loadSavedFilters(hobbyId).sortBy
+  const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && hobbyId !== 'games' ? 'recent' : savedSort) ?? 'recent')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => loadSavedFilters(hobbyId).sortDir ?? 'desc')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -310,7 +313,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
               letterSpacing: '0.1em', padding: '6px 10px', cursor: 'pointer', outline: 'none',
             }}
           >
-            {SORT_OPTIONS.map((o) => (
+            {sortOptions.map((o) => (
               <option key={o.id} value={o.id}>SORT: {o.label}</option>
             ))}
           </select>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText } from 'lucide-react'
 import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
-import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, type Photo, type CommunityRating } from '@/lib/db'
+import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress } from '@/lib/search'
@@ -95,6 +95,14 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           if (eps != null) { progressValue = eps; setProgressCurrent(String(eps)) }
         }
       }
+
+      const totalNum = progressTotal ? parseFloat(progressTotal) : null
+      // Completing bumps progress to 100% — but never for games (keep your
+      // overage / speedrun hours), and never lowers a value that's already higher.
+      if (status === 'completed' && entry.hobby_category !== 'games') {
+        const fillTo = totalNum ?? (hobby?.progressUnit === '%' ? 100 : null)
+        if (fillTo != null && progressValue < fillTo) { progressValue = fillTo; setProgressCurrent(String(fillTo)) }
+      }
       const mangaFields = isManga ? {
         metadata: {
           ...(entry.metadata ?? {}),
@@ -113,6 +121,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
         date_started: status === 'in_progress' && !entry.date_started ? today : entry.date_started,
       })
+      // Status change into/out of backlog — renumber that hobby's backlog so ranks stay 1..N.
+      if (status !== entry.status) await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
       setNote('Saved.'); onChanged()
     } catch (e) { setNote(`Save failed: ${(e as Error).message}`) }
     setBusy(false)
@@ -133,7 +143,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   async function remove() {
     if (!confirm(`Delete "${entry.title}"?`)) return
-    await deleteEntry(entry.id); onBack()
+    await deleteEntry(entry.id)
+    if (entry.status === 'backlog') await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
+    onBack()
   }
 
   async function addSession() {
