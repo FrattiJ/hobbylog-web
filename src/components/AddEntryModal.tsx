@@ -27,6 +27,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
   const [rating, setRating] = useState('')
   const [progressTotal, setProgressTotal] = useState('')
   const [gameTTB, setGameTTB] = useState('')
+  const [volumeCurrent, setVolumeCurrent] = useState('')
+  const [volumeTotal, setVolumeTotal] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -65,6 +67,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
     // Games: RAWG returns a community time-to-beat (hours) in the hit metadata.
     if (hobbyId === 'games' && hit.metadata?.time_to_beat != null) {
       setGameTTB(String(hit.metadata.time_to_beat))
+    }
+    // Manga: Jikan returns the series' total volume count.
+    if (hobbyId === 'books' && bookSubtype === 'manga' && hit.metadata?.volumes != null) {
+      setVolumeTotal(String(hit.metadata.volumes))
     }
 
     let total = hit.progress_total
@@ -106,6 +112,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
           added_via: 'web',
           ...(selected?.metadata ?? {}),
           ...(hobbyId === 'games' && gameTTB ? { time_to_beat: parseFloat(gameTTB) } : {}),
+          ...(hobbyId === 'books' && bookSubtype === 'manga' ? {
+            ...(volumeCurrent ? { volume_current: parseInt(volumeCurrent) } : {}),
+            ...(volumeTotal ? { volume_total: parseInt(volumeTotal) } : {}),
+          } : {}),
         },
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
         current_season: null, current_episode: null, priority: null,
@@ -212,6 +222,19 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded }: {
               )}
             </div>
           </div>
+
+          {hobbyId === 'books' && bookSubtype === 'manga' && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <p style={label}>VOLUME</p>
+                <input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={label}>VOLUMES TOTAL</p>
+                <input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} />
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 14 }}>
             <p style={label}>COVER URL</p>

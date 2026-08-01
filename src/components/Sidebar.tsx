@@ -129,8 +129,11 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
       <div style={{ borderTop: '1px solid var(--border-dim)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {profile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #7c3aed66', flexShrink: 0 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: '#fff' }}>{(profile.username ?? 'O')[0].toUpperCase()}</span>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #7c3aed66', flexShrink: 0 }}>
+              {profile.avatar_url
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: '#fff' }}>{(profile.username ?? 'O')[0].toUpperCase()}</span>}
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', letterSpacing: '0.1em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {(profile.username ?? 'OPERATOR').toUpperCase()}

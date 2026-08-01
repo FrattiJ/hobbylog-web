@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Moon, Sun, Check, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Moon, Sun, Check, Trash2, Camera } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, setUsername } from '@/lib/db'
+import { clearAllData, getProfile, setUsername, setAvatar } from '@/lib/db'
+import { cropSquareAvatar } from '@/lib/image'
 import { getTheme, setTheme, type Theme } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
@@ -21,10 +22,12 @@ export default function SettingsPage() {
   const [username, setUsernameState] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
+  const [avatar, setAvatarState] = useState<string | null>(null)
+  const avatarRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
-    getProfile().then((p) => setUsernameState(p.username ?? '')).catch(() => {})
+    getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url) }).catch(() => {})
   }, [])
 
   async function saveUsername() {
@@ -34,6 +37,19 @@ export default function SettingsPage() {
       setUsernameMsg('Username saved — friends can find you by this handle.')
     } catch (e) { setUsernameMsg((e as Error).message) }
     setSavingName(false)
+  }
+
+  async function pickAvatar(file: File) {
+    try {
+      const dataUrl = await cropSquareAvatar(file)
+      await setAvatar(dataUrl)
+      setAvatarState(dataUrl)
+    } catch { /* ignore bad image */ }
+    if (avatarRef.current) avatarRef.current.value = ''
+  }
+
+  async function removeAvatar() {
+    await setAvatar(null); setAvatarState(null)
   }
 
   function changeTheme(t: Theme) { setTheme(t); setThemeState(t) }
@@ -63,6 +79,24 @@ export default function SettingsPage() {
       {/* Account */}
       <div style={card}>
         <h2 style={h2}>ACCOUNT</h2>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {avatar
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: '#fff' }}>{(username || email || 'O')[0]?.toUpperCase()}</span>}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <input ref={avatarRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) pickAvatar(f) }} />
+            <button onClick={() => avatarRef.current?.click()}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: 'pointer' }}>
+              <Camera size={13} /> {avatar ? 'CHANGE PHOTO' : 'UPLOAD PHOTO'}
+            </button>
+            {avatar && <button onClick={removeAvatar} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', letterSpacing: '0.06em' }}>Remove</button>}
+          </div>
+        </div>
+
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>{email}</p>
 
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>USERNAME</p>

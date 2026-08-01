@@ -28,6 +28,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [progressTotal, setProgressTotal] = useState(entry.progress_total?.toString() ?? '')
   const [season, setSeason] = useState(entry.current_season?.toString() ?? '')
   const [episode, setEpisode] = useState(entry.current_episode?.toString() ?? '')
+  const [volumeCurrent, setVolumeCurrent] = useState(entry.metadata?.volume_current != null ? String(entry.metadata.volume_current) : '')
+  const [volumeTotal, setVolumeTotal] = useState(entry.metadata?.volume_total != null ? String(entry.metadata.volume_total) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
   const [editingCover, setEditingCover] = useState(false)
@@ -62,6 +64,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const canRefetch = searchTypeFor(entry.hobby_category) !== null
   const isTV = entry.hobby_category === 'tv'
   const tmdbId = entry.external_source === 'tmdb' ? entry.external_id : null
+  const isManga = entry.hobby_category === 'books' && entry.book_subtype === 'manga'
 
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
@@ -92,6 +95,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           if (eps != null) { progressValue = eps; setProgressCurrent(String(eps)) }
         }
       }
+      const mangaFields = isManga ? {
+        metadata: {
+          ...(entry.metadata ?? {}),
+          volume_current: volumeCurrent ? parseInt(volumeCurrent, 10) : null,
+          volume_total: volumeTotal ? parseInt(volumeTotal, 10) : null,
+        },
+      } : {}
       await updateEntry(entry.id, {
         status,
         rating: rating ? parseFloat(rating) : null,
@@ -99,6 +109,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         progress_current: progressValue,
         progress_total: progressTotal ? parseFloat(progressTotal) : null,
         ...tvFields,
+        ...mangaFields,
         date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
         date_started: status === 'in_progress' && !entry.date_started ? today : entry.date_started,
       })
@@ -238,6 +249,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
                     {tmdbId ? 'Saving converts season + episode into total episodes watched automatically.' : 'Add this show via search to auto-convert; otherwise set Progress below by hand.'}
                   </p>
+                </div>
+              )}
+
+              {isManga && (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUME</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUMES TOTAL</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} /></div>
                 </div>
               )}
 
