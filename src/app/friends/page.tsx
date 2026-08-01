@@ -5,7 +5,7 @@ import { UserPlus, Check, X, Users } from 'lucide-react'
 import Link from 'next/link'
 import {
   searchUsers, sendFriendRequest, listFriends, listIncomingRequests, listOutgoingRequests,
-  respondToRequest, removeFriend, PROFILE_CHANGED_EVENT, type UserRef, type FriendView,
+  respondToRequest, removeFriend, getProfile, PROFILE_CHANGED_EVENT, type UserRef, type FriendView,
 } from '@/lib/db'
 import FriendLibrary from '@/components/FriendLibrary'
 
@@ -13,6 +13,7 @@ const GREEN = '#22c55e'
 
 export default function FriendsPage() {
   const [selected, setSelected] = useState<{ id: string; username: string } | null>(null)
+  const [myHandle, setMyHandle] = useState('')
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserRef[]>([])
@@ -29,6 +30,7 @@ export default function FriendsPage() {
     listFriends().then(setFriends).catch(() => {})
     listIncomingRequests().then(setIncoming).catch(() => {})
     listOutgoingRequests().then(setOutgoing).catch(() => {})
+    getProfile().then((p) => setMyHandle(p.username ?? '')).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -84,11 +86,20 @@ export default function FriendsPage() {
 
   return (
     <div style={{ padding: 32, maxWidth: 760, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>NETWORK / FRIENDS</p>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>FRIENDS</h1>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.6 }}>
-          Set a memorable handle in <Link href="/settings" style={{ color: GREEN }}>Settings</Link> so friends can find you. You only see someone&apos;s logs once you&apos;re friends.
+      </div>
+
+      {/* Your handle — friends search by this exact username */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${GREEN}`, padding: '14px 18px', marginBottom: 16 }}>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.14em', margin: '0 0 4px' }}>FRIENDS FIND YOU AS</p>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: GREEN, letterSpacing: '0.04em' }}>{myHandle || '—'}</span>
+          <Link href="/settings" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>change in Settings →</Link>
+        </div>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.6 }}>
+          Share that handle so friends can search you. Search is by username — pick a memorable one. You only see someone&apos;s logs once you&apos;re friends.
         </p>
       </div>
 

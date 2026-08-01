@@ -65,8 +65,42 @@ async function searchTMDB(q: string, type: 'movie' | 'tv'): Promise<CatalogHit[]
   })
 }
 
-async function searchManga(q: string): Promise<CatalogHit[]> {
-  // Jikan (MyAnimeList) returns the whole series, not individual volumes like OpenLibrary
+// AniList (GraphQL, no key) is the primary manga source — far more reliable than
+// Jikan/MAL, and returns the whole series with chapters + volumes.
+async function searchMangaAniList(q: string): Promise<CatalogHit[]> {
+  const query = `query($q:String){Page(perPage:12){media(search:$q,type:MANGA,sort:SEARCH_MATCH,isAdult:false){id title{english romaji} coverImage{large} chapters volumes startDate{year} staff(perPage:1){nodes{name{full}}}}}}`
+  const r = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ query, variables: { q } }),
+  })
+  if (!r.ok) throw new Error(`AniList ${r.status}`)
+  const d = await r.json()
+  const media = (d.data?.Page?.media as Raw[]) ?? []
+  return media.map((m) => {
+    const title = m.title as Record<string, string> | undefined
+    const cover = m.coverImage as Record<string, string> | undefined
+    const start = m.startDate as Record<string, number> | undefined
+    const staff = (m.staff as { nodes?: Array<{ name?: { full?: string } }> } | undefined)?.nodes
+    const year = start?.year ?? null
+    return {
+      external_id: String(m.id),
+      external_source: 'anilist',
+      title: String(title?.english ?? title?.romaji ?? 'Untitled'),
+      cover_url: cover?.large ?? null,
+      year,
+      progress_total: (m.chapters as number) || null,
+      metadata: {
+        author: staff?.[0]?.name?.full ?? undefined,
+        volumes: (m.volumes as number) || undefined,
+        release_year: year ?? undefined,
+      },
+    }
+  })
+}
+
+// Jikan/MyAnimeList fallback (whole series). Frequently 504s when MAL is down.
+async function searchMangaJikan(q: string): Promise<CatalogHit[]> {
   const r = await fetch(`https://api.jikan.moe/v4/manga?q=${encodeURIComponent(q)}&limit=12&sfw=true`)
   if (!r.ok) throw new Error(`Jikan ${r.status}`)
   const d = await r.json()
@@ -90,6 +124,14 @@ async function searchManga(q: string): Promise<CatalogHit[]> {
       },
     }
   })
+}
+
+async function searchManga(q: string): Promise<CatalogHit[]> {
+  try {
+    const hits = await searchMangaAniList(q)
+    if (hits.length > 0) return hits
+  } catch { /* fall through to Jikan */ }
+  return searchMangaJikan(q)
 }
 
 async function searchBooks(q: string): Promise<CatalogHit[]> {

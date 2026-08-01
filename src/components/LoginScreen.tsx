@@ -27,7 +27,13 @@ export default function LoginScreen() {
   }
   async function signUp() {
     setBusy(true); setMessage(null)
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password })
+    // Send the email-confirmation link back to wherever they signed up (the live
+    // site), not Supabase's localhost default.
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    })
     if (error) setMessage({ kind: 'error', text: error.message })
     else if (!data.session) setMessage({ kind: 'info', text: 'Account created — check your email to confirm, then sign in.' })
     setBusy(false)
