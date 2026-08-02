@@ -173,12 +173,25 @@ export default function ImportPage() {
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: STEAM_CYAN, display: 'inline-block' }} />
                 Connected{steamPersona ? ` as ${steamPersona}` : ''}
               </p>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 14px' }}>SteamID {steamId}</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={runSteamSync} disabled={steamBusy} style={steamBtn(true)}>⟳ SYNC PLAYTIME</button>
-                <button onClick={runSteamImport} disabled={steamBusy} style={steamBtn(false)}>⬇ IMPORT NEW GAMES</button>
-                <button onClick={disconnectSteam} disabled={steamBusy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: steamBusy ? 'wait' : 'pointer' }}>DISCONNECT</button>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>SteamID {steamId}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.6 }}>
+                Choose one, the other, or both — nothing runs automatically.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                <div style={{ border: '1px solid var(--border-dim)', borderLeft: `3px solid ${STEAM_CYAN}`, padding: '12px 14px' }}>
+                  <button onClick={runSteamSync} disabled={steamBusy} style={steamBtn(true)}>⟳ SYNC PLAYTIME ONLY</button>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.6 }}>
+                    Updates hours on games you <span style={{ color: 'var(--text-mid)' }}>already track</span>. Adds nothing new — safe to run anytime.
+                  </p>
+                </div>
+                <div style={{ border: '1px solid var(--border-dim)', borderLeft: `3px solid ${STEAM_CYAN}88`, padding: '12px 14px' }}>
+                  <button onClick={runSteamImport} disabled={steamBusy} style={steamBtn(false)}>⬇ IMPORT FULL LIBRARY</button>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.6 }}>
+                    Adds Steam games you don&apos;t track yet (played → In Progress, rest → Backlog). Skips anything already here.
+                  </p>
+                </div>
               </div>
+              <button onClick={disconnectSteam} disabled={steamBusy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: steamBusy ? 'wait' : 'pointer' }}>DISCONNECT</button>
             </>
           ) : (
             <>

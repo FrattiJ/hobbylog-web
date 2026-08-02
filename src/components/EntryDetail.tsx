@@ -7,7 +7,7 @@ import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/e
 import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
-import { searchTypeFor, computeTVProgress } from '@/lib/search'
+import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
@@ -34,6 +34,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
   const [editingCover, setEditingCover] = useState(false)
   const [coverInput, setCoverInput] = useState('')
+  const [coverResults, setCoverResults] = useState<CatalogHit[]>([])
+  const [coverSearching, setCoverSearching] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const coverFileRef = useRef<HTMLInputElement>(null)
@@ -75,7 +77,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   async function saveCover(url: string) {
     await updateEntry(entry.id, { cover_url: url || null })
-    setCoverUrl(url); setEditingCover(false); onChanged()
+    setCoverUrl(url); setEditingCover(false); setCoverResults([]); onChanged()
+  }
+
+  // Books added via manga search use AniList; everything else its normal source.
+  const coverSearchType = isManga ? 'manga' : searchTypeFor(entry.hobby_category)
+  async function findCovers() {
+    if (!coverSearchType) return
+    setCoverSearching(true)
+    try {
+      const hits = await searchCatalog(coverSearchType, entry.title)
+      setCoverResults(hits.filter((h) => h.cover_url))
+    } catch { /* noop */ }
+    setCoverSearching(false)
   }
 
   async function save() {
@@ -188,8 +202,25 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>SAVE</button>
                 <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>UPLOAD</button>
-                <button onClick={() => setEditingCover(false)} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => { setEditingCover(false); setCoverResults([]) }} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
               </div>
+              {coverSearchType && (
+                <button onClick={findCovers} disabled={coverSearching}
+                  style={{ padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px dashed ${accent}66`, cursor: coverSearching ? 'wait' : 'pointer' }}>
+                  {coverSearching ? 'SEARCHING…' : '⌕ FIND COVERS'}
+                </button>
+              )}
+              {coverResults.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+                  {coverResults.map((r) => (
+                    <button key={`${r.external_source}-${r.external_id}`} onClick={() => saveCover(r.cover_url!)} title={r.title}
+                      style={{ padding: 0, border: '1px solid var(--border-dim)', background: 'var(--bg-base)', cursor: 'pointer', aspectRatio: '2/3', overflow: 'hidden' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={r.cover_url!} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </button>
+                  ))}
+                </div>
+              )}
               <input ref={coverFileRef} type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { await saveCover(await compressImage(f, 600)) } catch { /* noop */ } if (coverFileRef.current) coverFileRef.current.value = '' }} />
             </div>
