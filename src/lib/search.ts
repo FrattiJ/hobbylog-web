@@ -18,10 +18,20 @@ export function searchTypeFor(hobby: string): string | null {
 }
 
 export async function searchCatalog(type: string, q: string): Promise<CatalogHit[]> {
-  const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`)
-  if (!res.ok) return []
-  const data = await res.json()
-  return (data.results ?? []) as CatalogHit[]
+  // Cap each lookup so a slow/unreachable upstream (e.g. a Cloudflare 522) can't
+  // stall callers that loop over many titles, like the cover backfill.
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 9000)
+  try {
+    const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.results ?? []) as CatalogHit[]
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export interface CatalogDetails {

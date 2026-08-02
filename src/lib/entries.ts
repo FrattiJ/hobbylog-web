@@ -26,9 +26,12 @@ export interface WebEntry {
 }
 
 export async function listEntries(): Promise<WebEntry[]> {
+  // Scope to the current user — friend-read RLS would otherwise return friends' rows too.
+  const { data: u } = await supabase.auth.getUser()
   const { data, error } = await supabase
     .from('web_entries')
     .select('*')
+    .eq('user_id', u.user?.id ?? '')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as WebEntry[]
@@ -104,6 +107,7 @@ export async function deleteEntry(id: string): Promise<void> {
 export async function backfillCovers(onProgress?: (done: number, total: number) => void): Promise<number> {
   const entries = await listEntries()
   const targets = entries.filter((e) => !e.cover_url && searchTypeFor(e.hobby_category))
+  onProgress?.(0, targets.length)
   let updated = 0
   for (let i = 0; i < targets.length; i++) {
     const e = targets[i]
