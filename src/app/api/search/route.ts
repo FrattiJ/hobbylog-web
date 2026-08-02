@@ -105,14 +105,19 @@ async function searchGamesRAWG(q: string): Promise<CatalogHit[]> {
   })
 }
 
-async function searchGames(q: string): Promise<CatalogHit[]> {
+async function searchGames(q: string): Promise<{ results: CatalogHit[]; igdb_error?: string }> {
   if (TWITCH_ID && TWITCH_SECRET) {
     try {
       const hits = await searchGamesIGDB(q)
-      if (hits.length > 0) return hits
-    } catch { /* fall back to RAWG */ }
+      if (hits.length > 0) return { results: hits }
+      const rawg = await searchGamesRAWG(q).catch(() => [])
+      return { results: rawg, igdb_error: 'IGDB returned 0 results' }
+    } catch (e) {
+      const rawg = await searchGamesRAWG(q).catch(() => [])
+      return { results: rawg, igdb_error: (e as Error).message }
+    }
   }
-  return searchGamesRAWG(q)
+  return { results: await searchGamesRAWG(q) }
 }
 
 async function searchTMDB(q: string, type: 'movie' | 'tv'): Promise<CatalogHit[]> {
@@ -223,9 +228,12 @@ export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
   if (!q) return NextResponse.json({ results: [] })
   try {
+    if (type === 'games') {
+      const { results, igdb_error } = await searchGames(q)
+      return NextResponse.json({ results, ...(igdb_error ? { igdb_error } : {}) })
+    }
     let results: CatalogHit[] = []
-    if (type === 'games') results = await searchGames(q)
-    else if (type === 'movie' || type === 'tv') results = await searchTMDB(q, type)
+    if (type === 'movie' || type === 'tv') results = await searchTMDB(q, type)
     else if (type === 'manga') results = await searchManga(q)
     else if (type === 'books') results = await searchBooks(q)
     return NextResponse.json({ results })
