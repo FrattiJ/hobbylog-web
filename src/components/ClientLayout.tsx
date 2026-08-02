@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import Sidebar from './Sidebar'
@@ -13,6 +14,7 @@ import { getTheme, applyTheme } from '@/lib/theme'
 import type { HobbyCategory } from '@/types/database'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
   const [profile, setProfile] = useState<WebProfile | null>(null)
@@ -46,11 +48,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     setEnabledIds(ids)
   }, [])
 
-  const handleOnboardingComplete = useCallback(async (ids: HobbyCategory[]) => {
+  const handleOnboardingComplete = useCallback(async (ids: HobbyCategory[], goToImport: boolean) => {
     await completeOnboarding(ids)
     setEnabledIds(ids)
     loadProfile()
-  }, [loadProfile])
+    if (goToImport) router.push('/import')
+  }, [loadProfile, router])
 
   const enabledHobbies = HOBBIES.filter((h) => enabledIds.includes(h.id))
 

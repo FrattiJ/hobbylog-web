@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart2, Search, Settings, Plus, Clock, Download, NotebookPen, Users,
+  BarChart2, Search, Settings, Plus, Clock, NotebookPen, Users,
 } from 'lucide-react'
 import type { Profile } from '@/types/database'
 import { HOBBY_PATHS } from '@/lib/hobbies'
@@ -118,8 +118,6 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
           )
         })}
 
-        <SectionLabel>TOOLS</SectionLabel>
-        <NavItem href="/import" icon={Download} label="Import" pathname={pathname} />
       </nav>
 
       {/* User → Settings */}

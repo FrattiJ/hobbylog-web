@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Moon, Sun, Check, Trash2, Camera } from 'lucide-react'
+import Link from 'next/link'
+import { Moon, Sun, Check, Trash2, Camera, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { clearAllData, getProfile, setUsername, setAvatar } from '@/lib/db'
 import { cropSquareAvatar } from '@/lib/image'
@@ -111,6 +112,16 @@ export default function SettingsPage() {
         <button onClick={() => supabase.auth.signOut()}
           style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>SIGN OUT</button>
       </div>
+
+      {/* Import & sync */}
+      <Link href="/import" style={{ ...card, borderLeftColor: '#0891b2', display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', cursor: 'pointer' }}>
+        <Download size={20} style={{ color: '#0891b2', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <h2 style={{ ...h2, margin: 0 }}>IMPORT &amp; SYNC</h2>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0', lineHeight: 1.5 }}>Connect Steam, or import from MyAnimeList, Goodreads &amp; Letterboxd.</p>
+        </div>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
+      </Link>
 
       {/* Theme */}
       <div style={card}>
