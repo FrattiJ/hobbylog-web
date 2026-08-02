@@ -20,19 +20,19 @@ const STEAM_ERRORS: Record<string, string> = {
 
 type ImportTab = 'mal' | 'letterboxd' | 'goodreads' | 'steam'
 
-const TABS: { id: ImportTab; label: string; accent: string; accept?: string; hint?: string }[] = [
-  { id: 'mal', label: 'MY ANIME LIST', accent: '#2e51a2', accept: '.xml',
+const TABS: { id: ImportTab; label: string; accent: string; accept?: string; hint?: string; blurb: string }[] = [
+  { id: 'steam', label: 'STEAM', accent: STEAM_CYAN, blurb: 'Your game library + playtime, one click' },
+  { id: 'mal', label: 'MY ANIME LIST', accent: '#2e51a2', accept: '.xml', blurb: 'Anime → TV Shows, manga → Books',
     hint: 'Export from MyAnimeList → Account → Export Data → Export Anime/Manga List, then unzip it. Imports anime as TV Shows and manga as Books.' },
-  { id: 'letterboxd', label: 'LETTERBOXD', accent: '#00c030', accept: '.csv',
-    hint: 'Export from Letterboxd → Settings → Import & Export → Export Your Data. Upload watchlist.csv (→ Backlog), ratings.csv, or diary.csv (→ Completed).' },
-  { id: 'goodreads', label: 'GOODREADS', accent: '#d97706', accept: '.csv',
+  { id: 'goodreads', label: 'GOODREADS', accent: '#d97706', accept: '.csv', blurb: 'Your books across every shelf',
     hint: 'Export from Goodreads → My Books → Import and Export → Export Library. Imports all shelves (to-read, reading, read).' },
-  { id: 'steam', label: 'STEAM', accent: STEAM_CYAN },
+  { id: 'letterboxd', label: 'LETTERBOXD', accent: '#00c030', accept: '.csv', blurb: 'Your films + ratings',
+    hint: 'Export from Letterboxd → Settings → Import & Export → Export Your Data. Upload watchlist.csv (→ Backlog), ratings.csv, or diary.csv (→ Completed).' },
 ]
 
 export default function ImportPage() {
   // Service-file importer state
-  const [tab, setTab] = useState<ImportTab>('mal')
+  const [tab, setTab] = useState<ImportTab>('steam')
   const [stage, setStage] = useState<'idle' | 'parsed' | 'importing' | 'done'>('idle')
   const [preview, setPreview] = useState<PreviewEntry[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -154,14 +154,18 @@ export default function ImportPage() {
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>IMPORT DATABASE</h1>
       </div>
 
-      {/* Source tabs */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => switchTab(t.id)}
-            style={{ padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em', background: tab === t.id ? `${t.accent}22` : 'transparent', border: `1px solid ${tab === t.id ? t.accent : 'var(--border-dim)'}`, borderLeft: tab === t.id ? `3px solid ${t.accent}` : '1px solid var(--border-dim)', color: tab === t.id ? t.accent : 'var(--text-dim)', cursor: 'pointer' }}>
-            {t.label}
-          </button>
-        ))}
+      {/* Source picker */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 24 }}>
+        {TABS.map((t) => {
+          const on = tab === t.id
+          return (
+            <button key={t.id} onClick={() => switchTab(t.id)}
+              style={{ textAlign: 'left', padding: '12px 14px', background: on ? `${t.accent}18` : 'var(--bg-card)', border: `1px solid ${on ? t.accent : 'var(--border-dim)'}`, borderLeft: `3px solid ${on ? t.accent : 'var(--border-dim)'}`, cursor: 'pointer', transition: 'all 0.12s ease' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em', color: on ? t.accent : 'var(--text-hi)' }}>{t.label}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.4 }}>{t.blurb}</div>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Steam tab ── */}

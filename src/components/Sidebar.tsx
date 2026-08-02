@@ -4,8 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, BarChart2, Search,
-  Settings, SlidersHorizontal, Plus, Clock, Download, NotebookPen, Users,
+  BarChart2, Search, Settings, Plus, Clock, Download, NotebookPen, Users,
 } from 'lucide-react'
 import type { Profile } from '@/types/database'
 import { HOBBY_PATHS } from '@/lib/hobbies'
@@ -64,6 +63,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const { enabledHobbies } = useHobbies()
+  const settingsActive = (pathname.replace(/\/$/, '') || '/') === '/settings'
 
   return (
     <>
@@ -104,7 +104,6 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
       {/* Navigation */}
       <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
         <SectionLabel>MAIN</SectionLabel>
-        <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" pathname={pathname} />
         <NavItem href="/search" icon={Search} label="Search" pathname={pathname} />
         <NavItem href="/stats" icon={BarChart2} label="Stats" pathname={pathname} />
         <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
@@ -121,26 +120,31 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
         <SectionLabel>TOOLS</SectionLabel>
         <NavItem href="/import" icon={Download} label="Import" pathname={pathname} />
-        <NavItem href="/settings" icon={Settings} label="Settings" pathname={pathname} />
-        <NavItem href="/settings/api-keys" icon={SlidersHorizontal} label="API Keys" pathname={pathname} />
       </nav>
 
-      {/* User + status */}
-      <div style={{ borderTop: '1px solid var(--border-dim)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {profile && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #7c3aed66', flexShrink: 0 }}>
-              {profile.avatar_url
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: '#fff' }}>{(profile.username ?? 'O')[0].toUpperCase()}</span>}
-            </div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', letterSpacing: '0.1em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {(profile.username ?? 'OPERATOR').toUpperCase()}
-            </span>
+      {/* User → Settings */}
+      <div style={{ borderTop: '1px solid var(--border-dim)', padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Link href="/settings" title="Settings"
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', textDecoration: 'none',
+            background: settingsActive ? 'color-mix(in srgb, var(--text-hi) 5%, transparent)' : 'transparent',
+            border: `1px solid ${settingsActive ? '#7c3aed66' : 'var(--border-dim)'}` }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--text-hi) 5%, transparent)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = settingsActive ? 'color-mix(in srgb, var(--text-hi) 5%, transparent)' : 'transparent' }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #7c3aed66', flexShrink: 0 }}>
+            {profile?.avatar_url
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: '#fff' }}>{(profile?.username ?? 'O')[0].toUpperCase()}</span>}
           </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', letterSpacing: '0.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {(profile?.username ?? 'OPERATOR').toUpperCase()}
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.14em' }}>SETTINGS</div>
+          </div>
+          <Settings size={14} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 4 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, animation: 'status-blink 3s ease-in-out infinite' }} />
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', letterSpacing: '0.14em', whiteSpace: 'nowrap' }}>ALL SYSTEMS NOMINAL</span>
         </div>
