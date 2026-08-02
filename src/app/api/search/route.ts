@@ -6,6 +6,8 @@ export const runtime = 'nodejs'
 
 const RAWG = process.env.RAWG_API_KEY
 const TMDB = process.env.TMDB_API_KEY
+const TWITCH_ID = process.env.TWITCH_CLIENT_ID
+const TWITCH_SECRET = process.env.TWITCH_CLIENT_SECRET
 
 export interface CatalogHit {
   external_id: string
@@ -19,7 +21,66 @@ export interface CatalogHit {
 
 type Raw = Record<string, unknown>
 
-async function searchGames(q: string): Promise<CatalogHit[]> {
+// IGDB (Twitch OAuth) is the primary game source: real completion-time tiers
+// (Hastily / Normally / Completely) + proper box-art covers. Token cached per warm
+// instance. Falls back to RAWG when the Twitch keys aren't configured.
+let igdbToken: { value: string; exp: number } | null = null
+async function igdbAuth(): Promise<string> {
+  if (igdbToken && Date.now() < igdbToken.exp) return igdbToken.value
+  const r = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_ID}&client_secret=${TWITCH_SECRET}&grant_type=client_credentials`, { method: 'POST' })
+  if (!r.ok) throw new Error(`Twitch auth ${r.status}`)
+  const d = await r.json()
+  igdbToken = { value: d.access_token as string, exp: Date.now() + ((d.expires_in as number) - 60) * 1000 }
+  return igdbToken.value
+}
+
+async function searchGamesIGDB(q: string): Promise<CatalogHit[]> {
+  const token = await igdbAuth()
+  const headers = { 'Client-ID': TWITCH_ID as string, Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain' }
+  const gr = await fetch('https://api.igdb.com/v4/games', {
+    method: 'POST', headers,
+    body: `search "${q.replace(/["\\]/g, '')}"; fields name,first_release_date,cover.image_id,genres.name,platforms.name,total_rating; limit 12;`,
+  })
+  if (!gr.ok) throw new Error(`IGDB ${gr.status}`)
+  const games = (await gr.json()) as Array<Raw & { id: number; cover?: { image_id?: string }; genres?: Raw[]; platforms?: Raw[] }>
+  if (!games.length) return []
+
+  // Fetch the completion-time tiers for these games in one call.
+  const ttb = new Map<number, { hastily?: number; normally?: number; completely?: number }>()
+  try {
+    const tr = await fetch('https://api.igdb.com/v4/game_time_to_beats', {
+      method: 'POST', headers,
+      body: `fields game_id,hastily,normally,completely; where game_id = (${games.map((g) => g.id).join(',')}); limit 100;`,
+    })
+    if (tr.ok) for (const row of (await tr.json()) as Array<{ game_id: number; hastily?: number; normally?: number; completely?: number }>) ttb.set(row.game_id, row)
+  } catch { /* times are best-effort */ }
+
+  const toH = (s?: number) => (s && s > 0 ? Math.round((s / 3600) * 10) / 10 : undefined)
+  return games.map((g) => {
+    const t = ttb.get(g.id)
+    const hastily = toH(t?.hastily), normally = toH(t?.normally), completely = toH(t?.completely)
+    const year = g.first_release_date ? new Date((g.first_release_date as number) * 1000).getFullYear() : null
+    const imageId = g.cover?.image_id
+    return {
+      external_id: String(g.id),
+      external_source: 'igdb',
+      title: String(g.name),
+      cover_url: imageId ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg` : null,
+      year,
+      progress_total: null,
+      metadata: {
+        genres: Array.isArray(g.genres) ? g.genres.map((x) => x.name).join(', ') : undefined,
+        platforms: Array.isArray(g.platforms) ? g.platforms.map((p) => p.name).join(', ') : undefined,
+        rating: typeof g.total_rating === 'number' ? Math.round((g.total_rating as number) / 10 * 10) / 10 : undefined,
+        release_year: year ?? undefined,
+        time_to_beat: normally ?? hastily ?? completely, // default = Main Story
+        ttb: (hastily ?? normally ?? completely) != null ? { hastily, normally, completely } : undefined,
+      },
+    }
+  })
+}
+
+async function searchGamesRAWG(q: string): Promise<CatalogHit[]> {
   if (!RAWG) throw new Error('RAWG_API_KEY not configured')
   const r = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(q)}&key=${RAWG}&page_size=12`)
   if (!r.ok) throw new Error(`RAWG ${r.status}`)
@@ -38,12 +99,20 @@ async function searchGames(q: string): Promise<CatalogHit[]> {
         platforms: Array.isArray(g.platforms) ? (g.platforms as Raw[]).map((p) => (p.platform as Raw)?.name).filter(Boolean).join(', ') : undefined,
         rating: (g.rating as number) || undefined,
         release_year: year ?? undefined,
-        // RAWG's community-average playtime (hours) → time-to-beat, so backlog-hour
-        // estimates work. (HLTB, used on desktop, blocks server-side calls.)
-        time_to_beat: (g.playtime as number) || undefined,
+        time_to_beat: (g.playtime as number) || undefined, // community-average playtime
       },
     }
   })
+}
+
+async function searchGames(q: string): Promise<CatalogHit[]> {
+  if (TWITCH_ID && TWITCH_SECRET) {
+    try {
+      const hits = await searchGamesIGDB(q)
+      if (hits.length > 0) return hits
+    } catch { /* fall back to RAWG */ }
+  }
+  return searchGamesRAWG(q)
 }
 
 async function searchTMDB(q: string, type: 'movie' | 'tv'): Promise<CatalogHit[]> {

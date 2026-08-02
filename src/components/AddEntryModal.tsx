@@ -28,6 +28,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [rating, setRating] = useState('')
   const [progressTotal, setProgressTotal] = useState('')
   const [gameTTB, setGameTTB] = useState('')
+  const [ttbTiers, setTtbTiers] = useState<{ hastily?: number; normally?: number; completely?: number } | null>(null)
   const [volumeCurrent, setVolumeCurrent] = useState('')
   const [volumeTotal, setVolumeTotal] = useState('')
   const [rankInput, setRankInput] = useState('')
@@ -66,9 +67,17 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     setCoverUrl(hit.cover_url ?? '')
     setResults([])
 
-    // Games: RAWG returns a community time-to-beat (hours) in the hit metadata.
-    if (hobbyId === 'games' && hit.metadata?.time_to_beat != null) {
-      setGameTTB(String(hit.metadata.time_to_beat))
+    // Games: IGDB gives completion tiers (default to Main Story); RAWG gives one number.
+    if (hobbyId === 'games') {
+      const tiers = hit.metadata?.ttb as { hastily?: number; normally?: number; completely?: number } | undefined
+      if (tiers) {
+        setTtbTiers(tiers)
+        const def = tiers.normally ?? tiers.hastily ?? tiers.completely
+        if (def != null) setGameTTB(String(def))
+      } else if (hit.metadata?.time_to_beat != null) {
+        setTtbTiers(null)
+        setGameTTB(String(hit.metadata.time_to_beat))
+      }
     }
     // Manga: Jikan returns the series' total volume count.
     if (hobbyId === 'books' && bookSubtype === 'manga' && hit.metadata?.volumes != null) {
@@ -219,6 +228,19 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             <div style={{ marginBottom: 14 }}>
               <p style={label}>BACKLOG RANK (optional)</p>
               <input type="number" min={1} value={rankInput} onChange={(e) => setRankInput(e.target.value)} placeholder="added to the bottom" style={inp} />
+            </div>
+          )}
+
+          {hobbyId === 'games' && ttbTiers && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={label}>COMPLETION TIME</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {([['RUSHED', 'hastily'], ['MAIN', 'normally'], ['100%', 'completely']] as const).map(([lbl, key]) => {
+                  const v = ttbTiers[key]
+                  if (v == null) return null
+                  return <button key={key} onClick={() => setGameTTB(String(v))} style={pill(gameTTB === String(v), accent)}>{lbl} · {v}h</button>
+                })}
+              </div>
             </div>
           )}
 
