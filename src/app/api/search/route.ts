@@ -39,9 +39,7 @@ async function searchGamesIGDB(q: string): Promise<CatalogHit[]> {
   const headers = { 'Client-ID': TWITCH_ID as string, Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain' }
   const gr = await fetch('https://api.igdb.com/v4/games', {
     method: 'POST', headers,
-    // category filter drops mods (5), DLC (1), bundles (3), updates (14), etc. —
-    // keeps main games, remakes, remasters, ports, standalone/expanded editions.
-    body: `search "${q.replace(/["\\]/g, '')}"; fields name,first_release_date,cover.image_id,genres.name,platforms.name,total_rating; where category = (0,4,8,9,10,11); limit 12;`,
+    body: `search "${q.replace(/["\\]/g, '')}"; fields name,first_release_date,cover.image_id,genres.name,platforms.name,total_rating; limit 12;`,
   })
   if (!gr.ok) throw new Error(`IGDB ${gr.status}`)
   const games = (await gr.json()) as Array<Raw & { id: number; cover?: { image_id?: string }; genres?: Raw[]; platforms?: Raw[] }>
