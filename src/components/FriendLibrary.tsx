@@ -1,99 +1,161 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { getFriendEntries, getAllEntries } from '@/lib/db'
-import { HOBBY_MAP, STATUS_LABELS } from '@/lib/hobbies'
-import { HOBBIES } from '@/lib/hobbies'
+import { ArrowLeft, Star, Plus, Check } from 'lucide-react'
+import { getFriendEntries, getAllEntries, addToMyBacklog } from '@/lib/db'
+import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 
-function norm(t: string): string { return t.toLowerCase().replace(/[™®©]/g, '').trim() }
+const GREEN = '#22c55e'
 
-export default function FriendLibrary({ friendId, username, onBack }: { friendId: string; username: string; onBack: () => void }) {
+function norm(t: string): string { return t.toLowerCase().replace(/[™®©]/g, '').trim() }
+function keyOf(e: Entry): string {
+  return e.external_source && e.external_id ? `id:${e.external_source}:${e.external_id}` : `t:${e.hobby_category}:${norm(e.title)}`
+}
+
+type SortKey = 'recent' | 'rating' | 'title'
+
+export default function FriendLibrary({ friendId, username, avatarUrl, onBack }: { friendId: string; username: string; avatarUrl?: string | null; onBack: () => void }) {
   const [entries, setEntries] = useState<Entry[]>([])
-  const [myRatings, setMyRatings] = useState<Map<string, number>>(new Map())
+  const [mine, setMine] = useState<Map<string, Entry>>(new Map())
+  const [added, setAdded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [hobbyF, setHobbyF] = useState<'all' | HobbyCategory>('all')
+  const [statusF, setStatusF] = useState<'all' | string>('all')
+  const [sort, setSort] = useState<SortKey>('recent')
+  const [commonOnly, setCommonOnly] = useState(false)
 
   useEffect(() => {
     let alive = true
-    Promise.all([getFriendEntries(friendId), getAllEntries()]).then(([theirs, mine]) => {
+    setLoading(true)
+    Promise.all([getFriendEntries(friendId), getAllEntries()]).then(([theirs, mineArr]) => {
       if (!alive) return
-      const m = new Map<string, number>()
-      for (const e of mine) if (e.status === 'completed' && e.rating != null) m.set(`${e.hobby_category}::${norm(e.title)}`, e.rating)
-      setMyRatings(m); setEntries(theirs); setLoading(false)
+      const m = new Map<string, Entry>()
+      for (const e of mineArr) m.set(keyOf(e), e)
+      setMine(m); setEntries(theirs); setLoading(false)
     }).catch(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [friendId])
 
+  const iHave = (e: Entry) => mine.has(keyOf(e)) || added.has(keyOf(e))
+  const myRatingFor = (e: Entry) => { const m = mine.get(keyOf(e)); return m?.rating != null ? m.rating : null }
+
+  async function add(e: Entry) {
+    setAdded((prev) => new Set(prev).add(keyOf(e)))
+    try { await addToMyBacklog(e) } catch { /* stays optimistic; refresh fixes it */ }
+  }
+
   const completed = entries.filter((e) => e.status === 'completed').length
-  const backlog = entries.filter((e) => e.status === 'backlog').length
   const inProgress = entries.filter((e) => e.status === 'in_progress').length
+  const backlog = entries.filter((e) => e.status === 'backlog').length
+  const commonCount = entries.filter(iHave).length
+  const hobbiesPresent = HOBBIES.filter((h) => entries.some((e) => e.hobby_category === h.id))
 
-  const byHobby = HOBBIES.map((h) => ({ hobby: h, items: entries.filter((e) => e.hobby_category === (h.id as HobbyCategory)) })).filter((g) => g.items.length > 0)
+  const filtered = entries.filter((e) => {
+    if (hobbyF !== 'all' && e.hobby_category !== hobbyF) return false
+    if (statusF !== 'all' && e.status !== statusF) return false
+    if (commonOnly && !iHave(e)) return false
+    return true
+  })
+  const display = [...filtered].sort((a, b) => {
+    if (sort === 'title') return a.title.localeCompare(b.title)
+    if (sort === 'rating') return (b.rating ?? -1) - (a.rating ?? -1)
+    return a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0
+  })
 
+  const chip = (active: boolean, color: string): React.CSSProperties => ({
+    padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+    background: active ? `${color}22` : 'transparent', border: `1px solid ${active ? color : 'var(--border-dim)'}`,
+    borderLeft: active ? `2px solid ${color}` : '1px solid var(--border-dim)', color: active ? color : 'var(--text-dim)', cursor: 'pointer',
+  })
   const stat = (n: number, label: string, color: string) => (
-    <div>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color }}>{n}</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.12em', marginLeft: 6 }}>{label}</span>
-    </div>
+    <div><span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color }}>{n}</span><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.12em', marginLeft: 6 }}>{label}</span></div>
   )
 
   return (
     <div>
-      <button onClick={onBack}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em', cursor: 'pointer', padding: '0 0 16px' }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em', cursor: 'pointer', padding: '0 0 16px' }}>
         <ArrowLeft size={14} /> BACK TO FRIENDS
       </button>
 
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#22c55e', letterSpacing: '0.2em', margin: '0 0 4px' }}>OPERATOR PROFILE /</p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.06em', margin: 0 }}>{username.toUpperCase()}</h1>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${GREEN}66`, background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {avatarUrl
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: '#fff' }}>{(username || 'O')[0].toUpperCase()}</span>}
+        </div>
+        <div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: GREEN, letterSpacing: '0.2em', margin: '0 0 2px' }}>OPERATOR PROFILE /</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.06em', margin: 0 }}>{username.toUpperCase()}</h1>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: 24, padding: '14px 18px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #22c55e' }}>
+      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: 20, padding: '14px 18px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${GREEN}` }}>
         {stat(entries.length, 'TRACKED', 'var(--text-hi)')}
-        {stat(completed, 'COMPLETED', '#22c55e')}
+        {stat(completed, 'COMPLETED', GREEN)}
         {stat(inProgress, 'IN PROGRESS', '#0891b2')}
         {stat(backlog, 'BACKLOG', 'var(--text-mid)')}
+        {stat(commonCount, 'IN COMMON', '#d97706')}
       </div>
 
-      {loading && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.15em' }}>LOADING LIBRARY…</p>}
-      {!loading && entries.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>This operator hasn&apos;t logged anything yet.</p>}
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+        <button onClick={() => setHobbyF('all')} style={chip(hobbyF === 'all', GREEN)}>ALL</button>
+        {hobbiesPresent.map((h) => <button key={h.id} onClick={() => setHobbyF(h.id)} style={chip(hobbyF === h.id, h.accent)}>{h.pluralLabel}</button>)}
+        <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 2px' }} />
+        {(['all', 'in_progress', 'completed', 'backlog'] as const).map((s) => (
+          <button key={s} onClick={() => setStatusF(s)} style={chip(statusF === s, s === 'all' ? GREEN : STATUS_COLORS[s])}>{s === 'all' ? 'ANY' : STATUS_LABELS[s]}</button>
+        ))}
+        <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 2px' }} />
+        <button onClick={() => setCommonOnly((v) => !v)} style={chip(commonOnly, '#d97706')}>◆ IN COMMON</button>
+        <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
+          style={{ marginLeft: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', padding: '6px 10px', cursor: 'pointer', outline: 'none' }}>
+          <option value="recent">SORT: RECENT</option>
+          <option value="rating">SORT: RATING</option>
+          <option value="title">SORT: TITLE</option>
+        </select>
+      </div>
 
-      {byHobby.map(({ hobby, items }) => (
-        <div key={hobby.id} style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ width: 8, height: 8, background: hobby.accent, transform: 'rotate(45deg)' }} />
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.12em', margin: 0 }}>{hobby.pluralLabel.toUpperCase()}</h2>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)' }}>({items.length})</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {items.map((e) => {
-              const mine = e.status === 'completed' && e.rating != null ? myRatings.get(`${e.hobby_category}::${norm(e.title)}`) : undefined
-              return (
-                <div key={e.id} style={{ display: 'flex', gap: 10, padding: 8, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${HOBBY_MAP[e.hobby_category].accent}55` }}>
-                  {e.cover_url
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={e.cover_url} alt="" style={{ width: 40, height: 58, objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 40, height: 58, background: 'var(--bg-base)', flexShrink: 0 }} />}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.08em', marginTop: 3 }}>{STATUS_LABELS[e.status]}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
-                      {e.rating != null && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: hobby.accent }}>★ {e.rating}/10</span>}
-                      {mine != null && (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.06em', padding: '1px 6px', border: '1px solid var(--border-dim)' }}>
-                          YOU {mine} · THEM {e.rating}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+      {loading && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.15em' }}>LOADING…</p>}
+      {!loading && display.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>Nothing matches those filters.</p>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+        {display.map((e) => {
+          const hobby = HOBBY_MAP[e.hobby_category]
+          const mineRating = myRatingFor(e)
+          const have = iHave(e)
+          return (
+            <div key={e.id} style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66` }}>
+              {e.cover_url
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={e.cover_url} alt="" style={{ width: 46, height: 66, objectFit: 'cover', flexShrink: 0 }} />
+                : <div style={{ width: 46, height: 66, background: 'var(--bg-base)', flexShrink: 0 }} />}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
+                  {have
+                    ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#d97706', letterSpacing: '0.08em', border: '1px solid #d9770655', padding: '1px 5px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3 }}><Check size={9} /> IN LOG</span>
+                    : <button onClick={() => add(e)} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }}><Plus size={9} /> ADD</button>}
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: STATUS_COLORS[e.status], letterSpacing: '0.06em' }}>{STATUS_LABELS[e.status]}</span>
+                  {e.rating != null && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: hobby.accent, display: 'flex', alignItems: 'center', gap: 3 }}><Star size={10} fill={hobby.accent} /> {e.rating}</span>}
+                  {mineRating != null && e.rating != null && (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.05em', border: '1px solid var(--border-dim)', padding: '1px 5px' }}>YOU {mineRating} · THEM {e.rating}</span>
+                  )}
+                </div>
+                {e.notes && (
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5, margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    &ldquo;{e.notes}&rdquo;
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

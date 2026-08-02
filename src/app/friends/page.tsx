@@ -11,8 +11,19 @@ import FriendLibrary from '@/components/FriendLibrary'
 
 const GREEN = '#22c55e'
 
+function Avatar({ url, name, size = 30 }: { url: string | null; name: string; size?: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #7c3aed55' }}>
+      {url
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ fontFamily: 'var(--font-display)', fontSize: size * 0.45, fontWeight: 700, color: '#fff' }}>{(name || 'O')[0].toUpperCase()}</span>}
+    </div>
+  )
+}
+
 export default function FriendsPage() {
-  const [selected, setSelected] = useState<{ id: string; username: string } | null>(null)
+  const [selected, setSelected] = useState<{ id: string; username: string; avatar_url: string | null } | null>(null)
   const [myHandle, setMyHandle] = useState('')
 
   const [query, setQuery] = useState('')
@@ -73,7 +84,7 @@ export default function FriendsPage() {
   if (selected) {
     return (
       <div style={{ padding: 32, maxWidth: 960, margin: '0 auto' }}>
-        <FriendLibrary friendId={selected.id} username={selected.username} onBack={() => setSelected(null)} />
+        <FriendLibrary friendId={selected.id} username={selected.username} avatarUrl={selected.avatar_url} onBack={() => setSelected(null)} />
       </div>
     )
   }
@@ -116,7 +127,10 @@ export default function FriendsPage() {
               const already = knownIds.has(u.user_id) || requested.has(u.user_id)
               return (
                 <div key={u.user_id} style={row}>
-                  <span style={nameStyle}>{u.username}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <Avatar url={u.avatar_url} name={u.username} />
+                    <span style={nameStyle}>{u.username}</span>
+                  </div>
                   {already
                     ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{friends.some((f) => f.user_id === u.user_id) ? 'FRIENDS' : 'PENDING'}</span>
                     : <button onClick={() => add(u)} style={smallBtn(GREEN)}><UserPlus size={12} /> ADD</button>}
@@ -133,7 +147,10 @@ export default function FriendsPage() {
           <h2 style={h2}>FRIEND REQUESTS <span style={{ color: '#0891b2' }}>({incoming.length})</span></h2>
           {incoming.map((r) => (
             <div key={r.id} style={row}>
-              <span style={nameStyle}>{r.username}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <Avatar url={r.avatar_url} name={r.username} />
+                <span style={nameStyle}>{r.username}</span>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => respond(r.id, true)} style={smallBtn(GREEN)}><Check size={12} /> ACCEPT</button>
                 <button onClick={() => respond(r.id, false)} style={smallBtn('#ef4444')}><X size={12} /> DECLINE</button>
@@ -150,12 +167,13 @@ export default function FriendsPage() {
           ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}><Users size={14} /> No friends yet — search a username above to send a request.</p>
           : friends.map((f) => (
             <div key={f.id} style={row}>
-              <button onClick={() => setSelected({ id: f.user_id, username: f.username })}
-                style={{ ...nameStyle, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                {f.username}
+              <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                <Avatar url={f.avatar_url} name={f.username} />
+                <span style={nameStyle}>{f.username}</span>
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setSelected({ id: f.user_id, username: f.username })} style={smallBtn('#0891b2')}>VIEW LOGS</button>
+                <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#0891b2')}>VIEW LOGS</button>
                 <button onClick={() => unfriend(f.id)} style={smallBtn('#ef4444')}>REMOVE</button>
               </div>
             </div>

@@ -213,8 +213,8 @@ export async function setUsername(username: string): Promise<void> {
 
 // ── Social: friends ────────────────────────────────────────────────────────────
 
-export interface UserRef { user_id: string; username: string }
-export interface FriendView { id: string; user_id: string; username: string }
+export interface UserRef { user_id: string; username: string; avatar_url: string | null }
+export interface FriendView { id: string; user_id: string; username: string; avatar_url: string | null }
 interface FriendshipRow { id: string; requester: string; addressee: string; status: 'pending' | 'accepted' | 'declined' }
 
 export async function searchUsers(q: string): Promise<UserRef[]> {
@@ -223,16 +223,16 @@ export async function searchUsers(q: string): Promise<UserRef[]> {
   return (data ?? []) as UserRef[]
 }
 
-async function usernamesFor(ids: string[]): Promise<Map<string, string>> {
+async function usernamesFor(ids: string[]): Promise<Map<string, { username: string; avatar_url: string | null }>> {
   if (ids.length === 0) return new Map()
   const { data } = await supabase.rpc('usernames_for', { ids })
-  const m = new Map<string, string>()
-  for (const r of (data ?? []) as UserRef[]) m.set(r.user_id, r.username)
+  const m = new Map<string, { username: string; avatar_url: string | null }>()
+  for (const r of (data ?? []) as UserRef[]) m.set(r.user_id, { username: r.username, avatar_url: r.avatar_url })
   return m
 }
 
 export async function getUsername(userId: string): Promise<string> {
-  return (await usernamesFor([userId])).get(userId) ?? 'operator'
+  return (await usernamesFor([userId])).get(userId)?.username ?? 'operator'
 }
 
 export async function sendFriendRequest(addresseeId: string): Promise<void> {
@@ -252,7 +252,7 @@ export async function listFriends(): Promise<FriendView[]> {
   const names = await usernamesFor(otherIds)
   return rows.map((r) => {
     const other = r.requester === me ? r.addressee : r.requester
-    return { id: r.id, user_id: other, username: names.get(other) ?? 'unknown' }
+    return { id: r.id, user_id: other, username: names.get(other)?.username ?? 'unknown', avatar_url: names.get(other)?.avatar_url ?? null }
   })
 }
 
@@ -261,7 +261,7 @@ export async function listIncomingRequests(): Promise<FriendView[]> {
   const { data } = await supabase.from('friendships').select('*').eq('status', 'pending').eq('addressee', me)
   const rows = (data ?? []) as FriendshipRow[]
   const names = await usernamesFor(rows.map((r) => r.requester))
-  return rows.map((r) => ({ id: r.id, user_id: r.requester, username: names.get(r.requester) ?? 'unknown' }))
+  return rows.map((r) => ({ id: r.id, user_id: r.requester, username: names.get(r.requester)?.username ?? 'unknown', avatar_url: names.get(r.requester)?.avatar_url ?? null }))
 }
 
 export async function listOutgoingRequests(): Promise<FriendView[]> {
@@ -269,7 +269,7 @@ export async function listOutgoingRequests(): Promise<FriendView[]> {
   const { data } = await supabase.from('friendships').select('*').eq('status', 'pending').eq('requester', me)
   const rows = (data ?? []) as FriendshipRow[]
   const names = await usernamesFor(rows.map((r) => r.addressee))
-  return rows.map((r) => ({ id: r.id, user_id: r.addressee, username: names.get(r.addressee) ?? 'unknown' }))
+  return rows.map((r) => ({ id: r.id, user_id: r.addressee, username: names.get(r.addressee)?.username ?? 'unknown', avatar_url: names.get(r.addressee)?.avatar_url ?? null }))
 }
 
 export async function respondToRequest(id: string, accept: boolean): Promise<void> {
@@ -280,6 +280,30 @@ export async function respondToRequest(id: string, accept: boolean): Promise<voi
 export async function removeFriend(id: string): Promise<void> {
   await supabase.from('friendships').delete().eq('id', id)
   notifyProfileChanged()
+}
+
+// Copy a friend's item into my own backlog — title/cover/refs only, never their
+// rating, review, or progress.
+export async function addToMyBacklog(e: Entry): Promise<void> {
+  await insertEntry({
+    hobby_category: e.hobby_category,
+    title: e.title,
+    status: 'backlog',
+    rating: null,
+    notes: null,
+    progress_current: 0,
+    progress_total: e.progress_total,
+    cover_url: e.cover_url,
+    external_id: e.external_id,
+    external_source: e.external_source,
+    metadata: { ...(e.metadata ?? {}), added_via: 'friend' },
+    book_subtype: e.book_subtype,
+    current_season: null,
+    current_episode: null,
+    priority: null,
+    date_started: null,
+    date_completed: null,
+  })
 }
 
 // A friend's library — accepted-friend RLS on web_entries permits this read.
