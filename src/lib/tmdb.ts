@@ -9,19 +9,24 @@ export async function tvEpisodeRuntime(id: string, detail: Record<string, unknow
   const ert = detail.episode_run_time as number[] | undefined
   if (Array.isArray(ert) && ert.length > 0 && ert[0] > 0) return ert[0]
 
-  const seasons = (detail.number_of_seasons as number) || 1
-  // Season 1 reflects a show's baseline episode length; final seasons often have
-  // longer, movie-length episodes that skew the average. Prefer S1, then latest.
-  for (const s of Array.from(new Set([1, seasons]))) {
+  // Average every episode's runtime across all regular seasons (skip season 0 =
+  // specials). This uses TMDB's per-episode `runtime` ground truth for an accurate
+  // typical length, rather than one season that may skew high or low.
+  const seasonNums = Array.isArray(detail.seasons)
+    ? (detail.seasons as Array<{ season_number: number }>).map((s) => s.season_number).filter((n) => n > 0)
+    : Array.from({ length: (detail.number_of_seasons as number) || 1 }, (_, i) => i + 1)
+
+  const runtimes: number[] = []
+  await Promise.all(seasonNums.map(async (s) => {
     try {
       const r = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB}`)
-      if (!r.ok) continue
+      if (!r.ok) return
       const d = await r.json()
-      const runtimes = ((d.episodes as Array<{ runtime?: number }>) ?? [])
-        .map((ep) => ep.runtime)
-        .filter((n): n is number => typeof n === 'number' && n > 0)
-      if (runtimes.length) return Math.round(runtimes.reduce((a, b) => a + b, 0) / runtimes.length)
-    } catch { /* try next season */ }
-  }
+      for (const ep of (d.episodes as Array<{ runtime?: number }>) ?? []) {
+        if (typeof ep.runtime === 'number' && ep.runtime > 0) runtimes.push(ep.runtime)
+      }
+    } catch { /* skip season */ }
+  }))
+  if (runtimes.length) return Math.round(runtimes.reduce((a, b) => a + b, 0) / runtimes.length)
   return undefined
 }

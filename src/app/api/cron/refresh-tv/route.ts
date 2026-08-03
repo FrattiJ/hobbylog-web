@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   }
 
   const list = (rows ?? []) as TvRow[]
-  const BATCH = 8
+  const BATCH = 4 // each show may fan out to several season requests
   for (let i = 0; i < list.length; i += BATCH) {
     await Promise.all(list.slice(i, i + BATCH).map(processOne))
   }
