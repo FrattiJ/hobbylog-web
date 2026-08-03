@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback } from '@/lib/db'
+import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount } from '@/lib/db'
 import { cropSquareAvatar } from '@/lib/image'
 import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type DisplaySize } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
@@ -19,6 +19,8 @@ export default function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(() => getTheme())
   const [displaySize, setDisplaySizeState] = useState<DisplaySize>(() => getDisplaySize())
   const [clearConfirm, setClearConfirm] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
   const [fbKind, setFbKind] = useState<'bug' | 'feature'>('bug')
@@ -84,6 +86,15 @@ export default function SettingsPage() {
     setClearConfirm(false); setMsg('All entries cleared.')
   }
 
+  async function deleteAccount() {
+    if (!deleteConfirm) { setDeleteConfirm(true); return }
+    setDeleteBusy(true)
+    try {
+      await deleteMyAccount()
+      await supabase.auth.signOut()
+    } catch { setMsg('Could not delete account — please try again.'); setDeleteBusy(false); setDeleteConfirm(false) }
+  }
+
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: 20, marginBottom: 16 }
   const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 12px' }
 
@@ -140,58 +151,6 @@ export default function SettingsPage() {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
       </Link>
 
-      {/* Theme */}
-      <div style={card}>
-        <h2 style={h2}>THEME</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([['dark', Moon], ['light', Sun]] as const).map(([t, Icon]) => {
-            const active = theme === t
-            return (
-              <button key={t} onClick={() => changeTheme(t)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
-                <Icon size={14} /> {t}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Display size */}
-      <div style={card}>
-        <h2 style={h2}>DISPLAY SIZE</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Scales the whole interface — go compact to fit more, or larger for readability.</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {(['compact', 'normal', 'large', 'xl'] as DisplaySize[]).map((s) => {
-            const active = displaySize === s
-            return (
-              <button key={s} onClick={() => changeDisplaySize(s)}
-                style={{ padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
-                {s === 'xl' ? 'X-Large' : s}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Tracked hobbies */}
-      <div style={card}>
-        <h2 style={h2}>TRACKED HOBBIES</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
-          {HOBBIES.map((h) => {
-            const Icon = HOBBY_ICON_MAP[h.icon]
-            const active = enabledIds.includes(h.id)
-            return (
-              <button key={h.id} onClick={() => toggleHobby(h.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: active ? `${h.accent}18` : 'transparent', border: `1px solid ${active ? h.accent : 'var(--border-dim)'}`, borderLeft: active ? `3px solid ${h.accent}` : '1px solid var(--border-dim)', color: active ? h.accent : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>
-                {Icon && <Icon size={14} />}
-                <span style={{ flex: 1, textAlign: 'left' }}>{h.pluralLabel}</span>
-                {active && <Check size={12} />}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Feedback */}
       <div style={{ ...card, borderLeftColor: '#0891b2' }}>
         <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#0891b2' }} /> FEEDBACK</h2>
@@ -214,14 +173,73 @@ export default function SettingsPage() {
         {fbMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
       </div>
 
-      {/* Danger */}
+      {/* Tracked hobbies */}
+      <div style={card}>
+        <h2 style={h2}>TRACKED HOBBIES</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+          {HOBBIES.map((h) => {
+            const Icon = HOBBY_ICON_MAP[h.icon]
+            const active = enabledIds.includes(h.id)
+            return (
+              <button key={h.id} onClick={() => toggleHobby(h.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: active ? `${h.accent}18` : 'transparent', border: `1px solid ${active ? h.accent : 'var(--border-dim)'}`, borderLeft: active ? `3px solid ${h.accent}` : '1px solid var(--border-dim)', color: active ? h.accent : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>
+                {Icon && <Icon size={14} />}
+                <span style={{ flex: 1, textAlign: 'left' }}>{h.pluralLabel}</span>
+                {active && <Check size={12} />}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Appearance (theme + display size) */}
+      <div style={card}>
+        <h2 style={h2}>APPEARANCE</h2>
+
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 8px' }}>THEME</p>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {([['dark', Moon], ['light', Sun]] as const).map(([t, Icon]) => {
+            const active = theme === t
+            return (
+              <button key={t} onClick={() => changeTheme(t)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                <Icon size={14} /> {t}
+              </button>
+            )
+          })}
+        </div>
+
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>DISPLAY SIZE</p>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px', lineHeight: 1.5 }}>Scales the whole interface — compact to fit more, or larger for readability.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {(['compact', 'normal', 'large', 'xl'] as DisplaySize[]).map((s) => {
+            const active = displaySize === s
+            return (
+              <button key={s} onClick={() => changeDisplaySize(s)}
+                style={{ padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                {s === 'xl' ? 'X-Large' : s}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Delete account */}
       <div style={{ ...card, borderLeftColor: '#ef4444' }}>
-        <h2 style={h2}>DANGER ZONE</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>Permanently deletes all your entries from the cloud. Cannot be undone.</p>
-        <button onClick={clearData}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #ef444455', cursor: 'pointer' }}>
-          <Trash2 size={13} /> {clearConfirm ? 'CLICK AGAIN TO CONFIRM' : 'CLEAR ALL DATA'}
-        </button>
+        <h2 style={h2}>DELETE ACCOUNT</h2>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>
+          Clear just your entries, or permanently delete your entire account — profile, logs, friends, everything. Neither can be undone.
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={clearData}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#f87171', background: 'transparent', border: '1px solid #ef444455', cursor: 'pointer' }}>
+            <Trash2 size={13} /> {clearConfirm ? 'CLICK AGAIN TO CONFIRM' : 'CLEAR ALL DATA'}
+          </button>
+          <button onClick={deleteAccount} disabled={deleteBusy}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#fff', background: '#ef4444', border: '1px solid #ef4444', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
+            <Trash2 size={13} /> {deleteBusy ? 'DELETING…' : deleteConfirm ? 'CLICK AGAIN TO CONFIRM' : 'DELETE ACCOUNT'}
+          </button>
+        </div>
         {msg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', marginTop: 12 }}>{msg}</p>}
       </div>
     </div>

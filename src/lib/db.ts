@@ -345,6 +345,12 @@ export async function submitFeedback(kind: 'bug' | 'feature', message: string): 
   if (error) throw error
 }
 
+// Permanently delete the current user's account and all their data.
+export async function deleteMyAccount(): Promise<void> {
+  const { error } = await supabase.rpc('delete_my_account')
+  if (error) throw error
+}
+
 // ── Sessions ────────────────────────────────────────────────────────────────
 
 export async function getSessionsByEntry(entryId: string): Promise<Session[]> {
