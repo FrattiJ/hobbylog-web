@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { searchCatalog, searchTypeFor } from './search'
+import { searchCatalog, searchTypeFor, fetchCatalogDetails } from './search'
 
 export interface WebEntry {
   id: string
@@ -86,12 +86,21 @@ export async function refetchDetails(entry: WebEntry): Promise<Partial<WebEntry>
   const lower = entry.title.toLowerCase()
   const hit = results.find((r) => r.title.toLowerCase() === lower) ?? results[0]
   if (!hit) return null
+  let total = hit.progress_total
+  let meta = { ...hit.metadata }
+  // Movies/TV: pull per-title details so runtime / episode count / per-episode
+  // runtime are accurate (search results don't carry these).
+  if (type === 'movie' || type === 'tv') {
+    const d = await fetchCatalogDetails(type, hit.external_id)
+    if (d.progress_total != null) total = d.progress_total
+    meta = { ...meta, ...d.metadata }
+  }
   const patch: Partial<WebEntry> = {
     cover_url: entry.cover_url || hit.cover_url,
     external_id: hit.external_id,
     external_source: hit.external_source,
-    progress_total: entry.progress_total ?? hit.progress_total,
-    metadata: { ...(entry.metadata ?? {}), ...hit.metadata },
+    progress_total: total ?? entry.progress_total,
+    metadata: { ...(entry.metadata ?? {}), ...meta },
   }
   await updateEntry(entry.id, patch)
   return patch

@@ -263,7 +263,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>FIELD REPORT</h2>
                   {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
                 </div>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} placeholder="How was it? (remember to Save)" style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder="How was it? (remember to Save)" style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
               </div>
             </div>
           )}
@@ -333,7 +333,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               {!isCompleted && (
                 <div>
                   <p style={label}>NOTES</p>
-                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Notes…" style={{ ...inp, resize: 'vertical' }} />
+                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder="Notes…" style={{ ...inp, resize: 'vertical' }} />
                 </div>
               )}
 

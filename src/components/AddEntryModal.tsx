@@ -284,7 +284,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
 
           <div style={{ marginBottom: 16 }}>
             <p style={label}>NOTES</p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="—" style={{ ...inp, resize: 'vertical' }} />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} spellCheck autoCapitalize="sentences" placeholder="—" style={{ ...inp, resize: 'vertical' }} />
           </div>
 
           {error && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>✗ {error}</p>}

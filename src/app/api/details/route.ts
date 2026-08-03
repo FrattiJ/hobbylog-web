@@ -45,7 +45,12 @@ export async function GET(req: NextRequest) {
     const r = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB}&append_to_response=watch/providers`)
     if (!r.ok) return NextResponse.json(empty)
     const d = await r.json()
-    const episodeRuntime = Array.isArray(d.episode_run_time) && d.episode_run_time.length > 0 ? (d.episode_run_time[0] as number) : undefined
+    // TMDB's episode_run_time is frequently empty — fall back to the runtime of the
+    // most recent / next episode so per-show length is accurate, not a generic guess.
+    const lastEp = d.last_episode_to_air as { runtime?: number } | undefined
+    const nextEp = d.next_episode_to_air as { runtime?: number } | undefined
+    const episodeRuntime = (Array.isArray(d.episode_run_time) && d.episode_run_time.length > 0 ? (d.episode_run_time[0] as number) : undefined)
+      || (lastEp?.runtime as number | undefined) || (nextEp?.runtime as number | undefined) || undefined
     const creator = Array.isArray(d.created_by) && d.created_by.length > 0 ? ((d.created_by as Raw[])[0].name as string) : undefined
     const networks = Array.isArray(d.networks) ? (d.networks as Raw[]).slice(0, 2).map((n) => n.name as string).join(', ') : undefined
     return NextResponse.json({
