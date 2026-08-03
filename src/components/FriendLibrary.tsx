@@ -146,7 +146,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.05em', border: '1px solid var(--border-dim)', padding: '1px 5px' }}>YOU {mineRating} · THEM {e.rating}</span>
                   )}
                 </div>
-                {e.notes && (
+                {e.status === 'completed' && e.notes && (
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5, margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     &ldquo;{e.notes}&rdquo;
                   </p>
