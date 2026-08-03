@@ -67,7 +67,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
   return (
     <>
-    <aside style={{ position: 'fixed', left: 0, top: 0, height: '100vh', width: 220, background: 'var(--bg-panel)', borderRight: '1px solid var(--border-dim)', display: 'flex', flexDirection: 'column', zIndex: 60, overflowY: 'auto' }}>
+    <aside style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 220, background: 'var(--bg-panel)', borderRight: '1px solid var(--border-dim)', display: 'flex', flexDirection: 'column', zIndex: 60, overflowY: 'auto' }}>
       {/* Logo block */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border-dim)', position: 'relative' }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.2em', marginBottom: 6 }}>PANEL 01 /</div>
