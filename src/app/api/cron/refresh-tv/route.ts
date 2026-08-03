@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { tvEpisodeRuntime } from '@/lib/tmdb'
 
 // Daily job (see vercel.json): refresh every TMDB-linked TV show's episode count
 // and per-episode runtime, and flip a completed show back to In Progress when it
@@ -38,10 +39,7 @@ export async function GET(req: NextRequest) {
       if (!r.ok) return
       const d = await r.json()
       const eps = d.number_of_episodes as number | undefined
-      const lastEp = d.last_episode_to_air as { runtime?: number } | undefined
-      const nextEp = d.next_episode_to_air as { runtime?: number } | undefined
-      const runtime = (Array.isArray(d.episode_run_time) && d.episode_run_time.length ? d.episode_run_time[0] as number : undefined)
-        || lastEp?.runtime || nextEp?.runtime
+      const runtime = await tvEpisodeRuntime(e.external_id, d)
       const meta = e.metadata ?? {}
       const patch: Record<string, unknown> = {}
       if (runtime && meta.episode_runtime !== runtime) patch.metadata = { ...meta, episode_runtime: runtime }
