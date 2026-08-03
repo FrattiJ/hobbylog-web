@@ -58,16 +58,17 @@ function SectionLabel({ children }: { children: string }) {
   )
 }
 
-export default function Sidebar({ profile }: { profile: Profile | null }) {
+export default function Sidebar({ profile, mobile = false, open = true, onNavigate }: { profile: Profile | null; mobile?: boolean; open?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const { enabledHobbies } = useHobbies()
   const settingsActive = (pathname.replace(/\/$/, '') || '/') === '/settings'
+  const close = () => { if (mobile) onNavigate?.() }
 
   return (
     <>
-    <aside style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 220, background: 'var(--bg-panel)', borderRight: '1px solid var(--border-dim)', display: 'flex', flexDirection: 'column', zIndex: 60, overflowY: 'auto' }}>
+    <aside onClick={close} style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 220, background: 'var(--bg-panel)', borderRight: '1px solid var(--border-dim)', display: 'flex', flexDirection: 'column', zIndex: mobile ? 80 : 60, overflowY: 'auto', transform: mobile && !open ? 'translateX(-100%)' : 'translateX(0)', transition: mobile ? 'transform 0.2s ease' : undefined, boxShadow: mobile && open ? '0 0 40px rgba(0,0,0,0.5)' : undefined }}>
       {/* Logo block */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border-dim)', position: 'relative' }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.2em', marginBottom: 6 }}>PANEL 01 /</div>

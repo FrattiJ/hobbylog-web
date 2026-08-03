@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { Menu } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
+import { useIsMobile } from '@/lib/useIsMobile'
 import Sidebar from './Sidebar'
 import LoginScreen from './LoginScreen'
 import OnboardingSelector from './OnboardingSelector'
@@ -17,6 +19,9 @@ import type { HobbyCategory } from '@/types/database'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const isMobile = useIsMobile()
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
   const [profile, setProfile] = useState<WebProfile | null>(null)
@@ -47,6 +52,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     window.addEventListener(PROFILE_CHANGED_EVENT, loadProfile)
     return () => window.removeEventListener(PROFILE_CHANGED_EVENT, loadProfile)
   }, [session, loadProfile])
+
+  useEffect(() => { setDrawerOpen(false) }, [pathname])
 
   const handleSetEnabledIds = useCallback(async (ids: HobbyCategory[]) => {
     await setEnabledHobbies(ids)
@@ -89,9 +96,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
         }} />
 
-        <Sidebar profile={profile} />
+        {/* Mobile top bar */}
+        {isMobile && (
+          <header style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 52, zIndex: 70, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-dim)', display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px' }}>
+            <button onClick={() => setDrawerOpen(true)} aria-label="Menu" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', cursor: 'pointer' }}>
+              <Menu size={18} />
+            </button>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.12em' }}>HOBBYLOG</span>
+          </header>
+        )}
 
-        <main style={{ marginLeft: 220, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+        {/* Drawer backdrop */}
+        {isMobile && drawerOpen && (
+          <div onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 75, background: 'rgba(0,0,0,0.5)' }} />
+        )}
+
+        <Sidebar profile={profile} mobile={isMobile} open={!isMobile || drawerOpen} onNavigate={() => setDrawerOpen(false)} />
+
+        <main style={{ marginLeft: isMobile ? 0 : 220, paddingTop: isMobile ? 52 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
           {children}
         </main>
 
