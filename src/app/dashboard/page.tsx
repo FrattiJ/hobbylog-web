@@ -9,6 +9,7 @@ import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { STATUS_LABELS, HOBBY_PATHS } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
+import GettingStarted from '@/components/GettingStarted'
 import { calcHours } from '@/lib/hours'
 import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react'
 
@@ -139,6 +140,8 @@ export default function DashboardPage() {
           MISSION OVERVIEW
         </h1>
       </div>
+
+      <GettingStarted />
 
       {/* ── Clickable stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>

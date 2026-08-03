@@ -336,6 +336,15 @@ export async function getCommunityRating(source: string, extId: string): Promise
   return data as CommunityRating
 }
 
+// ── Feedback (bug reports / feature suggestions) ────────────────────────────────
+
+export async function submitFeedback(kind: 'bug' | 'feature', message: string): Promise<void> {
+  const user_id = await currentUserId()
+  const page = typeof window !== 'undefined' ? window.location.pathname : null
+  const { error } = await supabase.from('feedback').insert({ user_id, kind, message: message.trim(), page })
+  if (error) throw error
+}
+
 // ── Sessions ────────────────────────────────────────────────────────────────
 
 export async function getSessionsByEntry(entryId: string): Promise<Session[]> {

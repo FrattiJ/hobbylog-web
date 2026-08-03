@@ -7,10 +7,12 @@ import { supabase } from '@/lib/supabaseClient'
 import Sidebar from './Sidebar'
 import LoginScreen from './LoginScreen'
 import OnboardingSelector from './OnboardingSelector'
+import WhatsNew from './WhatsNew'
 import { HobbyContext } from './HobbyContext'
+import { hasUnseenChangelog, markChangelogSeen } from '@/lib/changelog'
 import { HOBBIES } from '@/lib/hobbies'
 import { getProfile, setEnabledHobbies, completeOnboarding, PROFILE_CHANGED_EVENT, type WebProfile } from '@/lib/db'
-import { getTheme, applyTheme } from '@/lib/theme'
+import { getTheme, applyTheme, getDisplaySize, applyDisplaySize } from '@/lib/theme'
 import type { HobbyCategory } from '@/types/database'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -20,9 +22,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [profile, setProfile] = useState<WebProfile | null>(null)
   const [profileReady, setProfileReady] = useState(false)
   const [enabledIds, setEnabledIds] = useState<HobbyCategory[]>(HOBBIES.map((h) => h.id))
+  const [showWhatsNew, setShowWhatsNew] = useState(false)
 
   useEffect(() => {
     applyTheme(getTheme())
+    applyDisplaySize(getDisplaySize())
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true) })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
@@ -33,6 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       setProfile(p)
       if (p.enabled_hobbies) setEnabledIds(p.enabled_hobbies)
       setProfileReady(true)
+      if (p.onboarded && hasUnseenChangelog()) setShowWhatsNew(true)
     }).catch(() => { setProfileReady(true) })
   }, [])
 
@@ -50,6 +55,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const handleOnboardingComplete = useCallback(async (ids: HobbyCategory[], goToImport: boolean) => {
     await completeOnboarding(ids)
+    markChangelogSeen() // brand-new users skip the popup for the version they joined on
     setEnabledIds(ids)
     loadProfile()
     if (goToImport) router.push('/import')
@@ -88,6 +94,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <main style={{ marginLeft: 220, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
           {children}
         </main>
+
+        {showWhatsNew && <WhatsNew onClose={() => setShowWhatsNew(false)} />}
       </div>
     </HobbyContext.Provider>
   )

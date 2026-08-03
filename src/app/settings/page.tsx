@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Moon, Sun, Check, Trash2, Camera, Download } from 'lucide-react'
+import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, setUsername, setAvatar } from '@/lib/db'
+import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback } from '@/lib/db'
 import { cropSquareAvatar } from '@/lib/image'
-import { getTheme, setTheme, type Theme } from '@/lib/theme'
+import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type DisplaySize } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
 import { useHobbies } from '@/components/HobbyContext'
@@ -17,8 +17,14 @@ export default function SettingsPage() {
   const { enabledIds, setEnabledIds } = useHobbies()
   const [email, setEmail] = useState('')
   const [theme, setThemeState] = useState<Theme>(() => getTheme())
+  const [displaySize, setDisplaySizeState] = useState<DisplaySize>(() => getDisplaySize())
   const [clearConfirm, setClearConfirm] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+
+  const [fbKind, setFbKind] = useState<'bug' | 'feature'>('bug')
+  const [fbText, setFbText] = useState('')
+  const [fbBusy, setFbBusy] = useState(false)
+  const [fbMsg, setFbMsg] = useState<string | null>(null)
 
   const [username, setUsernameState] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<string | null>(null)
@@ -54,6 +60,17 @@ export default function SettingsPage() {
   }
 
   function changeTheme(t: Theme) { setTheme(t); setThemeState(t) }
+  function changeDisplaySize(s: DisplaySize) { setDisplaySize(s); setDisplaySizeState(s) }
+
+  async function sendFeedback() {
+    if (!fbText.trim()) return
+    setFbBusy(true); setFbMsg(null)
+    try {
+      await submitFeedback(fbKind, fbText)
+      setFbText(''); setFbMsg('Thanks! Your feedback was sent.')
+    } catch { setFbMsg('Could not send — please try again.') }
+    setFbBusy(false)
+  }
 
   async function toggleHobby(id: typeof HOBBIES[number]['id']) {
     const next = enabledIds.includes(id) ? enabledIds.filter((x) => x !== id) : [...enabledIds, id]
@@ -139,6 +156,23 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Display size */}
+      <div style={card}>
+        <h2 style={h2}>DISPLAY SIZE</h2>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Scales the whole interface — go compact to fit more, or larger for readability.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {(['compact', 'normal', 'large', 'xl'] as DisplaySize[]).map((s) => {
+            const active = displaySize === s
+            return (
+              <button key={s} onClick={() => changeDisplaySize(s)}
+                style={{ padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                {s === 'xl' ? 'X-Large' : s}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Tracked hobbies */}
       <div style={card}>
         <h2 style={h2}>TRACKED HOBBIES</h2>
@@ -156,6 +190,28 @@ export default function SettingsPage() {
             )
           })}
         </div>
+      </div>
+
+      {/* Feedback */}
+      <div style={{ ...card, borderLeftColor: '#0891b2' }}>
+        <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#0891b2' }} /> FEEDBACK</h2>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Found a bug or have an idea? Send it straight to the developer.</p>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {(['bug', 'feature'] as const).map((k) => (
+            <button key={k} onClick={() => setFbKind(k)}
+              style={{ padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
+              {k === 'bug' ? '🐛 Bug' : '✦ Idea'}
+            </button>
+          ))}
+        </div>
+        <textarea value={fbText} onChange={(e) => setFbText(e.target.value)} rows={3}
+          placeholder={fbKind === 'bug' ? 'What happened, and what did you expect?' : 'What would you like to see?'}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #0891b266', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-mono)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
+        <button onClick={sendFeedback} disabled={fbBusy || !fbText.trim()}
+          style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: fbBusy ? 'wait' : 'pointer', opacity: fbBusy || !fbText.trim() ? 0.5 : 1 }}>
+          {fbBusy ? 'SENDING…' : 'SEND'}
+        </button>
+        {fbMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
       </div>
 
       {/* Danger */}
