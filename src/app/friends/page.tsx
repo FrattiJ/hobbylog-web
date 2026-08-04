@@ -5,11 +5,34 @@ import { UserPlus, Check, X, Users } from 'lucide-react'
 import Link from 'next/link'
 import {
   searchUsers, sendFriendRequest, listFriends, listIncomingRequests, listOutgoingRequests,
-  respondToRequest, removeFriend, getProfile, PROFILE_CHANGED_EVENT, type UserRef, type FriendView,
+  respondToRequest, removeFriend, getProfile, getFriendsFeed, PROFILE_CHANGED_EVENT,
+  type UserRef, type FriendView, type FeedItem,
 } from '@/lib/db'
+import { HOBBY_MAP, STATUS_LABELS } from '@/lib/hobbies'
+import type { Entry } from '@/types/database'
 import FriendLibrary from '@/components/FriendLibrary'
 
 const GREEN = '#22c55e'
+
+function activityVerb(e: Entry): string {
+  if (e.status === 'completed') return 'finished'
+  if (e.status === 'dropped') return 'dropped'
+  if (e.status === 'backlog') return 'added to backlog'
+  if (e.hobby_category === 'games') return 'is playing'
+  if (e.hobby_category === 'movies' || e.hobby_category === 'tv') return 'is watching'
+  if (e.hobby_category === 'books') return 'is reading'
+  return 'is working on'
+}
+
+function timeAgo(iso: string): string {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  const m = s / 60; if (m < 60) return `${Math.floor(m)}m ago`
+  const h = m / 60; if (h < 24) return `${Math.floor(h)}h ago`
+  const d = h / 24; if (d < 7) return `${Math.floor(d)}d ago`
+  const w = d / 7; if (w < 5) return `${Math.floor(w)}w ago`
+  return new Date(iso).toLocaleDateString()
+}
 
 function Avatar({ url, name, size = 30 }: { url: string | null; name: string; size?: number }) {
   return (
@@ -35,12 +58,14 @@ export default function FriendsPage() {
   const [friends, setFriends] = useState<FriendView[]>([])
   const [incoming, setIncoming] = useState<FriendView[]>([])
   const [outgoing, setOutgoing] = useState<FriendView[]>([])
+  const [feed, setFeed] = useState<FeedItem[]>([])
   const seq = useRef(0)
 
   const load = useCallback(() => {
     listFriends().then(setFriends).catch(() => {})
     listIncomingRequests().then(setIncoming).catch(() => {})
     listOutgoingRequests().then(setOutgoing).catch(() => {})
+    getFriendsFeed().then(setFeed).catch(() => {})
     getProfile().then((p) => setMyHandle(p.username ?? '')).catch(() => {})
   }, [])
 
@@ -113,6 +138,42 @@ export default function FriendsPage() {
           Share that handle so friends can search you. Search is by username — pick a memorable one. You only see someone&apos;s logs once you&apos;re friends.
         </p>
       </div>
+
+      {/* Recent activity feed */}
+      {feed.length > 0 && (
+        <div style={card}>
+          <h2 style={h2}>RECENT ACTIVITY</h2>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {feed.map(({ entry: e, friend: f }, i) => {
+              const hobby = HOBBY_MAP[e.hobby_category]
+              return (
+                <button key={`${e.id}-${f.user_id}`} onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })}
+                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 0', borderBottom: i < feed.length - 1 ? '1px solid var(--border-dim)' : 'none', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  <Avatar url={f.avatar_url} name={f.username} size={34} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4 }}>
+                      <span style={{ color: GREEN, fontWeight: 700 }}>{f.username}</span> {activityVerb(e)}
+                      <span style={{ color: 'var(--text-dim)' }}> · {timeAgo(e.updated_at)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+                      {e.cover_url
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={e.cover_url} alt="" style={{ width: 26, height: 38, objectFit: 'cover', flexShrink: 0 }} />
+                        : <div style={{ width: 26, height: 38, background: 'var(--bg-base)', flexShrink: 0 }} />}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{STATUS_LABELS[e.status]}</span>
+                      {e.hobby_category === 'games' && e.status === 'in_progress' && (e.progress_current ?? 0) > 0 && (
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>· {e.progress_current}h</span>
+                      )}
+                      {e.status === 'completed' && e.rating != null && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: hobby.accent, flexShrink: 0 }}>★ {e.rating}</span>}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Find people */}
       <div style={card}>

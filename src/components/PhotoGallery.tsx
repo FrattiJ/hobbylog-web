@@ -67,7 +67,8 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
 }
 
 export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }: PhotoGalleryProps) {
-  const [uploading, setUploading] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState<string | null>(null) // compressed photo awaiting upload
   const [caption, setCaption] = useState('')
   const [uploadType, setUploadType] = useState<PhotoType>('progress')
   const [lightbox, setLightbox] = useState<Photo | null>(null)
@@ -76,25 +77,33 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   const progressPhotos = photos.filter((p) => p.photo_type === 'progress')
   const completedPhotos = photos.filter((p) => p.photo_type === 'completed')
 
+  // Step 1: pick/take a photo → hold a preview (does NOT upload yet).
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
+    setBusy(true)
     try {
-      const dataUrl = await compressImage(file)
-      const photo = await insertPhoto({
-        entry_id: entryId,
-        data_url: dataUrl,
-        caption: caption.trim() || null,
-        photo_type: uploadType,
-      })
+      setPending(await compressImage(file))
+    } catch (err) {
+      console.error('Photo processing failed:', err)
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  // Step 2: after adding a caption, upload it.
+  async function upload() {
+    if (!pending) return
+    setBusy(true)
+    try {
+      const photo = await insertPhoto({ entry_id: entryId, data_url: pending, caption: caption.trim() || null, photo_type: uploadType })
       onPhotosChange([...photos, photo])
-      setCaption('')
+      setPending(null); setCaption('')
     } catch (err) {
       console.error('Photo upload failed:', err)
     } finally {
-      setUploading(false)
-      if (inputRef.current) inputRef.current.value = ''
+      setBusy(false)
     }
   }
 
@@ -152,43 +161,43 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
           ))}
         </div>
 
-        {/* Caption */}
-        <input
-          type="text"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="CAPTION (OPTIONAL)…"
-          style={{ ...inp, marginBottom: 12 }}
-        />
-
-        {/* File picker */}
         <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            width: '100%',
-            padding: '8px 12px',
-            fontFamily: 'var(--font-display)',
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            background: `${accent}22`,
-            border: `1px solid ${accent}`,
-            borderLeft: `3px solid ${accent}`,
-            color: accent,
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            opacity: uploading ? 0.6 : 1,
-            transition: 'all 0.15s ease',
-            justifyContent: 'center',
-          }}
-        >
-          <Upload size={11} />
-          {uploading ? 'COMPRESSING…' : 'CHOOSE PHOTO'}
-        </button>
+
+        {pending ? (
+          <>
+            {/* Preview */}
+            <img src={pending} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} />
+            {/* Caption written after the photo is taken */}
+            <input
+              type="text"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Add a caption or comment…"
+              spellCheck
+              autoCapitalize="sentences"
+              style={{ ...inp, marginBottom: 12 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={upload} disabled={busy}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '8px 12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+                <Upload size={11} /> {busy ? 'UPLOADING…' : 'UPLOAD'}
+              </button>
+              <button onClick={() => { setPending(null); setCaption('') }} disabled={busy}
+                style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: busy ? 'wait' : 'pointer' }}>
+                DISCARD
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '8px 12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, justifyContent: 'center' }}
+          >
+            <ImagePlus size={11} />
+            {busy ? 'PROCESSING…' : 'CHOOSE OR TAKE PHOTO'}
+          </button>
+        )}
       </div>
 
       {/* Lightbox */}

@@ -306,6 +306,20 @@ export async function addToMyBacklog(e: Entry): Promise<void> {
   })
 }
 
+// Recent activity across ALL friends — most-recently-updated entries, each tagged
+// with which friend it belongs to. Powers the Friends feed.
+export interface FeedItem { entry: Entry; friend: FriendView }
+export async function getFriendsFeed(limit = 40): Promise<FeedItem[]> {
+  const friends = await listFriends()
+  if (friends.length === 0) return []
+  const byId = new Map(friends.map((f) => [f.user_id, f]))
+  const { data, error } = await supabase.from('web_entries').select('*')
+    .in('user_id', friends.map((f) => f.user_id))
+    .order('updated_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return (data ?? []).map((r) => ({ entry: parseEntry(r), friend: byId.get((r as Row).user_id as string)! })).filter((x) => x.friend)
+}
+
 // A friend's library — accepted-friend RLS on web_entries permits this read.
 export async function getFriendEntries(friendId: string): Promise<Entry[]> {
   const { data, error } = await supabase.from('web_entries').select('*').eq('user_id', friendId).order('updated_at', { ascending: false })
