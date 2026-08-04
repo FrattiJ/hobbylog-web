@@ -8,6 +8,7 @@ import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, get
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
+import { useIsMobile } from '@/lib/useIsMobile'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
@@ -21,6 +22,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 }) {
   const hobby = HOBBY_MAP[entry.hobby_category as HobbyCategory]
   const accent = hobby?.accent ?? ACCENT
+  const isMobile = useIsMobile()
 
   const [status, setStatus] = useState(entry.status)
   const [rating, setRating] = useState(entry.rating?.toString() ?? '')
@@ -186,10 +188,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         <ArrowLeft size={14} /> BACK TO {(hobby?.pluralLabel ?? '').toUpperCase()}
       </button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? 20 : 32 }}>
         {/* Cover + meta */}
         <div>
-          <div style={{ aspectRatio: '2/3', marginBottom: 8, background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ aspectRatio: '2/3', width: '100%', maxWidth: isMobile ? 200 : undefined, margin: isMobile ? '0 auto 8px' : '0 0 8px', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {coverUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

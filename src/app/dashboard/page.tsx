@@ -121,7 +121,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={{ padding: '32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="mech-skeleton"
               style={{ height: 110, clipPath: 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)', animationDelay: `${i * 80}ms` }}
@@ -144,7 +144,7 @@ export default function DashboardPage() {
       <GettingStarted />
 
       {/* ── Clickable stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
         <StatFilterCard label="Total Records"  value={entries.length}    accent="#7c3aed" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
         <StatFilterCard label="In Progress"    value={inProgress.length} accent="#0891b2" index={1} active={activeFilter === 'in_progress'} onClick={() => handleStatClick('in_progress')} />
         <StatFilterCard label="Completed"      value={completed.length}  accent="#22c55e" index={2} active={activeFilter === 'completed'}   onClick={() => handleStatClick('completed')} />
@@ -156,7 +156,7 @@ export default function DashboardPage() {
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.14em', marginBottom: 8, opacity: 0.7 }}>
           (Games, Movies, Audiobooks, TV shows @ 22min/ep)
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <StatCard label="Backlog Hours" value={Math.round(backlogHours * 10) / 10} accent="var(--text-dim)" index={4} />
           <StatCard label="In Progress + Completed" value={Math.round(activeHours * 10) / 10} accent="#0891b2" index={5} />
         </div>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', marginBottom: 12 }}>
           CATEGORY INDEX
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${enabledHobbies.length}, 1fr)`, gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
           {enabledHobbies.map((h, i) => {
             const count = entries.filter((e) => e.hobby_category === h.id).length
             return (

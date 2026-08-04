@@ -29,7 +29,7 @@ export default function StatsPage() {
 
   if (loading) return (
     <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
         {[...Array(4)].map((_, i) => (
           <div key={i} className="mech-skeleton"
             style={{ height: 110, clipPath: CLIP, animationDelay: `${i * 80}ms` }}
@@ -97,7 +97,7 @@ export default function StatsPage() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
         <StatCard label="Backlog Hours"   value={backlogHours}                              accent="#7c3aed" sub="estimated time remaining" index={0} />
         <StatCard label="Hours Finished"  value={finishedHours}                             accent="#0891b2" sub="across completed entries"  index={1} />
         <StatCard label="Total Entries"   value={entries.length}                            accent="#2563eb" index={2} />
@@ -152,7 +152,7 @@ export default function StatsPage() {
       )}
 
       {/* ── Row 2: Category bar + Status donut ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 24 }}>
         {/* Entries by category */}
         <div style={{ padding: '1px', clipPath: CLIP, background: '#7c3aed55' }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, width: '100%', padding: 20, position: 'relative' }}>
@@ -213,7 +213,7 @@ export default function StatsPage() {
       </div>
 
       {/* ── Row 3: Completion rate + Top rated ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
         {/* Completion rate by category */}
         <div style={{ padding: '1px', clipPath: CLIP, background: '#d9770655' }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, width: '100%', padding: 20, position: 'relative' }}>
