@@ -119,6 +119,7 @@ export default function FriendsPage() {
   const row: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border-dim)' }
   const nameStyle: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.04em' }
   const smallBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color, background: `${color}18`, border: `1px solid ${color}66`, cursor: 'pointer' })
+  const subLabel: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.16em', margin: '0 0 6px' }
 
   return (
     <div style={{ padding: 32, maxWidth: 760, margin: '0 auto' }}>
@@ -137,6 +138,90 @@ export default function FriendsPage() {
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.6 }}>
           Share that handle so friends can search you. Search is by username — pick a memorable one. You only see someone&apos;s logs once you&apos;re friends.
         </p>
+      </div>
+
+      {/* Find people */}
+      <div style={card}>
+        <h2 style={h2}>FIND OPERATORS</h2>
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by username…" spellCheck={false}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${GREEN}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none' }} />
+        {msg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f59e0b', margin: '10px 0 0' }}>{msg}</p>}
+        {(searching || results.length > 0) && (
+          <div style={{ marginTop: 10 }}>
+            {searching && results.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>SEARCHING…</p>}
+            {results.map((u) => {
+              const already = knownIds.has(u.user_id) || requested.has(u.user_id)
+              return (
+                <div key={u.user_id} style={row}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <Avatar url={u.avatar_url} name={u.username} />
+                    <span style={nameStyle}>{u.username}</span>
+                  </div>
+                  {already
+                    ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{friends.some((f) => f.user_id === u.user_id) ? 'FRIENDS' : 'PENDING'}</span>
+                    : <button onClick={() => add(u)} style={smallBtn(GREEN)}><UserPlus size={12} /> ADD</button>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Your network — friends + requests combined */}
+      <div style={card}>
+        <h2 style={h2}>YOUR NETWORK <span style={{ color: GREEN }}>({friends.length})</span></h2>
+
+        {/* Incoming requests */}
+        {incoming.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={subLabel}>FRIEND REQUESTS <span style={{ color: '#0891b2' }}>({incoming.length})</span></p>
+            {incoming.map((r) => (
+              <div key={r.id} style={row}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <Avatar url={r.avatar_url} name={r.username} />
+                  <span style={nameStyle}>{r.username}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => respond(r.id, true)} style={smallBtn(GREEN)}><Check size={12} /> ACCEPT</button>
+                  <button onClick={() => respond(r.id, false)} style={smallBtn('#ef4444')}><X size={12} /> DECLINE</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Friends */}
+        {friends.length === 0
+          ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}><Users size={14} /> No friends yet — search a username above to send a request.</p>
+          : friends.map((f) => (
+            <div key={f.id} style={row}>
+              <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                <Avatar url={f.avatar_url} name={f.username} />
+                <span style={nameStyle}>{f.username}</span>
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#0891b2')}>VIEW LOGS</button>
+                <button onClick={() => unfriend(f.id)} style={smallBtn('#ef4444')}>REMOVE</button>
+              </div>
+            </div>
+          ))}
+
+        {/* Sent requests */}
+        {outgoing.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <p style={subLabel}>SENT REQUESTS</p>
+            {outgoing.map((r) => (
+              <div key={r.id} style={row}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <Avatar url={r.avatar_url} name={r.username} />
+                  <span style={{ ...nameStyle, color: 'var(--text-mid)' }}>{r.username}</span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>PENDING</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent activity feed */}
@@ -172,85 +257,6 @@ export default function FriendsPage() {
               )
             })}
           </div>
-        </div>
-      )}
-
-      {/* Find people */}
-      <div style={card}>
-        <h2 style={h2}>FIND OPERATORS</h2>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by username…" spellCheck={false}
-          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${GREEN}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none' }} />
-        {msg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f59e0b', margin: '10px 0 0' }}>{msg}</p>}
-        {(searching || results.length > 0) && (
-          <div style={{ marginTop: 10 }}>
-            {searching && results.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>SEARCHING…</p>}
-            {results.map((u) => {
-              const already = knownIds.has(u.user_id) || requested.has(u.user_id)
-              return (
-                <div key={u.user_id} style={row}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <Avatar url={u.avatar_url} name={u.username} />
-                    <span style={nameStyle}>{u.username}</span>
-                  </div>
-                  {already
-                    ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{friends.some((f) => f.user_id === u.user_id) ? 'FRIENDS' : 'PENDING'}</span>
-                    : <button onClick={() => add(u)} style={smallBtn(GREEN)}><UserPlus size={12} /> ADD</button>}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Incoming requests */}
-      {incoming.length > 0 && (
-        <div style={{ ...card, borderLeftColor: '#0891b2' }}>
-          <h2 style={h2}>FRIEND REQUESTS <span style={{ color: '#0891b2' }}>({incoming.length})</span></h2>
-          {incoming.map((r) => (
-            <div key={r.id} style={row}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <Avatar url={r.avatar_url} name={r.username} />
-                <span style={nameStyle}>{r.username}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => respond(r.id, true)} style={smallBtn(GREEN)}><Check size={12} /> ACCEPT</button>
-                <button onClick={() => respond(r.id, false)} style={smallBtn('#ef4444')}><X size={12} /> DECLINE</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Friends */}
-      <div style={card}>
-        <h2 style={h2}>YOUR NETWORK <span style={{ color: GREEN }}>({friends.length})</span></h2>
-        {friends.length === 0
-          ? <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}><Users size={14} /> No friends yet — search a username above to send a request.</p>
-          : friends.map((f) => (
-            <div key={f.id} style={row}>
-              <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                <Avatar url={f.avatar_url} name={f.username} />
-                <span style={nameStyle}>{f.username}</span>
-              </button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#0891b2')}>VIEW LOGS</button>
-                <button onClick={() => unfriend(f.id)} style={smallBtn('#ef4444')}>REMOVE</button>
-              </div>
-            </div>
-          ))}
-      </div>
-
-      {/* Outgoing (sent) */}
-      {outgoing.length > 0 && (
-        <div style={{ ...card, borderLeftColor: 'var(--border-dim)' }}>
-          <h2 style={h2}>SENT REQUESTS</h2>
-          {outgoing.map((r) => (
-            <div key={r.id} style={row}>
-              <span style={{ ...nameStyle, color: 'var(--text-mid)' }}>{r.username}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>PENDING</span>
-            </div>
-          ))}
         </div>
       )}
     </div>
