@@ -9,6 +9,7 @@ import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
 import { useIsMobile } from '@/lib/useIsMobile'
+import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
@@ -30,6 +31,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [progressTotal, setProgressTotal] = useState(entry.progress_total?.toString() ?? '')
   const [season, setSeason] = useState(entry.current_season?.toString() ?? '')
   const [episode, setEpisode] = useState(entry.current_episode?.toString() ?? '')
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => Array.isArray(entry.metadata?.checklist) ? (entry.metadata!.checklist as ChecklistItem[]) : [])
   const [volumeCurrent, setVolumeCurrent] = useState(entry.metadata?.volume_current != null ? String(entry.metadata.volume_current) : '')
   const [volumeTotal, setVolumeTotal] = useState(entry.metadata?.volume_total != null ? String(entry.metadata.volume_total) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
@@ -69,6 +71,30 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const isTV = entry.hobby_category === 'tv'
   const tmdbId = entry.external_source === 'tmdb' ? entry.external_id : null
   const isManga = entry.hobby_category === 'books' && entry.book_subtype === 'manga'
+  const isPercent = !!hobby?.percentBased
+
+  // Checklist changes drive the project's % and status, and save immediately.
+  async function persistChecklist(items: ChecklistItem[]) {
+    setChecklist(items)
+    const total = items.length, done = items.filter((i) => i.done).length
+    const pct = total ? Math.round((done / total) * 100) : (status === 'completed' ? 100 : 0)
+    let newStatus = status
+    if (total > 0) {
+      newStatus = done === total ? 'completed' : done > 0 ? 'in_progress' : 'backlog'
+      setStatus(newStatus); setProgressCurrent(String(pct))
+    }
+    const today = new Date().toISOString().split('T')[0]
+    try {
+      await updateEntry(entry.id, {
+        metadata: { ...(entry.metadata ?? {}), checklist: items },
+        progress_current: pct, progress_total: 100, status: newStatus,
+        date_completed: newStatus === 'completed' && !entry.date_completed ? today : entry.date_completed,
+        date_started: newStatus === 'in_progress' && !entry.date_started ? today : entry.date_started,
+      })
+      if (newStatus !== entry.status) await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
+      onChanged()
+    } catch { /* noop */ }
+  }
 
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
@@ -119,6 +145,14 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         const fillTo = totalNum ?? (hobby?.progressUnit === '%' ? 100 : null)
         if (fillTo != null && progressValue < fillTo) { progressValue = fillTo; setProgressCurrent(String(fillTo)) }
       }
+      // Percent-based projects: total is always 100; the checklist (if any) sets
+      // the %, otherwise status maps to 0 / 100.
+      let progressTotalValue: number | null = progressTotal ? parseFloat(progressTotal) : null
+      if (isPercent) {
+        progressTotalValue = 100
+        const total = checklist.length, done = checklist.filter((i) => i.done).length
+        progressValue = total ? Math.round((done / total) * 100) : status === 'completed' ? 100 : status === 'backlog' ? 0 : progressValue
+      }
       const mangaFields = isManga ? {
         metadata: {
           ...(entry.metadata ?? {}),
@@ -131,7 +165,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
         progress_current: progressValue,
-        progress_total: progressTotal ? parseFloat(progressTotal) : null,
+        progress_total: progressTotalValue,
         ...tvFields,
         ...mangaFields,
         date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
@@ -304,11 +338,23 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
-                <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({hobby?.progressUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
-                <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
-              </div>
+              {(!hobby?.hideRating || !isPercent) && (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {!hobby?.hideRating && (
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
+                  )}
+                  {!isPercent && (
+                    <>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({hobby?.progressUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {isPercent && (
+                <ProjectChecklist items={checklist} accent={accent} onChange={persistChecklist} />
+              )}
 
               {community && community.count > 0 && community.avg != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
@@ -323,7 +369,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 </div>
               )}
 
-              {progressPct !== null && (
+              {progressPct !== null && !isPercent && (
                 <div>
                   <div style={{ height: 4, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, progressPct)}%`, background: accent }} />

@@ -49,6 +49,9 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     : hobbyId === 'tv' ? 'ep'
     : hobby.progressUnit
 
+  const isGame = hobbyId === 'games'
+  const showTotal = !isGame && !hobby.percentBased
+
   // Search-as-you-type
   useEffect(() => {
     if (!searchType || query.trim().length < 2 || selected) { setResults([]); setSearching(false); return }
@@ -115,7 +118,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
         progress_current: 0,
-        progress_total: hobbyId === 'games' ? null : (progressTotal ? parseFloat(progressTotal) : null),
+        progress_total: hobbyId === 'games' ? null : hobby.percentBased ? 100 : (progressTotal ? parseFloat(progressTotal) : null),
         cover_url: coverUrl.trim() || null,
         external_id: selected?.external_id ?? null,
         external_source: selected?.external_source ?? null,
@@ -244,25 +247,28 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ flex: 1 }}>
-              <p style={label}>RATING /10</p>
-              <input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} />
-            </div>
-            <div style={{ flex: 1 }}>
-              {hobbyId === 'games' ? (
-                <>
+          {(!hobby.hideRating || isGame || showTotal) && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              {!hobby.hideRating && (
+                <div style={{ flex: 1 }}>
+                  <p style={label}>RATING /10</p>
+                  <input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} />
+                </div>
+              )}
+              {isGame && (
+                <div style={{ flex: 1 }}>
                   <p style={label}>TIME TO BEAT (hrs)</p>
                   <input type="number" min={0} step={0.5} value={gameTTB} onChange={(e) => setGameTTB(e.target.value)} placeholder={enriching ? '…' : '—'} style={inp} />
-                </>
-              ) : (
-                <>
+                </div>
+              )}
+              {showTotal && (
+                <div style={{ flex: 1 }}>
                   <p style={label}>TOTAL ({totalUnit})</p>
                   <input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder={enriching ? 'fetching…' : '—'} style={inp} />
-                </>
+                </div>
               )}
             </div>
-          </div>
+          )}
 
           {hobbyId === 'books' && bookSubtype === 'manga' && (
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>

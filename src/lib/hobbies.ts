@@ -10,6 +10,11 @@ export interface HobbyConfig {
   progressUnit: string
   manualOnly: boolean
   apiSource?: string
+  // Progress is a 0–100% completion (total always 100). These hobbies get the
+  // build checklist that drives the percentage. e.g. projects, art.
+  percentBased?: boolean
+  // Hide the 10/10 rating field (doesn't fit productivity-style hobbies).
+  hideRating?: boolean
 }
 
 export const HOBBIES: HobbyConfig[] = [
@@ -66,6 +71,8 @@ export const HOBBIES: HobbyConfig[] = [
     progressLabel: '% Complete',
     progressUnit: '%',
     manualOnly: true,
+    percentBased: true,
+    hideRating: true,
   },
   {
     id: 'fitness',
@@ -76,6 +83,7 @@ export const HOBBIES: HobbyConfig[] = [
     progressLabel: 'Sessions',
     progressUnit: 'sessions',
     manualOnly: true,
+    hideRating: true,
   },
   {
     id: 'art',
@@ -86,6 +94,7 @@ export const HOBBIES: HobbyConfig[] = [
     progressLabel: '% Complete',
     progressUnit: '%',
     manualOnly: true,
+    percentBased: true,
   },
 ]
 
