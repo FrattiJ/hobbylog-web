@@ -6,6 +6,7 @@ import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib
 import { insertEntry, moveEntryToRank } from '@/lib/db'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
 import { CLIP } from './MechCard'
+import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import type { HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 
 export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
@@ -32,6 +33,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [volumeCurrent, setVolumeCurrent] = useState('')
   const [volumeTotal, setVolumeTotal] = useState('')
   const [rankInput, setRankInput] = useState('')
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -110,14 +112,22 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     if (!title.trim()) { setError('Title is required'); return }
     setSaving(true); setError(null)
     const today = new Date().toISOString().split('T')[0]
+    // Percent-based projects: a checklist added here sets the initial % + status.
+    let effStatus = status
+    let progCurrent = 0
+    if (hobby.percentBased && checklist.length > 0) {
+      const done = checklist.filter((i) => i.done).length
+      progCurrent = Math.round((done / checklist.length) * 100)
+      effStatus = done === checklist.length ? 'completed' : done > 0 ? 'in_progress' : status
+    }
     try {
       const created = await insertEntry({
         hobby_category: hobbyId,
         title: title.trim(),
-        status,
+        status: effStatus,
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
-        progress_current: 0,
+        progress_current: progCurrent,
         progress_total: hobbyId === 'games' ? null : hobby.percentBased ? 100 : (progressTotal ? parseFloat(progressTotal) : null),
         cover_url: coverUrl.trim() || null,
         external_id: selected?.external_id ?? null,
@@ -130,11 +140,12 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             ...(volumeCurrent ? { volume_current: parseInt(volumeCurrent) } : {}),
             ...(volumeTotal ? { volume_total: parseInt(volumeTotal) } : {}),
           } : {}),
+          ...(hobby.percentBased && checklist.length > 0 ? { checklist } : {}),
         },
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
         current_season: null, current_episode: null, priority: null,
-        date_started: status === 'in_progress' ? today : null,
-        date_completed: status === 'completed' ? today : null,
+        date_started: effStatus === 'in_progress' ? today : null,
+        date_completed: effStatus === 'completed' ? today : null,
       })
       // Optional backlog rank override — otherwise it stays at the bottom.
       if (status === 'backlog' && rankInput.trim()) {
@@ -280,6 +291,12 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
                 <p style={label}>VOLUMES TOTAL</p>
                 <input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} />
               </div>
+            </div>
+          )}
+
+          {hobby.percentBased && (
+            <div style={{ marginBottom: 14 }}>
+              <ProjectChecklist items={checklist} accent={accent} onChange={setChecklist} />
             </div>
           )}
 

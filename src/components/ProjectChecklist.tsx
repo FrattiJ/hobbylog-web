@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, Check } from 'lucide-react'
+import { Plus, Trash2, Check, ChevronUp, ChevronDown } from 'lucide-react'
 
 export interface ChecklistItem { id: string; text: string; done: boolean }
 
@@ -26,6 +26,13 @@ export default function ProjectChecklist({ items, accent, onChange }: {
   }
   function toggle(id: string) { onChange(items.map((i) => (i.id === id ? { ...i, done: !i.done } : i))) }
   function remove(id: string) { onChange(items.filter((i) => i.id !== id)) }
+  function move(index: number, dir: -1 | 1) {
+    const to = index + dir
+    if (to < 0 || to >= items.length) return
+    const next = [...items]
+    ;[next[index], next[to]] = [next[to], next[index]]
+    onChange(next)
+  }
 
   return (
     <div>
@@ -43,13 +50,23 @@ export default function ProjectChecklist({ items, accent, onChange }: {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-        {items.map((it) => (
+        {items.map((it, idx) => (
           <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
             <button onClick={() => toggle(it.id)} aria-label="Toggle step"
               style={{ width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: it.done ? accent : 'transparent', border: `1px solid ${it.done ? accent : 'var(--border-dim)'}`, cursor: 'pointer', color: '#fff' }}>
               {it.done && <Check size={12} />}
             </button>
             <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)', fontSize: 13, color: it.done ? 'var(--text-dim)' : 'var(--text-hi)', textDecoration: it.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.text}</span>
+            <div style={{ display: 'flex', flexShrink: 0 }}>
+              <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Move up"
+                style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, padding: 2, display: 'flex' }}>
+                <ChevronUp size={14} />
+              </button>
+              <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1} aria-label="Move down"
+                style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: idx === items.length - 1 ? 'default' : 'pointer', opacity: idx === items.length - 1 ? 0.3 : 1, padding: 2, display: 'flex' }}>
+                <ChevronDown size={14} />
+              </button>
+            </div>
             <button onClick={() => remove(it.id)} aria-label="Remove step"
               style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 2, display: 'flex' }}>
               <Trash2 size={13} />
