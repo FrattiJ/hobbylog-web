@@ -5,6 +5,7 @@ import { ArrowLeft, Star, Plus, Check } from 'lucide-react'
 import { getFriendEntries, getAllEntries, addToMyBacklog } from '@/lib/db'
 import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
+import FriendEntryDetail from './FriendEntryDetail'
 
 const GREEN = '#22c55e'
 
@@ -24,6 +25,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
   const [statusF, setStatusF] = useState<'all' | string>('all')
   const [sort, setSort] = useState<SortKey>('recent')
   const [commonOnly, setCommonOnly] = useState(false)
+  const [selected, setSelected] = useState<Entry | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -71,6 +73,19 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
   const stat = (n: number, label: string, color: string) => (
     <div><span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color }}>{n}</span><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.12em', marginLeft: 6 }}>{label}</span></div>
   )
+
+  if (selected) {
+    return (
+      <FriendEntryDetail
+        entry={selected}
+        username={username}
+        iHave={iHave(selected)}
+        myRating={myRatingFor(selected)}
+        onBack={() => setSelected(null)}
+        onAdd={add}
+      />
+    )
+  }
 
   return (
     <div>
@@ -127,7 +142,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
           const mineRating = myRatingFor(e)
           const have = iHave(e)
           return (
-            <div key={e.id} style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66` }}>
+            <div key={e.id} onClick={() => setSelected(e)} title="View details" style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66`, cursor: 'pointer' }}>
               {e.cover_url
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={e.cover_url} alt="" style={{ width: 46, height: 66, objectFit: 'cover', flexShrink: 0 }} />
@@ -137,7 +152,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
                   <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
                   {have
                     ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#d97706', letterSpacing: '0.08em', border: '1px solid #d9770655', padding: '1px 5px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3 }}><Check size={9} /> IN LOG</span>
-                    : <button onClick={() => add(e)} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }}><Plus size={9} /> ADD</button>}
+                    : <button onClick={(ev) => { ev.stopPropagation(); add(e) }} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }}><Plus size={9} /> ADD</button>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: STATUS_COLORS[e.status], letterSpacing: '0.06em' }}>{STATUS_LABELS[e.status]}</span>
