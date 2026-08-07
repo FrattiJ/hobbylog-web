@@ -342,6 +342,24 @@ export async function getGlobalStats(): Promise<GlobalStats> {
   return data as GlobalStats
 }
 
+// Averages across just your accepted friends (same shape as GlobalStats).
+export async function getFriendsStats(): Promise<GlobalStats> {
+  const { data, error } = await supabase.rpc('friends_stats')
+  if (error) throw error
+  return data as GlobalStats
+}
+
+// entry_id → total logged session minutes, for the current user.
+export async function getLoggedMinutesByEntry(): Promise<Map<string, number>> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_sessions').select('entry_id, duration_minutes').eq('user_id', userId)
+  const m = new Map<string, number>()
+  for (const r of (data ?? []) as Array<{ entry_id: string; duration_minutes: number | null }>) {
+    if (r.duration_minutes) m.set(r.entry_id, (m.get(r.entry_id) ?? 0) + r.duration_minutes)
+  }
+  return m
+}
+
 // How the whole site rated one catalog item (matched by external source + id).
 export interface CommunityRating { avg: number | null; count: number }
 export async function getCommunityRating(source: string, extId: string): Promise<CommunityRating> {

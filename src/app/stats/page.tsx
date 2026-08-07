@@ -9,20 +9,25 @@ import StatCard from '@/components/StatCard'
 import { CLIP } from '@/components/MechCard'
 import { HOBBIES } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
-import { getAllEntries, getGlobalStats, ENTRIES_CHANGED_EVENT, type GlobalStats } from '@/lib/db'
+import { getAllEntries, getGlobalStats, getFriendsStats, getLoggedMinutesByEntry, ENTRIES_CHANGED_EVENT, type GlobalStats } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
-import { calcHours } from '@/lib/hours'
+import { calcHoursWithLogged } from '@/lib/hours'
 
 export default function StatsPage() {
   const { enabledHobbies } = useHobbies()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [global, setGlobal] = useState<GlobalStats | null>(null)
+  const [friendsStats, setFriendsStats] = useState<GlobalStats | null>(null)
+  const [logged, setLogged] = useState<Map<string, number>>(new Map())
+  const [compareTo, setCompareTo] = useState<'field' | 'friends'>('field')
 
   useEffect(() => {
     const load = () => getAllEntries().then(setEntries).finally(() => setLoading(false))
     load()
     getGlobalStats().then(setGlobal).catch(() => {})
+    getFriendsStats().then(setFriendsStats).catch(() => {})
+    getLoggedMinutesByEntry().then(setLogged).catch(() => {})
     window.addEventListener(ENTRIES_CHANGED_EVENT, load)
     return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
   }, [])
@@ -46,8 +51,10 @@ export default function StatsPage() {
     ? ratedEntries.reduce((sum, e) => sum + (e.rating ?? 0), 0) / ratedEntries.length
     : null
 
-  const backlogHours  = calcHours(backlog, 'full')
-  const finishedHours = calcHours(completed, 'full')
+  const backlogHours  = calcHoursWithLogged(backlog, logged, 'full')
+  const finishedHours = calcHoursWithLogged(completed, logged, 'full')
+  const hasFriends = !!friendsStats && friendsStats.user_count > 0
+  const compareSource = compareTo === 'friends' ? friendsStats : global
 
   const categoryData = enabledHobbies.map((h) => ({
     name: h.pluralLabel,
@@ -104,19 +111,39 @@ export default function StatsPage() {
         <StatCard label="Avg Rating"      value={avgRating ? avgRating.toFixed(1) : '—'}   accent="#d97706" sub="out of 10" index={3} />
       </div>
 
-      {/* ── You vs everyone ── */}
+      {/* ── You vs the field / friends ── */}
       {global && global.user_count > 0 && (
         <div style={{ marginBottom: 24, padding: '1px', clipPath: CLIP, background: '#22c55e55' }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 20, position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#22c55e', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 4px', letterSpacing: '0.1em' }}>YOU VS THE FIELD</h2>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 18px', letterSpacing: '0.08em' }}>
-              how you stack up against {global.user_count} operator{global.user_count === 1 ? '' : 's'} on hobbylog
-            </p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 4px', letterSpacing: '0.1em' }}>YOU VS {compareTo === 'friends' ? 'FRIENDS' : 'THE FIELD'}</h2>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.08em' }}>
+                  {compareTo === 'friends'
+                    ? (hasFriends ? `across your ${friendsStats!.user_count} friend${friendsStats!.user_count === 1 ? '' : 's'}` : 'add friends to compare')
+                    : `how you stack up against ${global.user_count} operator${global.user_count === 1 ? '' : 's'} on hobbylog`}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['field', 'friends'] as const).map((t) => {
+                  const on = compareTo === t
+                  return (
+                    <button key={t} onClick={() => setCompareTo(t)}
+                      style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', background: on ? '#22c55e22' : 'transparent', border: `1px solid ${on ? '#22c55e' : 'var(--border-dim)'}`, color: on ? '#22c55e' : 'var(--text-dim)', cursor: 'pointer' }}>
+                      {t === 'field' ? 'The Field' : 'Friends'}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {compareTo === 'friends' && !hasFriends ? (
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.6 }}>You need friends to compare — add some on the Friends tab.</p>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
-                { label: 'HOURS FINISHED', mine: finishedHours, avg: global.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
-                { label: 'COMPLETED', mine: completed.length, avg: global.avg_completed ?? 0, unit: '', accent: '#22c55e' },
+                { label: 'HOURS FINISHED', mine: finishedHours, avg: compareSource?.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
+                { label: 'COMPLETED', mine: completed.length, avg: compareSource?.avg_completed ?? 0, unit: '', accent: '#22c55e' },
               ].map((m) => {
                 const max = Math.max(m.mine, m.avg, 0.001)
                 const delta = Math.round((m.mine - m.avg) * 10) / 10
@@ -147,6 +174,7 @@ export default function StatsPage() {
                 )
               })}
             </div>
+            )}
           </div>
         </div>
       )}

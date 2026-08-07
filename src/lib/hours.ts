@@ -1,4 +1,5 @@
 import type { Entry } from '@/types/database'
+import { HOBBY_MAP } from './hobbies'
 
 // Single source of truth for estimated hours so the dashboard and stats page can't drift.
 // basis 'full'  — full length of each entry: games time-to-beat, whole movie/audiobook
@@ -23,6 +24,18 @@ export function calcHours(items: Entry[], basis: 'full' | 'spent'): number {
         total += (episodes * minPerEp) / 60
       }
     }
+  }
+  return Math.round(total * 10) / 10
+}
+
+// Like calcHours, but manual hobbies (projects/fitness/art) — which have no
+// estimate — use the user's actually-logged session time instead. `loggedMinutes`
+// maps entry id → total logged minutes.
+export function calcHoursWithLogged(items: Entry[], loggedMinutes: Map<string, number>, basis: 'full' | 'spent'): number {
+  const media = items.filter((e) => !HOBBY_MAP[e.hobby_category]?.manualOnly)
+  let total = calcHours(media, basis)
+  for (const e of items) {
+    if (HOBBY_MAP[e.hobby_category]?.manualOnly) total += (loggedMinutes.get(e.id) ?? 0) / 60
   }
   return Math.round(total * 10) / 10
 }
