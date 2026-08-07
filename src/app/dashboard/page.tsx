@@ -230,7 +230,13 @@ export default function DashboardPage() {
           CATEGORY INDEX
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
-          {enabledHobbies.map((h, i) => {
+          {(() => {
+            const counts = new Map(enabledHobbies.map((h) => [h.id, entries.filter((e) => e.hobby_category === h.id).length]))
+            const nonEmpty = enabledHobbies.filter((h) => (counts.get(h.id) ?? 0) > 0)
+            // Auto-hide hobbies with nothing tracked; but if EVERYTHING is empty
+            // (brand-new operator) show them all so the grid isn't blank.
+            return (nonEmpty.length > 0 ? nonEmpty : enabledHobbies)
+          })().map((h, i) => {
             const count = entries.filter((e) => e.hobby_category === h.id).length
             return (
               <MechCard key={h.id} accent={h.accent} index={i + 4} hoverable onClick={() => router.push(HOBBY_PATHS[h.id])}>

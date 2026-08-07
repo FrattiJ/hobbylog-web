@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare } from 'lucide-react'
+import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount } from '@/lib/db'
+import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount, isAdminUser, getFeedbackInbox, type FeedbackItem } from '@/lib/db'
 import { cropSquareAvatar } from '@/lib/image'
 import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type DisplaySize } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
@@ -28,6 +28,10 @@ export default function SettingsPage() {
   const [fbBusy, setFbBusy] = useState(false)
   const [fbMsg, setFbMsg] = useState<string | null>(null)
 
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [inbox, setInbox] = useState<FeedbackItem[] | null>(null)
+  const [inboxBusy, setInboxBusy] = useState(false)
+
   const [username, setUsernameState] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
@@ -37,7 +41,14 @@ export default function SettingsPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
     getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url) }).catch(() => {})
+    isAdminUser().then((admin) => { setIsAdmin(admin); if (admin) loadInbox() }).catch(() => {})
   }, [])
+
+  async function loadInbox() {
+    setInboxBusy(true)
+    try { setInbox(await getFeedbackInbox()) } catch { /* non-admin or transient */ }
+    setInboxBusy(false)
+  }
 
   async function saveUsername() {
     setSavingName(true); setUsernameMsg(null)
@@ -172,6 +183,38 @@ export default function SettingsPage() {
         </button>
         {fbMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
       </div>
+
+      {/* Admin: feedback inbox — only rendered for the admin account. */}
+      {isAdmin && (
+        <div style={{ ...card, borderLeftColor: '#d97706' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+            <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+              <Inbox size={15} style={{ color: '#d97706' }} /> FEEDBACK INBOX
+              {inbox && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>· {inbox.length}</span>}
+            </h2>
+            <button onClick={loadInbox} disabled={inboxBusy} title="Refresh"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em', color: '#d97706', background: 'transparent', border: '1px solid #d9770666', cursor: inboxBusy ? 'wait' : 'pointer' }}>
+              <RefreshCw size={12} /> {inboxBusy ? '…' : 'REFRESH'}
+            </button>
+          </div>
+          {inbox && inbox.length === 0 && (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>No feedback yet.</p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(inbox ?? []).map((f) => (
+              <div key={f.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${f.kind === 'bug' ? '#ef4444' : '#0891b2'}`, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? '🐛 Bug' : '✦ Idea'}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-hi)' }}>{f.username || f.email || 'unknown'}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(f.created_at).toLocaleString()}</span>
+                </div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{f.message}</p>
+                {f.page && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', margin: '6px 0 0' }}>on {f.page}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tracked hobbies */}
       <div style={card}>

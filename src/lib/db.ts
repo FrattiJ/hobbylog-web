@@ -377,6 +377,35 @@ export async function submitFeedback(kind: 'bug' | 'feature', message: string): 
   if (error) throw error
 }
 
+const ADMIN_EMAIL = 'you@example.com'
+
+export async function currentUserEmail(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser()
+  return data.user?.email ?? null
+}
+
+export interface FeedbackItem {
+  id: string
+  kind: 'bug' | 'feature'
+  message: string
+  page: string | null
+  created_at: string
+  username: string | null
+  email: string | null
+}
+
+// Admin-only. The RPC re-checks the admin email server-side from the JWT, so a
+// non-admin who calls this just gets a "not authorized" error, never data.
+export async function getFeedbackInbox(): Promise<FeedbackItem[]> {
+  const { data, error } = await supabase.rpc('admin_feedback')
+  if (error) throw error
+  return (data ?? []) as FeedbackItem[]
+}
+
+export async function isAdminUser(): Promise<boolean> {
+  return (await currentUserEmail()) === ADMIN_EMAIL
+}
+
 // Permanently delete the current user's account and all their data.
 export async function deleteMyAccount(): Promise<void> {
   const { error } = await supabase.rpc('delete_my_account')
