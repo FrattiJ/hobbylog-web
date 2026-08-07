@@ -15,6 +15,7 @@ export default function ProjectChecklist({ items, accent, onChange }: {
   onChange: (items: ChecklistItem[]) => void
 }) {
   const [text, setText] = useState('')
+  const [flashId, setFlashId] = useState<string | null>(null)
   const done = items.filter((i) => i.done).length
   const pct = items.length ? Math.round((done / items.length) * 100) : 0
 
@@ -29,9 +30,12 @@ export default function ProjectChecklist({ items, accent, onChange }: {
   function move(index: number, dir: -1 | 1) {
     const to = index + dir
     if (to < 0 || to >= items.length) return
+    const id = items[index].id
     const next = [...items]
     ;[next[index], next[to]] = [next[to], next[index]]
     onChange(next)
+    setFlashId(id)
+    setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), 500)
   }
 
   return (
@@ -51,7 +55,7 @@ export default function ProjectChecklist({ items, accent, onChange }: {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
         {items.map((it, idx) => (
-          <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+          <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', background: flashId === it.id ? `${accent}44` : 'var(--bg-base)', border: `1px solid ${flashId === it.id ? accent : 'var(--border-dim)'}`, transition: 'background 0.45s ease, border-color 0.45s ease' }}>
             <button onClick={() => toggle(it.id)} aria-label="Toggle step"
               style={{ width: 18, height: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: it.done ? accent : 'transparent', border: `1px solid ${it.done ? accent : 'var(--border-dim)'}`, cursor: 'pointer', color: '#fff' }}>
               {it.done && <Check size={12} />}
