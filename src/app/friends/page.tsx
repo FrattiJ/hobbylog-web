@@ -46,7 +46,7 @@ function Avatar({ url, name, size = 30 }: { url: string | null; name: string; si
 }
 
 export default function FriendsPage() {
-  const [selected, setSelected] = useState<{ id: string; username: string; avatar_url: string | null } | null>(null)
+  const [selected, setSelected] = useState<{ id: string; username: string; avatar_url: string | null; entryId?: string } | null>(null)
   const [myHandle, setMyHandle] = useState('')
 
   const [query, setQuery] = useState('')
@@ -109,7 +109,7 @@ export default function FriendsPage() {
   if (selected) {
     return (
       <div style={{ padding: 32, maxWidth: 960, margin: '0 auto' }}>
-        <FriendLibrary friendId={selected.id} username={selected.username} avatarUrl={selected.avatar_url} onBack={() => setSelected(null)} />
+        <FriendLibrary friendId={selected.id} username={selected.username} avatarUrl={selected.avatar_url} initialEntryId={selected.entryId} onBack={() => setSelected(null)} />
       </div>
     )
   }
@@ -232,7 +232,7 @@ export default function FriendsPage() {
             {feed.map(({ entry: e, friend: f }, i) => {
               const hobby = HOBBY_MAP[e.hobby_category]
               return (
-                <button key={`${e.id}-${f.user_id}`} onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })}
+                <button key={`${e.id}-${f.user_id}`} onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url, entryId: e.id })}
                   style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 0', borderBottom: i < feed.length - 1 ? '1px solid var(--border-dim)' : 'none', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                   <Avatar url={f.avatar_url} name={f.username} size={34} />
                   <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,7 +1,8 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Orbitron, Share_Tech_Mono } from 'next/font/google'
 import './globals.css'
 import ClientLayout from '@/components/ClientLayout'
+import ToastProvider from '@/components/Toast'
 
 const orbitron = Orbitron({
   variable: '--font-display',
@@ -17,9 +18,25 @@ const shareTechMono = Share_Tech_Mono({
   display: 'swap',
 })
 
+const DESCRIPTION = 'Track everything you love — one backlog for games, movies, books, and more.'
+
 export const metadata: Metadata = {
-  title: 'Hobbylog',
-  description: 'Track everything you love — one backlog for games, movies, books, and more.',
+  metadataBase: new URL('https://hobbylog-web.vercel.app'),
+  title: { default: 'Hobbylog', template: '%s · Hobbylog' },
+  description: DESCRIPTION,
+  applicationName: 'Hobbylog',
+  openGraph: {
+    title: 'Hobbylog',
+    description: DESCRIPTION,
+    url: '/',
+    siteName: 'Hobbylog',
+    type: 'website',
+  },
+  twitter: { card: 'summary', title: 'Hobbylog', description: DESCRIPTION },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#080a0e',
 }
 
 // Runs synchronously before first paint so a light-theme / non-default display
@@ -32,7 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable}`}>
       <body>
         <script dangerouslySetInnerHTML={{ __html: noFlash }} />
-        <ClientLayout>{children}</ClientLayout>
+        <ToastProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </ToastProvider>
       </body>
     </html>
   )

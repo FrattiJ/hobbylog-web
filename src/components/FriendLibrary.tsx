@@ -6,6 +6,7 @@ import { getFriendEntries, getAllEntries, addToMyBacklog } from '@/lib/db'
 import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 import FriendEntryDetail from './FriendEntryDetail'
+import { useToast } from './Toast'
 
 const GREEN = '#22c55e'
 
@@ -16,7 +17,7 @@ function keyOf(e: Entry): string {
 
 type SortKey = 'recent' | 'rating' | 'title'
 
-export default function FriendLibrary({ friendId, username, avatarUrl, onBack }: { friendId: string; username: string; avatarUrl?: string | null; onBack: () => void }) {
+export default function FriendLibrary({ friendId, username, avatarUrl, onBack, initialEntryId }: { friendId: string; username: string; avatarUrl?: string | null; onBack: () => void; initialEntryId?: string }) {
   const [entries, setEntries] = useState<Entry[]>([])
   const [mine, setMine] = useState<Map<string, Entry>>(new Map())
   const [added, setAdded] = useState<Set<string>>(new Set())
@@ -26,6 +27,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
   const [sort, setSort] = useState<SortKey>('recent')
   const [commonOnly, setCommonOnly] = useState(false)
   const [selected, setSelected] = useState<Entry | null>(null)
+  const { error: toastError, success: toastSuccess } = useToast()
 
   useEffect(() => {
     let alive = true
@@ -35,16 +37,27 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
       const m = new Map<string, Entry>()
       for (const e of mineArr) m.set(keyOf(e), e)
       setMine(m); setEntries(theirs); setLoading(false)
+      // Deep-link from the activity feed: open this entry's detail straight away.
+      if (initialEntryId) {
+        const e0 = theirs.find((t) => t.id === initialEntryId)
+        if (e0) setSelected(e0)
+      }
     }).catch(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [friendId])
+  }, [friendId, initialEntryId])
 
   const iHave = (e: Entry) => mine.has(keyOf(e)) || added.has(keyOf(e))
   const myRatingFor = (e: Entry) => { const m = mine.get(keyOf(e)); return m?.rating != null ? m.rating : null }
 
   async function add(e: Entry) {
     setAdded((prev) => new Set(prev).add(keyOf(e)))
-    try { await addToMyBacklog(e) } catch { /* stays optimistic; refresh fixes it */ }
+    try {
+      await addToMyBacklog(e)
+      toastSuccess(`Added “${e.title}” to your backlog`)
+    } catch {
+      setAdded((prev) => { const n = new Set(prev); n.delete(keyOf(e)); return n }) // roll back the optimistic mark
+      toastError(`Couldn’t add “${e.title}” — try again`)
+    }
   }
 
   const completed = entries.filter((e) => e.status === 'completed').length
@@ -142,7 +155,11 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack }:
           const mineRating = myRatingFor(e)
           const have = iHave(e)
           return (
-            <div key={e.id} onClick={() => setSelected(e)} title="View details" style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66`, cursor: 'pointer' }}>
+            <div key={e.id} onClick={() => setSelected(e)}
+              role="button" tabIndex={0}
+              onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(e) } }}
+              aria-label={`View ${e.title}`} title="View details"
+              style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66`, cursor: 'pointer' }}>
               {e.cover_url
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={e.cover_url} alt="" style={{ width: 46, height: 66, objectFit: 'cover', flexShrink: 0 }} />

@@ -10,6 +10,7 @@ import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
 import { useIsMobile } from '@/lib/useIsMobile'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
+import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
@@ -24,6 +25,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const hobby = HOBBY_MAP[entry.hobby_category as HobbyCategory]
   const accent = hobby?.accent ?? ACCENT
   const isMobile = useIsMobile()
+  const { error: toastError } = useToast()
 
   const [status, setStatus] = useState(entry.status)
   const [rating, setRating] = useState(entry.rating?.toString() ?? '')
@@ -93,7 +95,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
       })
       if (newStatus !== entry.status) await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
       onChanged()
-    } catch { /* noop */ }
+    } catch {
+      toastError('Could not save your checklist change — try again')
+    }
   }
 
   const inp: React.CSSProperties = {
@@ -104,8 +108,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const label: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 6px' }
 
   async function saveCover(url: string) {
-    await updateEntry(entry.id, { cover_url: url || null })
-    setCoverUrl(url); setEditingCover(false); setCoverResults([]); onChanged()
+    try {
+      await updateEntry(entry.id, { cover_url: url || null })
+      setCoverUrl(url); setEditingCover(false); setCoverResults([]); onChanged()
+    } catch {
+      toastError('Could not update the cover — try again')
+    }
   }
 
   // Books added via manga search use AniList; everything else its normal source.
@@ -193,9 +201,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   async function remove() {
     if (!confirm(`Delete "${entry.title}"?`)) return
-    await deleteEntry(entry.id)
-    if (entry.status === 'backlog') await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
-    onBack()
+    try {
+      await deleteEntry(entry.id)
+      if (entry.status === 'backlog') await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
+      onBack()
+    } catch {
+      toastError(`Could not delete “${entry.title}” — try again`)
+    }
   }
 
   async function addSession() {

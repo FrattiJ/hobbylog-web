@@ -5,6 +5,7 @@ import { Upload, Trash2, ImagePlus, X } from 'lucide-react'
 import { insertPhoto, deletePhoto, type Photo } from '@/lib/db'
 import { compressImage } from '@/lib/image'
 import { mechInput } from './mechStyles'
+import { useToast } from './Toast'
 
 interface PhotoGalleryProps {
   entryId: string
@@ -73,6 +74,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   const [uploadType, setUploadType] = useState<PhotoType>('progress')
   const [lightbox, setLightbox] = useState<Photo | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { error: toastError } = useToast()
 
   const progressPhotos = photos.filter((p) => p.photo_type === 'progress')
   const completedPhotos = photos.filter((p) => p.photo_type === 'completed')
@@ -86,6 +88,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
       setPending(await compressImage(file))
     } catch (err) {
       console.error('Photo processing failed:', err)
+      toastError('Could not process that image — try another')
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -102,14 +105,19 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
       setPending(null); setCaption('')
     } catch (err) {
       console.error('Photo upload failed:', err)
+      toastError('Upload failed — your photo was not saved')
     } finally {
       setBusy(false)
     }
   }
 
   async function handleDelete(id: string) {
-    await deletePhoto(id)
-    onPhotosChange(photos.filter((p) => p.id !== id))
+    try {
+      await deletePhoto(id)
+      onPhotosChange(photos.filter((p) => p.id !== id))
+    } catch {
+      toastError('Could not delete that photo — try again')
+    }
   }
 
   const inp = { ...mechInput(accent), width: '100%' }
