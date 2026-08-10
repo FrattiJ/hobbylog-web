@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, ArrowLeft } from 'lucide-react'
+import { X, ArrowLeft, Upload } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib/hobbies'
 import { insertEntry, moveEntryToRank } from '@/lib/db'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
+import { compressImage } from '@/lib/image'
 import { CLIP } from './MechCard'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import type { HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
@@ -40,6 +41,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
+  const coverFileRef = useRef<HTMLInputElement>(null)
 
   // Book subtype drives the search source: manga -> Jikan (series), others -> OpenLibrary
   const searchType = hobbyId === 'books'
@@ -301,8 +303,26 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <p style={label}>COVER URL</p>
-            <input value={coverUrl.startsWith('data:') ? '(image)' : coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://…" style={inp} />
+            <p style={label}>COVER</p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input value={coverUrl.startsWith('data:') ? '(uploaded image)' : coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="Paste an image URL…" style={{ ...inp, flex: 1, minWidth: 0 }} />
+              {coverUrl.startsWith('data:') && (
+                <button type="button" onClick={() => setCoverUrl('')} title="Remove image"
+                  style={{ flexShrink: 0, padding: '0 10px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
+                  CLEAR
+                </button>
+              )}
+              <button type="button" onClick={() => coverFileRef.current?.click()} title="Upload an image"
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>
+                <Upload size={13} /> UPLOAD
+              </button>
+            </div>
+            {coverUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverUrl} alt="" style={{ marginTop: 8, height: 84, width: 'auto', objectFit: 'cover', border: `1px solid ${accent}44` }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+            )}
+            <input ref={coverFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { setCoverUrl(await compressImage(f, 600)) } catch { /* bad image */ } if (coverFileRef.current) coverFileRef.current.value = '' }} />
           </div>
 
           <div style={{ marginBottom: 16 }}>

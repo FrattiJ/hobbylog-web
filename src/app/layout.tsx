@@ -37,6 +37,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#080a0e',
+  // Lock zoom on mobile so tapping inputs/cards doesn't trigger iOS's auto zoom-in.
+  // (The in-app Display Size setting covers users who need larger text.)
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 }
 
 // Runs synchronously before first paint so a light-theme / non-default display

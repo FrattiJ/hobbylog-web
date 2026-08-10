@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Star, Plus, Check, X } from 'lucide-react'
 import { getPhotosByEntry, type Photo } from '@/lib/db'
 import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { useIsMobile } from '@/lib/useIsMobile'
 import type { Entry } from '@/types/database'
 import type { ChecklistItem } from './ProjectChecklist'
 
@@ -20,6 +21,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
   const hobby = HOBBY_MAP[entry.hobby_category]
   const accent = hobby?.accent ?? '#22c55e'
   const isPercent = !!hobby?.percentBased
+  const isMobile = useIsMobile()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [lightbox, setLightbox] = useState<Photo | null>(null)
   const [added, setAdded] = useState(false)
@@ -66,10 +68,10 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
         <ArrowLeft size={14} /> BACK TO {username.toUpperCase()}
       </button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 260px) 1fr', gap: 28, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 260px) 1fr', gap: isMobile ? 18 : 28, alignItems: 'start' }}>
         {/* Cover + meta */}
         <div style={{ minWidth: 0 }}>
-          <div style={{ aspectRatio: '2/3', width: '100%', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+          <div style={{ aspectRatio: '2/3', width: '100%', maxWidth: isMobile ? 190 : undefined, margin: isMobile ? '0 auto 12px' : '0 0 12px', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {entry.cover_url
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={entry.cover_url} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
