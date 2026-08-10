@@ -22,10 +22,18 @@ export const metadata: Metadata = {
   description: 'Track everything you love — one backlog for games, movies, books, and more.',
 }
 
+// Runs synchronously before first paint so a light-theme / non-default display
+// size user doesn't get a dark (or unscaled) flash before hydration. Mirrors the
+// storage keys in lib/theme.ts.
+const noFlash = `try{var t=localStorage.getItem('hobbylog-theme');if(t==='light')document.documentElement.dataset.theme='light';var s=localStorage.getItem('hobbylog-display-size'),z={compact:'0.9',normal:'1',large:'1.15',xl:'1.3'}[s];if(z)document.documentElement.style.zoom=z;}catch(e){}`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable}`}>
-      <body><ClientLayout>{children}</ClientLayout></body>
+      <body>
+        <script dangerouslySetInnerHTML={{ __html: noFlash }} />
+        <ClientLayout>{children}</ClientLayout>
+      </body>
     </html>
   )
 }
