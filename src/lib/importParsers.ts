@@ -3,7 +3,7 @@ import type { Entry, EntryStatus } from '@/types/database'
 // Parsers for the external-service exports the desktop app supported: MyAnimeList
 // (XML), Letterboxd (CSV), Goodreads (CSV). Ported verbatim so the web imports the
 // same shape. A PreviewEntry is exactly what insertEntry/bulkInsertEntries expect.
-export type PreviewEntry = Omit<Entry, 'id' | 'created_at' | 'updated_at'>
+export type PreviewEntry = Omit<Entry, 'id' | 'created_at' | 'updated_at' | 'global_priority'>
 
 // ── CSV parser ───────────────────────────────────────────────────────────────
 

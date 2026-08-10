@@ -62,7 +62,7 @@ async function nextBacklogPriority(hobby: HobbyCategory): Promise<number> {
   return ((data?.[0]?.priority as number) ?? 0) + 1
 }
 
-export async function insertEntry(data: Omit<Entry, 'id' | 'created_at' | 'updated_at'>): Promise<Entry> {
+export async function insertEntry(data: Omit<Entry, 'id' | 'created_at' | 'updated_at' | 'global_priority'>): Promise<Entry> {
   const user_id = await currentUserId()
   const row: Row = { user_id }
   for (const f of INSERT_FIELDS) row[f] = (data as Row)[f] ?? null
@@ -99,6 +99,13 @@ export async function setEntryPriorities(orderedIds: string[]): Promise<void> {
   notifyEntriesChanged()
 }
 
+// Cross-hobby backlog order (independent of per-hobby `priority`). Assigns 1..N
+// in the given order; entries not listed keep whatever they had.
+export async function setGlobalPriorities(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from('web_entries').update({ global_priority: i + 1 }).eq('id', id)))
+  notifyEntriesChanged()
+}
+
 // Renumber a hobby's backlog to 1..N (closing gaps left when an item leaves the
 // backlog or is deleted). Call after any status change / delete affecting backlog.
 export async function normalizeBacklogPriorities(hobby: HobbyCategory): Promise<void> {
@@ -122,7 +129,7 @@ export async function moveEntryToRank(hobby: HobbyCategory, entryId: string, ran
   await setEntryPriorities(ids)
 }
 
-export async function bulkInsertEntries(list: Array<Omit<Entry, 'id' | 'created_at' | 'updated_at'>>, onProgress?: (n: number) => void): Promise<number> {
+export async function bulkInsertEntries(list: Array<Omit<Entry, 'id' | 'created_at' | 'updated_at' | 'global_priority'>>, onProgress?: (n: number) => void): Promise<number> {
   let n = 0
   for (const d of list) { await insertEntry(d); onProgress?.(++n) }
   return n

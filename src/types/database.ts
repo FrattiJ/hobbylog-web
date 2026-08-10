@@ -28,6 +28,7 @@ export interface Entry {
   current_season: number | null
   current_episode: number | null
   priority: number | null
+  global_priority: number | null
   date_started: string | null
   date_completed: string | null
   created_at: string
