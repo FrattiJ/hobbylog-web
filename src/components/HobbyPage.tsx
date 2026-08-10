@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
 import EntryCard from './EntryCard'
 import AddEntryModal from './AddEntryModal'
+import SteamSync from './SteamSync'
 import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { getEntriesByHobby, setEntryPriorities, ENTRIES_CHANGED_EVENT } from '@/lib/db'
@@ -197,30 +198,33 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             {entries.length} RECORDS INDEXED
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '9px 18px',
-            background: `${hobby.accent}22`,
-            border: `1px solid ${hobby.accent}88`,
-            borderLeft: `3px solid ${hobby.accent}`,
-            color: hobby.accent,
-            fontFamily: 'var(--font-display)',
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = `${hobby.accent}44`; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${hobby.accent}44)` }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = `${hobby.accent}22`; e.currentTarget.style.filter = 'none' }}
-        >
-          <Plus size={13} />
-          ADD {hobby.label.toUpperCase()}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {hobbyId === 'games' && <SteamSync accent={hobby.accent} onSynced={loadEntries} />}
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 18px',
+              background: `${hobby.accent}22`,
+              border: `1px solid ${hobby.accent}88`,
+              borderLeft: `3px solid ${hobby.accent}`,
+              color: hobby.accent,
+              fontFamily: 'var(--font-display)',
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = `${hobby.accent}44`; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${hobby.accent}44)` }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = `${hobby.accent}22`; e.currentTarget.style.filter = 'none' }}
+          >
+            <Plus size={13} />
+            ADD {hobby.label.toUpperCase()}
+          </button>
+        </div>
       </div>
 
       {/* Book sub-type pills */}

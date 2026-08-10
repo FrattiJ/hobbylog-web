@@ -100,6 +100,10 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.05em; }
   to   { opacity: 1; }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Staggered entrance ─────────────────────────────────────────────────────── */
 .mech-enter {
   animation: mech-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
