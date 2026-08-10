@@ -136,7 +136,7 @@ export async function clearAllData(): Promise<void> {
 
 // ── Profile (cloud: tracked hobbies + onboarding state, synced across devices) ──
 
-export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null }
+export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null; private_hobbies: HobbyCategory[] }
 
 export async function getProfile(): Promise<WebProfile> {
   const { data: u } = await supabase.auth.getUser()
@@ -148,8 +148,9 @@ export async function getProfile(): Promise<WebProfile> {
   let steam_id: string | null = null
   let steam_persona: string | null = null
   let avatar_url: string | null = null
+  let private_hobbies: HobbyCategory[] = []
   if (userId) {
-    const { data: row } = await supabase.from('web_profile').select('username, enabled_hobbies, onboarded, steam_id, steam_persona, avatar_url').eq('user_id', userId).maybeSingle()
+    const { data: row } = await supabase.from('web_profile').select('username, enabled_hobbies, onboarded, steam_id, steam_persona, avatar_url, private_hobbies').eq('user_id', userId).maybeSingle()
     if (row) {
       username = (row.username as string) || emailName
       enabled = (row.enabled_hobbies as HobbyCategory[]) ?? null
@@ -157,6 +158,7 @@ export async function getProfile(): Promise<WebProfile> {
       steam_id = (row.steam_id as string) ?? null
       steam_persona = (row.steam_persona as string) ?? null
       avatar_url = (row.avatar_url as string) ?? null
+      private_hobbies = (row.private_hobbies as HobbyCategory[]) ?? []
     } else {
       // First read — create the profile. Existing users (with entries) skip onboarding.
       const { count } = await supabase.from('web_entries').select('id', { count: 'exact', head: true }).eq('user_id', userId)
@@ -164,7 +166,13 @@ export async function getProfile(): Promise<WebProfile> {
       await supabase.from('web_profile').insert({ user_id: userId, username, onboarded })
     }
   }
-  return { id: userId || '1', username, avatar_url, bio: null, enabled_hobbies: enabled, created_at: '', onboarded, steam_id, steam_persona }
+  return { id: userId || '1', username, avatar_url, bio: null, enabled_hobbies: enabled, created_at: '', onboarded, steam_id, steam_persona, private_hobbies }
+}
+
+export async function setPrivateHobbies(ids: HobbyCategory[]): Promise<void> {
+  const userId = await currentUserId()
+  await supabase.from('web_profile').upsert({ user_id: userId, private_hobbies: ids })
+  notifyProfileChanged()
 }
 
 export async function setAvatar(dataUrl: string | null): Promise<void> {
