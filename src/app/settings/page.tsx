@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw, Eye, EyeOff } from 'lucide-react'
+import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount, isAdminUser, getFeedbackInbox, setPrivateHobbies, type FeedbackItem } from '@/lib/db'
-import type { HobbyCategory } from '@/types/database'
+import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount, isAdminUser, getFeedbackInbox, type FeedbackItem } from '@/lib/db'
 import { cropSquareAvatar } from '@/lib/image'
 import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type DisplaySize } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
@@ -29,7 +28,6 @@ export default function SettingsPage() {
   const [fbBusy, setFbBusy] = useState(false)
   const [fbMsg, setFbMsg] = useState<string | null>(null)
 
-  const [privateHobbies, setPrivateHobbiesState] = useState<HobbyCategory[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
   const [inbox, setInbox] = useState<FeedbackItem[] | null>(null)
   const [inboxBusy, setInboxBusy] = useState(false)
@@ -42,7 +40,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
-    getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url); setPrivateHobbiesState(p.private_hobbies ?? []) }).catch(() => {})
+    getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url) }).catch(() => {})
     isAdminUser().then((admin) => { setIsAdmin(admin); if (admin) loadInbox() }).catch(() => {})
   }, [])
 
@@ -93,11 +91,6 @@ export default function SettingsPage() {
     await setEnabledIds(next)
   }
 
-  async function togglePrivate(id: HobbyCategory) {
-    const next = privateHobbies.includes(id) ? privateHobbies.filter((x) => x !== id) : [...privateHobbies, id]
-    setPrivateHobbiesState(next) // optimistic
-    try { await setPrivateHobbies(next) } catch { setPrivateHobbiesState(privateHobbies) }
-  }
 
   async function clearData() {
     if (!clearConfirm) { setClearConfirm(true); return }
@@ -237,29 +230,6 @@ export default function SettingsPage() {
                 {Icon && <Icon size={14} />}
                 <span style={{ flex: 1, textAlign: 'left' }}>{h.pluralLabel}</span>
                 {active && <Check size={12} />}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Friend visibility — hide whole hobbies from friends */}
-      <div style={card}>
-        <h2 style={h2}>FRIEND VISIBILITY</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Private hobbies are hidden from your friends — they won&apos;t see those entries, photos, or activity. Only affects friends; your own view is unchanged.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
-          {HOBBIES.filter((h) => enabledIds.includes(h.id)).map((h) => {
-            const Icon = HOBBY_ICON_MAP[h.icon]
-            const isPrivate = privateHobbies.includes(h.id)
-            return (
-              <button key={h.id} onClick={() => togglePrivate(h.id)}
-                title={isPrivate ? 'Hidden from friends — click to share' : 'Shared with friends — click to hide'}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : `1px solid var(--border-dim)`, color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>
-                {Icon && <Icon size={14} />}
-                <span style={{ flex: 1, textAlign: 'left' }}>{h.pluralLabel}</span>
-                {isPrivate ? <EyeOff size={13} /> : <Eye size={13} style={{ color: 'var(--text-dim)' }} />}
               </button>
             )
           })}

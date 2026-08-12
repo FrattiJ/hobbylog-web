@@ -15,6 +15,7 @@ export interface WebEntry {
   external_id: string | null
   external_source: string | null
   priority: number | null
+  is_private?: boolean
   metadata: Record<string, unknown> | null
   book_subtype: string | null
   current_season: number | null

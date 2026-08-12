@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, ArrowLeft, Upload } from 'lucide-react'
+import { X, ArrowLeft, Upload, Eye, EyeOff } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib/hobbies'
 import { insertEntry, moveEntryToRank } from '@/lib/db'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
@@ -37,6 +37,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
   const [saving, setSaving] = useState(false)
   const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,6 +147,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           ...(hobby.percentBased && checklist.length > 0 ? { checklist } : {}),
         },
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
+        is_private: isPrivate,
         current_season: null, current_episode: null, priority: null,
         date_started: effStatus === 'in_progress' ? today : null,
         date_completed: effStatus === 'completed' ? today : null,
@@ -330,6 +332,14 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             <p style={label}>NOTES</p>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} spellCheck autoCapitalize="sentences" placeholder="—" style={{ ...inp, resize: 'vertical' }} />
           </div>
+
+          <button type="button" onClick={() => setIsPrivate((v) => !v)}
+            title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 16, padding: '10px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.04em', textAlign: 'left' }}>
+            {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
+            <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{isPrivate ? 'PRIVATE' : 'SHARED'}</span>
+          </button>
 
           {error && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>✗ {error}</p>}
 

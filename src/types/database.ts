@@ -29,6 +29,7 @@ export interface Entry {
   current_episode: number | null
   priority: number | null
   global_priority: number | null
+  is_private?: boolean
   date_started: string | null
   date_completed: string | null
   created_at: string

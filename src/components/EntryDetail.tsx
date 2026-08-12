@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText } from 'lucide-react'
+import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
 import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
@@ -28,6 +28,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const { error: toastError } = useToast()
 
   const [status, setStatus] = useState(entry.status)
+  const [isPrivate, setIsPrivate] = useState(!!entry.is_private)
   const [rating, setRating] = useState(entry.rating?.toString() ?? '')
   const [progressCurrent, setProgressCurrent] = useState(entry.progress_current?.toString() ?? '0')
   const [progressTotal, setProgressTotal] = useState(entry.progress_total?.toString() ?? '')
@@ -207,6 +208,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     setBusy(false)
   }
 
+  async function togglePrivate() {
+    const v = !isPrivate
+    setIsPrivate(v)
+    try { await updateEntry(entry.id, { is_private: v }); onChanged() }
+    catch { setIsPrivate(!v); toastError('Could not change visibility — try again') }
+  }
+
   async function remove() {
     if (!confirm(`Delete "${entry.title}"?`)) return
     try {
@@ -340,6 +348,17 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                     return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{STATUS_LABELS[s]}</button>
                   })}
                 </div>
+              </div>
+
+              <div>
+                <p style={label}>VISIBILITY</p>
+                <button onClick={togglePrivate}
+                  title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.04em', textAlign: 'left' }}>
+                  {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
+                  <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{isPrivate ? 'PRIVATE' : 'SHARED'}</span>
+                </button>
               </div>
 
               {isTV && (
