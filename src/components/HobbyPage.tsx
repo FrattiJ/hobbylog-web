@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown, CheckSquare, Trash2, X } from 'lucide-react'
 import EntryCard from './EntryCard'
 import AddEntryModal from './AddEntryModal'
 import SteamSync from './SteamSync'
+import { useToast } from './Toast'
 import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
-import { getEntriesByHobby, setEntryPriorities, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 
 const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'backlog', 'in_progress', 'completed', 'dropped']
 
@@ -70,6 +71,10 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [draftPos, setDraftPos] = useState<{ id: string; val: string } | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const loadEntries = useCallback(() => {
     getEntriesByHobby(hobbyId).then(setEntries).finally(() => setLoading(false))
@@ -90,6 +95,26 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     window.addEventListener(ENTRIES_CHANGED_EVENT, loadEntries)
     return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, loadEntries)
   }, [loadEntries])
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+  function exitSelect() { setSelectMode(false); setSelectedIds(new Set()) }
+  async function bulkDelete(ids: string[]) {
+    if (ids.length === 0 || bulkBusy) return
+    if (!confirm(`Delete ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}? This can't be undone.`)) return
+    setBulkBusy(true)
+    try { await bulkDeleteEntries(ids); toastSuccess(`Deleted ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`); exitSelect(); loadEntries() }
+    catch { toastError('Could not delete — try again') }
+    setBulkBusy(false)
+  }
+  async function bulkStatus(ids: string[], status: EntryStatus) {
+    if (ids.length === 0 || bulkBusy) return
+    setBulkBusy(true)
+    try { await bulkSetStatus(ids, status); toastSuccess(`Moved ${ids.length} to ${STATUS_LABELS[status]}`); exitSelect(); loadEntries() }
+    catch { toastError('Could not update — try again') }
+    setBulkBusy(false)
+  }
 
   const byPriority = (a: Entry, b: Entry) => (a.priority ?? 1e9) - (b.priority ?? 1e9)
 
@@ -362,6 +387,21 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             {rankMode ? 'DONE RANKING' : 'RANK BACKLOG'}
           </button>
         )}
+        {!rankMode && (
+          <button
+            onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginLeft: statusFilter === 'backlog' ? 8 : 'auto',
+              padding: '8px 18px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em',
+              background: selectMode ? hobby.accent : `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, borderLeft: `3px solid ${hobby.accent}`,
+              color: selectMode ? 'var(--bg-base)' : hobby.accent, cursor: 'pointer', transition: 'all 0.15s ease',
+            }}
+          >
+            <CheckSquare size={14} />
+            {selectMode ? 'DONE' : 'SELECT'}
+          </button>
+        )}
       </div>
 
       {/* Rank mode — ordered backlog list with reorder controls */}
@@ -503,9 +543,35 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-          {display.map((entry, i) => <EntryCard key={entry.id} entry={entry} index={i} />)}
-        </div>
+        <>
+          {selectMode && (() => {
+            const allIds = display.map((e) => e.id)
+            const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id))
+            const sel = allIds.filter((id) => selectedIds.has(id))
+            const barBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: sel.length ? `${color}18` : 'transparent', border: `1px solid ${sel.length ? color : 'var(--border-dim)'}`, color: sel.length ? color : 'var(--text-mute)', cursor: sel.length && !bulkBusy ? 'pointer' : 'not-allowed' })
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 14px', marginBottom: 14, background: 'var(--bg-card)', border: `1px solid ${hobby.accent}66`, borderLeft: `3px solid ${hobby.accent}`, position: 'sticky', top: 8, zIndex: 5 }}>
+                <button onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: 'transparent', border: `1px solid ${hobby.accent}66`, color: hobby.accent, cursor: 'pointer' }}>
+                  <CheckSquare size={13} /> {allSelected ? 'CLEAR ALL' : `SELECT ALL (${allIds.length})`}
+                </button>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
+                <span style={{ flex: 1 }} />
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'in_progress')} style={barBtn(STATUS_COLORS.in_progress)}>→ {STATUS_LABELS.in_progress}</button>
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'completed')} style={barBtn(STATUS_COLORS.completed)}>→ {STATUS_LABELS.completed}</button>
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'backlog')} style={barBtn(STATUS_COLORS.backlog)}>→ {STATUS_LABELS.backlog}</button>
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> DELETE</button>
+                <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
+              </div>
+            )
+          })()}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {display.map((entry, i) => (
+              <EntryCard key={entry.id} entry={entry} index={i}
+                selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
+            ))}
+          </div>
+        </>
       )}
 
       {showModal && (

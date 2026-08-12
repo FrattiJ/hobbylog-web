@@ -1,12 +1,18 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Star } from 'lucide-react'
+import { Star, Check } from 'lucide-react'
 import MechCard from './MechCard'
 import type { Entry } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 
-export default function EntryCard({ entry, index = 0 }: { entry: Entry; index?: number }) {
+export default function EntryCard({ entry, index = 0, selectable = false, selected = false, onToggleSelect }: {
+  entry: Entry
+  index?: number
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
+}) {
   const router = useRouter()
   const hobby  = HOBBY_MAP[entry.hobby_category]
   const accent = hobby?.accent ?? '#7c3aed'
@@ -27,8 +33,14 @@ export default function EntryCard({ entry, index = 0 }: { entry: Entry; index?: 
     : null
 
   return (
-    <MechCard accent={accent} index={index} hoverable onClick={() => router.push(`/entry?id=${entry.id}`)}>
-      <div style={{ display: 'flex', gap: 12, padding: '16px 14px 14px' }}>
+    <MechCard accent={selected ? accent : accent} index={index} hoverable
+      onClick={() => (selectable ? onToggleSelect?.(entry.id) : router.push(`/entry?id=${entry.id}`))}>
+      <div style={{ display: 'flex', gap: 12, padding: '16px 14px 14px', position: 'relative', background: selected ? `${accent}1f` : undefined }}>
+        {selectable && (
+          <span style={{ position: 'absolute', top: 8, right: 10, width: 20, height: 20, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selected ? accent : 'var(--bg-base)', border: `1px solid ${selected ? accent : 'var(--border-dim)'}`, color: '#fff', zIndex: 2 }}>
+            {selected && <Check size={13} />}
+          </span>
+        )}
         {/* Cover */}
         <div
           style={{

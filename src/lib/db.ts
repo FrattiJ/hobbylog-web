@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import type { Entry, HobbyCategory, Profile, Session } from '@/types/database'
+import type { Entry, EntryStatus, HobbyCategory, Profile, Session } from '@/types/database'
 
 // Web data layer: mirrors the desktop app's src/lib/db.ts API surface, but backed by
 // Supabase (web_entries) so the desktop UI components port over almost unchanged.
@@ -91,6 +91,21 @@ export async function updateEntry(id: string, data: Partial<Entry> & { metadata_
 
 export async function deleteEntry(id: string): Promise<void> {
   await supabase.from('web_entries').delete().eq('id', id)
+  notifyEntriesChanged()
+}
+
+// Bulk clean-up helpers (RLS keeps these scoped to the caller's own rows).
+export async function bulkDeleteEntries(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from('web_entries').delete().in('id', ids)
+  if (error) throw error
+  notifyEntriesChanged()
+}
+
+export async function bulkSetStatus(ids: string[], status: EntryStatus): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from('web_entries').update({ status, updated_at: new Date().toISOString() }).in('id', ids)
+  if (error) throw error
   notifyEntriesChanged()
 }
 
