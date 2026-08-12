@@ -153,9 +153,6 @@ export default function DashboardPage() {
 
       {/* ── Hours tracking ── */}
       <div style={{ marginBottom: 28 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.14em', marginBottom: 8, opacity: 0.7 }}>
-          (Games, Movies, Audiobooks, TV shows @ 22min/ep)
-        </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <StatCard label="Backlog Hours" value={Math.round(backlogHours * 10) / 10} accent="var(--text-dim)" index={4} />
           <StatCard label="In Progress + Completed" value={Math.round(activeHours * 10) / 10} accent="#0891b2" index={5} />
