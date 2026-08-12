@@ -143,7 +143,7 @@ export async function clearAllData(): Promise<void> {
 
 // ── Profile (cloud: tracked hobbies + onboarding state, synced across devices) ──
 
-export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null; private_hobbies: HobbyCategory[] }
+export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null; private_hobbies: HobbyCategory[]; steam_sync_playtime: boolean; steam_auto_import: boolean }
 
 export async function getProfile(): Promise<WebProfile> {
   const { data: u } = await supabase.auth.getUser()
@@ -156,8 +156,10 @@ export async function getProfile(): Promise<WebProfile> {
   let steam_persona: string | null = null
   let avatar_url: string | null = null
   let private_hobbies: HobbyCategory[] = []
+  let steam_sync_playtime = true
+  let steam_auto_import = false
   if (userId) {
-    const { data: row } = await supabase.from('web_profile').select('username, enabled_hobbies, onboarded, steam_id, steam_persona, avatar_url, private_hobbies').eq('user_id', userId).maybeSingle()
+    const { data: row } = await supabase.from('web_profile').select('username, enabled_hobbies, onboarded, steam_id, steam_persona, avatar_url, private_hobbies, steam_sync_playtime, steam_auto_import').eq('user_id', userId).maybeSingle()
     if (row) {
       username = (row.username as string) || emailName
       enabled = (row.enabled_hobbies as HobbyCategory[]) ?? null
@@ -166,6 +168,8 @@ export async function getProfile(): Promise<WebProfile> {
       steam_persona = (row.steam_persona as string) ?? null
       avatar_url = (row.avatar_url as string) ?? null
       private_hobbies = (row.private_hobbies as HobbyCategory[]) ?? []
+      steam_sync_playtime = (row.steam_sync_playtime as boolean) ?? true
+      steam_auto_import = (row.steam_auto_import as boolean) ?? false
     } else {
       // First read — create the profile. Existing users (with entries) skip onboarding.
       const { count } = await supabase.from('web_entries').select('id', { count: 'exact', head: true }).eq('user_id', userId)
@@ -173,7 +177,16 @@ export async function getProfile(): Promise<WebProfile> {
       await supabase.from('web_profile').insert({ user_id: userId, username, onboarded })
     }
   }
-  return { id: userId || '1', username, avatar_url, bio: null, enabled_hobbies: enabled, created_at: '', onboarded, steam_id, steam_persona, private_hobbies }
+  return { id: userId || '1', username, avatar_url, bio: null, enabled_hobbies: enabled, created_at: '', onboarded, steam_id, steam_persona, private_hobbies, steam_sync_playtime, steam_auto_import }
+}
+
+export async function setSteamPrefs(prefs: { sync_playtime?: boolean; auto_import?: boolean }): Promise<void> {
+  const userId = await currentUserId()
+  const patch: Record<string, boolean> = {}
+  if (prefs.sync_playtime !== undefined) patch.steam_sync_playtime = prefs.sync_playtime
+  if (prefs.auto_import !== undefined) patch.steam_auto_import = prefs.auto_import
+  await supabase.from('web_profile').upsert({ user_id: userId, ...patch })
+  notifyProfileChanged()
 }
 
 export async function setPrivateHobbies(ids: HobbyCategory[]): Promise<void> {

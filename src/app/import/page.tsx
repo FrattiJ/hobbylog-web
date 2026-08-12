@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
-import { getAllEntries, bulkInsertEntries, getProfile, linkSteam, unlinkSteam } from '@/lib/db'
+import { getAllEntries, bulkInsertEntries, getProfile, linkSteam, unlinkSteam, setSteamPrefs } from '@/lib/db'
 import { backfillCovers } from '@/lib/entries'
 import { syncSteamPlaytime, importSteamLibrary } from '@/lib/steam'
 import {
@@ -48,6 +48,8 @@ export default function ImportPage() {
   const [steamBusy, setSteamBusy] = useState(false)
   const [steamMsg, setSteamMsg] = useState<string | null>(null)
   const [steamProgress, setSteamProgress] = useState<{ done: number; total: number } | null>(null)
+  const [steamSyncPref, setSteamSyncPref] = useState(true)
+  const [steamImportPref, setSteamImportPref] = useState(false)
 
   // Cover-backfill state
   const [busy, setBusy] = useState(false)
@@ -55,7 +57,7 @@ export default function ImportPage() {
   const [coverProgress, setCoverProgress] = useState<{ done: number; total: number } | null>(null)
 
   useEffect(() => {
-    getProfile().then((p) => { setSteamId(p.steam_id); setSteamPersona(p.steam_persona) }).catch(() => {})
+    getProfile().then((p) => { setSteamId(p.steam_id); setSteamPersona(p.steam_persona); setSteamSyncPref(p.steam_sync_playtime); setSteamImportPref(p.steam_auto_import) }).catch(() => {})
     // Handle the redirect back from "Sign in through Steam".
     const q = new URLSearchParams(window.location.search)
     const linked = q.get('steam_linked')
@@ -109,6 +111,9 @@ export default function ImportPage() {
     const imported = await bulkInsertEntries(toInsert, (n) => setProgress(Math.round((n / Math.max(1, toInsert.length)) * 100)))
     setResult({ imported, skipped }); setStage('done')
   }
+
+  async function toggleSyncPref(v: boolean) { setSteamSyncPref(v); try { await setSteamPrefs({ sync_playtime: v }) } catch { setSteamSyncPref(!v) } }
+  async function toggleImportPref(v: boolean) { setSteamImportPref(v); try { await setSteamPrefs({ auto_import: v }) } catch { setSteamImportPref(!v) } }
 
   function connectSteam() { window.location.href = '/api/steam/login' }
   async function disconnectSteam() {
@@ -178,22 +183,29 @@ export default function ImportPage() {
                 Connected{steamPersona ? ` as ${steamPersona}` : ''}
               </p>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>SteamID {steamId}</p>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.6 }}>
-                Choose one, the other, or both — nothing runs automatically.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-                <div style={{ border: '1px solid var(--border-dim)', borderLeft: `3px solid ${STEAM_CYAN}`, padding: '12px 14px' }}>
-                  <button onClick={runSteamSync} disabled={steamBusy} style={steamBtn(true)}>⟳ SYNC PLAYTIME ONLY</button>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.6 }}>
-                    Updates hours on games you <span style={{ color: 'var(--text-mid)' }}>already track</span>. Adds nothing new — safe to run anytime.
-                  </p>
-                </div>
-                <div style={{ border: '1px solid var(--border-dim)', borderLeft: `3px solid ${STEAM_CYAN}88`, padding: '12px 14px' }}>
-                  <button onClick={runSteamImport} disabled={steamBusy} style={steamBtn(false)}>⬇ IMPORT FULL LIBRARY</button>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.6 }}>
-                    Adds Steam games you don&apos;t track yet (played → In Progress, rest → Backlog). Skips anything already here.
-                  </p>
-                </div>
+              {/* Persisted prefs — these control the "Sync Steam" button on the Games page. */}
+              <div style={{ border: '1px solid var(--border-dim)', borderLeft: `3px solid ${STEAM_CYAN}`, padding: '14px', marginBottom: 14 }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.14em', margin: '0 0 12px' }}>WHAT THE SYNC BUTTON DOES</p>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginBottom: 12 }}>
+                  <input type="checkbox" checked={steamSyncPref} onChange={(e) => toggleSyncPref(e.target.checked)} style={{ accentColor: STEAM_CYAN, width: 15, height: 15, marginTop: 2, flexShrink: 0 }} />
+                  <span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)' }}>Keep playtimes in sync</span>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.5 }}>Updates hours on games you already track. Adds nothing new.</span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={steamImportPref} onChange={(e) => toggleImportPref(e.target.checked)} style={{ accentColor: STEAM_CYAN, width: 15, height: 15, marginTop: 2, flexShrink: 0 }} />
+                  <span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)' }}>Auto-import new purchases</span>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.5 }}>Adds Steam games you don&apos;t track yet (played → In Progress, rest → Backlog).</span>
+                  </span>
+                </label>
+              </div>
+
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.14em', margin: '0 0 8px' }}>OR RUN ONCE NOW</p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                <button onClick={runSteamSync} disabled={steamBusy} style={steamBtn(true)}>⟳ SYNC PLAYTIME</button>
+                <button onClick={runSteamImport} disabled={steamBusy} style={steamBtn(false)}>⬇ IMPORT FULL LIBRARY</button>
               </div>
               <button onClick={disconnectSteam} disabled={steamBusy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: steamBusy ? 'wait' : 'pointer' }}>DISCONNECT</button>
             </>
