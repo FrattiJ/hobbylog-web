@@ -10,8 +10,13 @@ import { HOBBY_MAP } from './hobbies'
 export function calcHours(items: Entry[], basis: 'full' | 'spent'): number {
   let total = 0
   for (const e of items) {
-    if (e.hobby_category === 'games' && e.metadata?.time_to_beat) {
-      total += Number(e.metadata.time_to_beat) || 0
+    if (e.hobby_category === 'games') {
+      // progress_current holds actual hours played (Steam sync / manual). That's
+      // the truth when present; fall back to the time-to-beat estimate for
+      // unplayed games. 'spent' = time actually put in; 'full' prefers real hours.
+      const played = Number(e.progress_current) || 0
+      const ttb = Number(e.metadata?.time_to_beat) || 0
+      total += basis === 'spent' ? played : (played > 0 ? played : ttb)
     } else if (
       (e.hobby_category === 'movies' || (e.hobby_category === 'books' && e.book_subtype === 'audiobook')) &&
       e.progress_total
