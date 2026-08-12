@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText } from 'lucide-react'
-import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
 import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
@@ -73,6 +73,14 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const isTV = entry.hobby_category === 'tv'
   const tmdbId = entry.external_source === 'tmdb' ? entry.external_id : null
   const isManga = entry.hobby_category === 'books' && entry.book_subtype === 'manga'
+  const isGameEntry = entry.hobby_category === 'games'
+  // Unit for the "progress" field in the session log (pages, chapters, episodes…).
+  const progUnit = (entry.hobby_category === 'books' && entry.book_subtype
+    ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.progressUnit
+    : hobby?.progressUnit) ?? 'prog'
+  // Games: a session's time IS the hours played, so no separate progress field.
+  // Percent hobbies advance via the checklist; % progress makes no sense to add.
+  const showSessionProgress = !isGameEntry && !hobby?.percentBased && progUnit !== '%'
   const isPercent = !!hobby?.percentBased
 
   // Checklist changes drive the project's % and status, and save immediately.
@@ -212,7 +220,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   async function addSession() {
     const dur = (parseInt(sHours) || 0) * 60 + (parseInt(sMinutes) || 0)
-    const prog = sProgress ? parseFloat(sProgress) : null
+    // For games the time spent is the hours played, so feed it straight into
+    // progress rather than asking for the same number twice.
+    let prog = sProgress ? parseFloat(sProgress) : null
+    if (isGameEntry && dur > 0) prog = Math.round((dur / 60) * 10) / 10
     if (!dur && prog == null && !sNotes.trim()) return
     setBusy(true)
     try {
@@ -410,14 +421,39 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
           {/* Session log */}
           <div>
-            <p style={{ ...label, marginBottom: 10 }}>SESSION LOG</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <input type="number" min={0} value={sHours} onChange={(e) => setSHours(e.target.value)} placeholder="Hrs" style={{ ...inp, width: 64 }} />
-              <input type="number" min={0} value={sMinutes} onChange={(e) => setSMinutes(e.target.value)} placeholder="Min" style={{ ...inp, width: 64 }} />
-              <input type="number" min={0} value={sProgress} onChange={(e) => setSProgress(e.target.value)} placeholder={`+${hobby?.progressUnit ?? 'prog'}`} style={{ ...inp, width: 90 }} />
-              <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="Session notes…" style={{ ...inp, flex: '1 1 120px' }} />
-              <button onClick={addSession} disabled={busy} style={{ padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: 'pointer' }}>LOG</button>
-            </div>
+            <p style={{ ...label, marginBottom: 4 }}>LOG A SESSION</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              {isGameEntry
+                ? 'How long you played — added to your hours.'
+                : `How long you spent${showSessionProgress ? `, and how much ${progUnit} you got through` : ''}.`}
+            </p>
+            {(() => {
+              const miniLabel: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }
+              return (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+                  <div>
+                    <span style={miniLabel}>{isGameEntry ? 'Time played' : 'Time spent'}</span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="number" min={0} value={sHours} onChange={(e) => setSHours(e.target.value)} placeholder="0" aria-label="Hours" style={{ ...inp, width: 56, textAlign: 'center' }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>h</span>
+                      <input type="number" min={0} max={59} value={sMinutes} onChange={(e) => setSMinutes(e.target.value)} placeholder="0" aria-label="Minutes" style={{ ...inp, width: 56, textAlign: 'center' }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>m</span>
+                    </div>
+                  </div>
+                  {showSessionProgress && (
+                    <div>
+                      <span style={miniLabel}>Progress (+{progUnit})</span>
+                      <input type="number" min={0} value={sProgress} onChange={(e) => setSProgress(e.target.value)} placeholder={`+${progUnit}`} aria-label={`Progress in ${progUnit}`} style={{ ...inp, width: 92 }} />
+                    </div>
+                  )}
+                  <div style={{ flex: '1 1 140px' }}>
+                    <span style={miniLabel}>Notes</span>
+                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="What did you do? (optional)" style={{ ...inp, width: '100%' }} />
+                  </div>
+                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>LOG</button>
+                </div>
+              )
+            })()}
             {sessions.map((s) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 6 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
