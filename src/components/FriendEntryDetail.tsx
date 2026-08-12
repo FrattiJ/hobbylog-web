@@ -8,7 +8,7 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import type { Entry } from '@/types/database'
 import type { ChecklistItem } from './ProjectChecklist'
 
-const META_KEYS = ['genres', 'platforms', 'author', 'publisher', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
+const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function FriendEntryDetail({ entry, username, iHave, myRating, onBack, onAdd }: {
   entry: Entry

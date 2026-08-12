@@ -223,6 +223,37 @@ async function searchBooks(q: string): Promise<CatalogHit[]> {
   }))
 }
 
+// Audiobooks: Audible's public catalog API gives the REAL listening length
+// (runtime_length_min) + narrator + cover — far better than estimating hours from
+// a print page count. No key required. Unofficial endpoint, so callers keep a
+// page-based fallback for anything it can't find.
+async function searchAudible(q: string): Promise<CatalogHit[]> {
+  const url = `https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(q)}`
+    + '&num_results=12&products_sort_by=Relevance'
+    + '&response_groups=contributors,product_desc,product_attrs,media&image_sizes=500'
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`Audible ${r.status}`)
+  const d = await r.json()
+  const names = (arr: unknown): string | undefined =>
+    Array.isArray(arr) ? (arr.map((x) => (x as Raw).name).filter(Boolean).join(', ') || undefined) : undefined
+  return ((d.products as Raw[]) ?? [])
+    .filter((p) => p.runtime_length_min && String(p.content_delivery_type ?? '').includes('Book'))
+    .map((p) => ({
+      external_id: String(p.asin),
+      external_source: 'audible',
+      title: String(p.title),
+      cover_url: ((p.product_images as Record<string, string>) ?? {})['500'] ?? null,
+      year: p.release_date ? Number(String(p.release_date).slice(0, 4)) || null : null,
+      progress_total: p.runtime_length_min as number, // minutes of audio
+      metadata: {
+        audio_runtime_min: p.runtime_length_min as number,
+        narrator: names(p.narrators),
+        author: names(p.authors),
+        asin: String(p.asin),
+      },
+    }))
+}
+
 export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get('type') ?? ''
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
@@ -235,6 +266,12 @@ export async function GET(req: NextRequest) {
     let results: CatalogHit[] = []
     if (type === 'movie' || type === 'tv') results = await searchTMDB(q, type)
     else if (type === 'manga') results = await searchManga(q)
+    else if (type === 'audiobook') {
+      // Prefer Audible (real runtime); if it's unreachable, still return results
+      // from OpenLibrary so audiobook search never dead-ends.
+      try { results = await searchAudible(q) } catch { results = [] }
+      if (results.length === 0) results = await searchBooks(q)
+    }
     else if (type === 'books') results = await searchBooks(q)
     return NextResponse.json({ results })
   } catch (e) {

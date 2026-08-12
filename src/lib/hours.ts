@@ -48,15 +48,17 @@ export function calcHours(items: Entry[], basis: 'full' | 'spent'): number {
         total += (episodes * minPerEp) / 60
       }
     } else if (e.hobby_category === 'books') {
-      // Estimate from page/chapter counts. Audiobooks track % rather than pages,
-      // so scale the full page-based length by that percent for 'spent'.
-      const full = bookHours(e, Number(e.progress_total) || 0)
-      if (basis === 'full') {
-        total += full
-      } else if (e.book_subtype === 'audiobook') {
-        total += full * Math.min(1, (Number(e.progress_current) || 0) / 100)
+      if (e.book_subtype === 'audiobook') {
+        // Prefer the real Audible listening length (minutes); fall back to a
+        // page-based estimate for older OpenLibrary-sourced audiobooks. Progress
+        // is tracked as a %, so scale the full length by it for 'spent'.
+        const realMin = Number(e.metadata?.audio_runtime_min) || 0
+        const fullH = realMin > 0 ? realMin / 60 : bookHours(e, Number(e.progress_total) || 0)
+        total += basis === 'full' ? fullH : fullH * Math.min(1, (Number(e.progress_current) || 0) / 100)
       } else {
-        total += bookHours(e, Number(e.progress_current) || 0)
+        // Reading/manga/comics: estimate from page/chapter counts.
+        const count = basis === 'full' ? Number(e.progress_total) || 0 : Number(e.progress_current) || 0
+        total += bookHours(e, count)
       }
     }
   }

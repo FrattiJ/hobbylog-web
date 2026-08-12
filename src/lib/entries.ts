@@ -80,7 +80,11 @@ export async function updateEntry(id: string, patch: Partial<WebEntry>): Promise
 // Re-fetch cover + metadata for an entry by looking its title up in the catalog.
 // Fills a missing cover and refreshes metadata/total; returns the applied patch.
 export async function refetchDetails(entry: WebEntry): Promise<Partial<WebEntry> | null> {
-  const type = searchTypeFor(entry.hobby_category)
+  // Books route by subtype so an audiobook upgrades via Audible (real runtime),
+  // manga via Jikan/AniList — matching how the add form searches.
+  const type = entry.hobby_category === 'books'
+    ? (entry.book_subtype === 'manga' ? 'manga' : entry.book_subtype === 'audiobook' ? 'audiobook' : 'books')
+    : searchTypeFor(entry.hobby_category)
   if (!type) return null
   const results = await searchCatalog(type, entry.title)
   const lower = entry.title.toLowerCase()

@@ -15,7 +15,7 @@ import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
 const STATUSES = ['backlog', 'in_progress', 'completed', 'dropped']
-const META_KEYS = ['genres', 'platforms', 'author', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
+const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function EntryDetail({ entry, onBack, onChanged }: {
   entry: WebEntry

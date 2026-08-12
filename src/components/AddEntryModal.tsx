@@ -43,9 +43,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const seq = useRef(0)
   const coverFileRef = useRef<HTMLInputElement>(null)
 
-  // Book subtype drives the search source: manga -> Jikan (series), others -> OpenLibrary
+  // Book subtype drives the search source: manga -> Jikan (series), audiobook ->
+  // Audible (real runtime), others -> OpenLibrary.
   const searchType = hobbyId === 'books'
-    ? (bookSubtype === 'manga' ? 'manga' : BOOK_SUBTYPE_MAP[bookSubtype].api === 'openlibrary' ? 'books' : null)
+    ? (bookSubtype === 'manga' ? 'manga' : bookSubtype === 'audiobook' ? 'audiobook' : BOOK_SUBTYPE_MAP[bookSubtype].api === 'openlibrary' ? 'books' : null)
     : searchTypeFor(hobbyId)
   const totalUnit = hobbyId === 'books'
     ? (bookSubtype === 'audiobook' ? 'min' : BOOK_SUBTYPE_MAP[bookSubtype].progressUnit)
