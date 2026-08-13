@@ -1,10 +1,25 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.6.0'
+export const APP_VERSION = '0.7.0'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.7.0',
+    date: 'Aug 2026',
+    items: [
+      'Projects: build checklists that drive your % progress (great for gundams, art, builds)',
+      'Backlog Priority — one ranked list across every hobby for "what do I tackle next?"',
+      'Per-entry privacy: mark any entry private so friends don\'t see it',
+      'Audiobooks now pull real listening length + narrator from Audible',
+      'Games: a Sync Steam button (playtimes + new purchases) that follows your settings',
+      'Select multiple entries to delete or change status in one go',
+      'Upload your own cover image when adding an entry',
+      'Tap a friend\'s item for a full read-only card with their photos',
+      'Installable on your phone, smoother mobile scrolling, and clearer session logging',
+    ],
+  },
   {
     version: '0.6.0',
     date: 'Aug 2026',
