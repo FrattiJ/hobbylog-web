@@ -1,4 +1,5 @@
 import { getEntriesByHobby, updateEntry, insertEntry } from '@/lib/db'
+import { searchCatalog } from '@/lib/search'
 
 export interface SteamGame { appid: number; name: string; playtime_hours: number }
 
@@ -44,6 +45,31 @@ export async function syncSteamPlaytime(steamId: string): Promise<number> {
       metadata_patch: { steam_appid: game.appid, playtime_hours: hours },
     })
     updated++
+  }
+  return updated
+}
+
+// Fill in a Main-Story time-to-beat (from IGDB) for tracked games that don't
+// have one yet — e.g. everything imported from Steam, which only carries playtime.
+// Looks each title up in the catalog; never overwrites an existing time-to-beat.
+export async function backfillGameTimeToBeat(onProgress?: (done: number, total: number) => void): Promise<number> {
+  const games = await getEntriesByHobby('games')
+  const targets = games.filter((g) => g.metadata?.time_to_beat == null)
+  let done = 0, updated = 0
+  onProgress?.(0, targets.length)
+  const BATCH = 4 // IGDB allows ~4 req/s
+  for (let i = 0; i < targets.length; i += BATCH) {
+    await Promise.all(targets.slice(i, i + BATCH).map(async (g) => {
+      try {
+        const hits = await searchCatalog('games', g.title)
+        const lower = g.title.toLowerCase()
+        const hit = hits.find((h) => h.title.toLowerCase() === lower) ?? hits[0]
+        const ttb = hit?.metadata?.time_to_beat
+        const n = typeof ttb === 'number' ? ttb : ttb != null ? Number(ttb) : NaN
+        if (!isNaN(n) && n > 0) { await updateEntry(g.id, { metadata_patch: { time_to_beat: n } }); updated++ }
+      } catch { /* skip this one; a later sync retries it */ }
+      onProgress?.(++done, targets.length)
+    }))
   }
   return updated
 }

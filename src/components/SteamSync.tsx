@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 import { getProfile } from '@/lib/db'
-import { syncSteamPlaytime, importSteamLibrary } from '@/lib/steam'
+import { syncSteamPlaytime, importSteamLibrary, backfillGameTimeToBeat } from '@/lib/steam'
 import { useToast } from './Toast'
 
 const LAST_KEY = 'hobbylog-steam-last-sync'
@@ -47,10 +47,14 @@ export default function SteamSync({ accent, onSynced }: { accent: string; onSync
     try {
       const updated = pr.sync ? await syncSteamPlaytime(id) : 0
       const imported = pr.import ? await importSteamLibrary(id) : 0
+      // Explicit sync also fills in missing time-to-beat from IGDB (Steam imports
+      // carry playtime only). Skipped on the quiet auto-refresh — it's a heavier pass.
+      const ttb = (!quiet && pr.sync) ? await backfillGameTimeToBeat() : 0
       localStorage.setItem(LAST_KEY, String(Date.now()))
       const parts: string[] = []
       if (imported) parts.push(`${imported} new game${imported === 1 ? '' : 's'}`)
       if (updated) parts.push(`${updated} playtime update${updated === 1 ? '' : 's'}`)
+      if (ttb) parts.push(`${ttb} time-to-beat`)
       if (parts.length) { onSynced(); if (!quiet || imported) success(`Steam: ${parts.join(' + ')}`) }
       else if (!quiet) toast('Steam is already up to date')
     } catch (e) {
