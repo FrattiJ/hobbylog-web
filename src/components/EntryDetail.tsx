@@ -313,7 +313,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         {/* Main */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{hobby?.label}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.06em' }}>{entry.title}</h1>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>
               {entry.date_started && <span>STARTED {entry.date_started}</span>}
@@ -387,7 +387,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   )}
                   {!isPercent && (
                     <>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({hobby?.progressUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
                       <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
                     </>
                   )}
