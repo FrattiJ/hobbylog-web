@@ -10,6 +10,7 @@ import { CLIP } from '@/components/MechCard'
 import { HOBBIES } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
 import { getAllEntries, getGlobalStats, getFriendsStats, getLoggedMinutesByEntry, ENTRIES_CHANGED_EVENT, type GlobalStats } from '@/lib/db'
+import { getWorkoutTotals, FITNESS_CHANGED_EVENT, type WorkoutTotals } from '@/lib/fitness/db'
 import { useHobbies } from '@/components/HobbyContext'
 import { calcHoursWithLogged } from '@/lib/hours'
 
@@ -21,6 +22,7 @@ export default function StatsPage() {
   const [friendsStats, setFriendsStats] = useState<GlobalStats | null>(null)
   const [logged, setLogged] = useState<Map<string, number>>(new Map())
   const [compareTo, setCompareTo] = useState<'field' | 'friends'>('field')
+  const [workouts, setWorkouts] = useState<WorkoutTotals>({ count: 0, minutes: 0 })
 
   useEffect(() => {
     const load = () => getAllEntries().then(setEntries).finally(() => setLoading(false))
@@ -28,8 +30,15 @@ export default function StatsPage() {
     getGlobalStats().then(setGlobal).catch(() => {})
     getFriendsStats().then(setFriendsStats).catch(() => {})
     getLoggedMinutesByEntry().then(setLogged).catch(() => {})
+    // Fitness lives outside web_entries, so its hours come in separately.
+    const loadWorkouts = () => getWorkoutTotals().then(setWorkouts).catch(() => {})
+    loadWorkouts()
     window.addEventListener(ENTRIES_CHANGED_EVENT, load)
-    return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
+    window.addEventListener(FITNESS_CHANGED_EVENT, loadWorkouts)
+    return () => {
+      window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
+      window.removeEventListener(FITNESS_CHANGED_EVENT, loadWorkouts)
+    }
   }, [])
 
   if (loading) return (
@@ -52,11 +61,18 @@ export default function StatsPage() {
     : null
 
   const backlogHours  = calcHoursWithLogged(backlog, logged, 'full')
-  const finishedHours = calcHoursWithLogged(completed, logged, 'full')
+  const workoutHours = Math.round((workouts.minutes / 60) * 10) / 10
+  // Entries only. The global/friends benchmarks are computed from entries, so the
+  // comparison rows have to use this figure or they'd be apples to oranges.
+  const finishedEntryHours = calcHoursWithLogged(completed, logged, 'full')
+  // Logged training time is time already put in, so the headline adds it on.
+  const finishedHours = Math.round((finishedEntryHours + workoutHours) * 10) / 10
   const hasFriends = !!friendsStats && friendsStats.user_count > 0
   const compareSource = compareTo === 'friends' ? friendsStats : global
 
-  const categoryData = enabledHobbies.map((h) => ({
+  const entryHobbies = enabledHobbies.filter((h) => !h.customSection)
+
+  const categoryData = entryHobbies.map((h) => ({
     name: h.pluralLabel,
     count: entries.filter((e) => e.hobby_category === h.id).length,
     color: h.accent,
@@ -69,7 +85,7 @@ export default function StatsPage() {
     { name: 'Dropped',     value: entries.filter((e) => e.status === 'dropped').length,     color: '#ef4444' },
   ].filter((d) => d.value > 0)
 
-  const completionByCategory = enabledHobbies.map((h) => {
+  const completionByCategory = entryHobbies.map((h) => {
     const cat = entries.filter((e) => e.hobby_category === h.id)
     const done = cat.filter((e) => e.status === 'completed').length
     const pct  = cat.length > 0 ? Math.round((done / cat.length) * 100) : 0
@@ -106,7 +122,7 @@ export default function StatsPage() {
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
         <StatCard label="Backlog Hours"   value={backlogHours}                              accent="#7c3aed" sub="estimated time remaining" index={0} />
-        <StatCard label="Hours Finished"  value={finishedHours}                             accent="#0891b2" sub="across completed entries"  index={1} />
+        <StatCard label="Hours Finished"  value={finishedHours}                             accent="#0891b2" sub={workoutHours > 0 ? `incl. ${workoutHours}h training` : 'across completed entries'}  index={1} />
         <StatCard label="Total Entries"   value={entries.length}                            accent="#2563eb" index={2} />
         <StatCard label="Avg Rating"      value={avgRating ? avgRating.toFixed(1) : '—'}   accent="#d97706" sub="out of 10" index={3} />
       </div>
@@ -142,7 +158,7 @@ export default function StatsPage() {
             ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
-                { label: 'HOURS FINISHED', mine: finishedHours, avg: compareSource?.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
+                { label: 'HOURS FINISHED', mine: finishedEntryHours, avg: compareSource?.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
                 { label: 'COMPLETED', mine: completed.length, avg: compareSource?.avg_completed ?? 0, unit: '', accent: '#22c55e' },
               ].map((m) => {
                 const max = Math.max(m.mine, m.avg, 0.001)

@@ -6,8 +6,9 @@ import EntryCard from '@/components/EntryCard'
 import StatCard from '@/components/StatCard'
 import MechCard from '@/components/MechCard'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { getWorkoutTotals, FITNESS_CHANGED_EVENT, type WorkoutTotals } from '@/lib/fitness/db'
 import { STATUS_LABELS, HOBBY_PATHS } from '@/lib/hobbies'
-import type { Entry } from '@/types/database'
+import type { Entry, HobbyCategory } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
 import GettingStarted from '@/components/GettingStarted'
 import { calcHours } from '@/lib/hours'
@@ -69,18 +70,31 @@ export default function DashboardPage() {
   const [sortField, setSortField] = useState<SortField>('updated')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [hobbyFilter, setHobbyFilter] = useState<string>('all')
+  const [workouts, setWorkouts] = useState<WorkoutTotals>({ count: 0, minutes: 0 })
 
   useEffect(() => {
     const load = () => getAllEntries().then(setEntries).finally(() => setLoading(false))
     load()
     // Refresh when entries change anywhere (sidebar quick add, quick log, etc.)
+    // Fitness isn't in web_entries, so its tile count comes from the workout log.
+    const loadWorkouts = () => getWorkoutTotals().then(setWorkouts).catch(() => {})
+    loadWorkouts()
     window.addEventListener(ENTRIES_CHANGED_EVENT, load)
-    return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
+    window.addEventListener(FITNESS_CHANGED_EVENT, loadWorkouts)
+    return () => {
+      window.removeEventListener(ENTRIES_CHANGED_EVENT, load)
+      window.removeEventListener(FITNESS_CHANGED_EVENT, loadWorkouts)
+    }
   }, [])
 
   const inProgress = entries.filter((e) => e.status === 'in_progress')
   const completed  = entries.filter((e) => e.status === 'completed')
   const backlog    = entries.filter((e) => e.status === 'backlog')
+
+  // What the category index counts. Fitness has no entries — its tile shows how
+  // many workouts have been logged instead.
+  const countFor = (id: HobbyCategory) =>
+    id === 'fitness' ? workouts.count : entries.filter((e) => e.hobby_category === id).length
 
   // Backlog = full remaining length; active = time actually spent (TV counts watched episodes)
   const backlogHours = calcHours(backlog, 'full')
@@ -191,7 +205,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <option value="all">ALL CATEGORIES</option>
-                  {enabledHobbies.map((h) => (
+                  {enabledHobbies.filter((h) => !h.customSection).map((h) => (
                     <option key={h.id} value={h.id}>{h.pluralLabel.toUpperCase()}</option>
                   ))}
                 </select>
@@ -228,13 +242,13 @@ export default function DashboardPage() {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
           {(() => {
-            const counts = new Map(enabledHobbies.map((h) => [h.id, entries.filter((e) => e.hobby_category === h.id).length]))
+            const counts = new Map(enabledHobbies.map((h) => [h.id, countFor(h.id)]))
             const nonEmpty = enabledHobbies.filter((h) => (counts.get(h.id) ?? 0) > 0)
             // Auto-hide hobbies with nothing tracked; but if EVERYTHING is empty
             // (brand-new operator) show them all so the grid isn't blank.
             return (nonEmpty.length > 0 ? nonEmpty : enabledHobbies)
           })().map((h, i) => {
-            const count = entries.filter((e) => e.hobby_category === h.id).length
+            const count = countFor(h.id)
             return (
               <MechCard key={h.id} accent={h.accent} index={i + 4} hoverable onClick={() => router.push(HOBBY_PATHS[h.id])}>
                 <div style={{ padding: '14px 10px', textAlign: 'center' }}>
