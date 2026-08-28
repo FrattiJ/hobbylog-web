@@ -6,7 +6,7 @@ import type { Exercise, WorkoutDetail, WorkoutSet } from '@/types/fitness'
 import { deleteWorkout, listExercises, listWorkouts } from '@/lib/fitness/db'
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
-import { Button, Label, Empty, ACCENT } from './ui'
+import { Button, Label, Empty, Confirm, ACCENT } from './ui'
 
 export default function HistoryTab() {
   const { success, error: toastError } = useToast()
@@ -14,6 +14,7 @@ export default function HistoryTab() {
   const [exercises, setExercises] = useState<Map<string, Exercise>>(new Map())
   const [open, setOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [confirming, setConfirming] = useState<WorkoutDetail | null>(null)
 
   const reload = () => Promise.all([listWorkouts(), listExercises(true)])
     .then(([w, e]) => { setWorkouts(w); setExercises(new Map(e.map((x) => [x.id, x]))) })
@@ -23,13 +24,13 @@ export default function HistoryTab() {
   useEffect(() => { reload() }, [])
 
   async function remove(w: WorkoutDetail) {
-    if (!confirm(`Delete the workout logged on ${w.date}? This can't be undone.`)) return
+    setConfirming(null)
     try {
       await deleteWorkout(w.id)
       success('Workout deleted')
       reload()
-    } catch {
-      toastError('Could not delete that workout')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Could not delete that workout')
     }
   }
 
@@ -118,13 +119,22 @@ export default function HistoryTab() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                   <Label>{w.bodyweight ? `BODYWEIGHT ${w.bodyweight} LBS` : ''}</Label>
-                  <Button variant="quiet" onClick={() => remove(w)}><Trash2 size={13} /> DELETE</Button>
+                  <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> DELETE</Button>
                 </div>
               </div>
             )}
           </div>
         )
       })}
+
+      {confirming && (
+        <Confirm
+          title="Delete workout"
+          body={`Delete the workout logged on ${formatDate(confirming.date)}? Its sets go with it, and this can't be undone.`}
+          onConfirm={() => remove(confirming)}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
     </>
   )
 }

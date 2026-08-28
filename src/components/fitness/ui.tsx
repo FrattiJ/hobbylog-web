@@ -161,6 +161,31 @@ export function Modal({ title, onClose, children, width = 620 }: {
   )
 }
 
+// In-app confirmation. Deliberately not window.confirm(): that's suppressed in
+// sandboxed iframes (it silently returns false, so the button appears dead) and
+// it can't be styled to match the rest of the app.
+export function Confirm({ title, body, confirmLabel = 'DELETE', onConfirm, onCancel }: {
+  title: string
+  body: string
+  confirmLabel?: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <Modal title={title} onClose={onCancel} width={420}>
+      <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6 }}>{body}</p>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <Button variant="quiet" onClick={onCancel}>CANCEL</Button>
+        <Button variant="solid" accent="#ef4444" onClick={onConfirm}>{confirmLabel}</Button>
+      </div>
+    </Modal>
+  )
+}
+
+// 0 = Sunday .. 6 = Saturday, matching Date.getDay().
+export const DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+export const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
   return (
     <div style={{

@@ -1,14 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, X, Save, Trophy, RotateCcw } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Plus, X, Save, Trophy, RotateCcw, CalendarCheck } from 'lucide-react'
 import type { Exercise, Routine } from '@/types/fitness'
-import { getLastSets, getRoutine, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
+import { getLastSets, getRoutine, getRoutineForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
 import { personalRecords, isoDay, fmtSet, type PrValue } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
 import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet } from './SetGrid'
-import { Button, Input, TextArea, Label, Rule, Empty, ACCENT } from './ui'
+import { Button, Input, TextArea, Label, Rule, Empty, DAY_FULL, ACCENT } from './ui'
 
 interface DraftExercise {
   exercise: Exercise
@@ -47,6 +47,10 @@ export default function TodayTab() {
   const [picking, setPicking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [restored, setRestored] = useState(false)
+  // Auto-load runs at most once per mount, so finishing a workout (which clears
+  // the draft) doesn't immediately repopulate the form underneath you.
+  const autoLoaded = useRef(false)
+  const todayDow = new Date().getDay()
 
   // Pull an exercise's history once, so the grid can show ghosts and PR badges.
   const hydrate = useCallback(async (exercise: Exercise): Promise<DraftExercise> => {
@@ -103,6 +107,15 @@ export default function TodayTab() {
     }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stored)) } catch { /* quota — not worth failing over */ }
   }, [draft, routineId, routineName, date, duration, bodyweight, notes, restored])
+
+  useEffect(() => {
+    if (!restored || loading || autoLoaded.current) return
+    autoLoaded.current = true
+    if (draft.length > 0) return // a restored session wins over the schedule
+    getRoutineForDay(todayDow).then((r) => { if (r) loadRoutine(r.id) }).catch(() => {})
+    // loadRoutine is stable enough here: it only reads setState setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored, loading, todayDow])
 
   async function loadRoutine(id: string) {
     const r = await getRoutine(id)
@@ -177,11 +190,27 @@ export default function TodayTab() {
       <>
         <Rule>START A SESSION</Rule>
         {routines.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-            {routines.map((r) => (
-              <Button key={r.id} variant="solid" onClick={() => loadRoutine(r.id)}>{r.name.toUpperCase()}</Button>
-            ))}
-          </div>
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {routines.map((r) => {
+                const isToday = r.day_of_week === todayDow
+                return (
+                  <Button key={r.id} variant={isToday ? 'solid' : 'ghost'} onClick={() => loadRoutine(r.id)}>
+                    {isToday && <CalendarCheck size={12} />}
+                    {r.name.toUpperCase()}
+                    {r.day_of_week != null && !isToday && (
+                      <span style={{ opacity: 0.5, marginLeft: 2 }}>· {DAY_FULL[r.day_of_week].slice(0, 3).toUpperCase()}</span>
+                    )}
+                  </Button>
+                )
+              })}
+            </div>
+            <Label style={{ marginBottom: 14 }}>
+              {routines.some((r) => r.day_of_week === todayDow)
+                ? `SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()} — LOADS AUTOMATICALLY`
+                : `NOTHING SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()} — PICK ONE OR GO FREESTYLE`}
+            </Label>
+          </>
         )}
         <Empty
           title={routines.length ? 'OR GO FREESTYLE' : 'NO ROUTINES YET'}

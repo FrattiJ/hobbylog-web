@@ -10,7 +10,7 @@ import {
 import { fmtDuration, parseDuration } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
-import { Button, Input, TextArea, Label, Rule, Empty, ACCENT } from './ui'
+import { Button, Input, TextArea, Label, Rule, Empty, Confirm, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
 
 // One row of the routine being edited: the exercise plus its targets.
 interface EditRow extends RoutineExerciseDraft {
@@ -23,6 +23,7 @@ export default function RoutinesTab() {
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<RoutineDetail | 'new' | null>(null)
+  const [confirming, setConfirming] = useState<Routine | null>(null)
 
   const reload = () => Promise.all([listRoutines(), listExercises()])
     .then(([r, e]) => { setRoutines(r); setAllExercises(e) })
@@ -32,13 +33,13 @@ export default function RoutinesTab() {
   useEffect(() => { reload() }, [])
 
   async function remove(r: Routine) {
-    if (!confirm(`Delete the routine "${r.name}"? Workouts you already logged with it are kept.`)) return
+    setConfirming(null)
     try {
       await deleteRoutine(r.id)
-      success('Routine deleted')
+      success(`Deleted "${r.name}"`)
       reload()
-    } catch {
-      toastError('Could not delete that routine')
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Could not delete that routine')
     }
   }
 
@@ -69,7 +70,16 @@ export default function RoutinesTab() {
           action={<Button variant="ghost" onClick={() => setEditing('new')}><Plus size={13} /> BUILD ONE</Button>}
         />
       ) : (
-        routines.map((r) => <RoutineCard key={r.id} routine={r} onEdit={async () => setEditing((await getRoutine(r.id)) ?? 'new')} onDelete={() => remove(r)} />)
+        routines.map((r) => <RoutineCard key={r.id} routine={r} onEdit={async () => setEditing((await getRoutine(r.id)) ?? 'new')} onDelete={() => setConfirming(r)} />)
+      )}
+
+      {confirming && (
+        <Confirm
+          title="Delete routine"
+          body={`Delete "${confirming.name}"? Workouts you already logged with it are kept.`}
+          onConfirm={() => remove(confirming)}
+          onCancel={() => setConfirming(null)}
+        />
       )}
     </>
   )
@@ -88,8 +98,11 @@ function RoutineCard({ routine, onEdit, onDelete }: { routine: Routine; onEdit: 
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 15, color: 'var(--text-hi)', fontWeight: 500 }}>{routine.name}</div>
         <Label style={{ marginTop: 3 }}>
-          {count == null ? '…' : `${count} EXERCISE${count === 1 ? '' : 'S'}`}
-          {routine.notes ? ` · ${routine.notes}` : ''}
+          {[
+            routine.day_of_week != null ? DAY_NAMES[routine.day_of_week] : null,
+            count == null ? '…' : `${count} EXERCISE${count === 1 ? '' : 'S'}`,
+            routine.notes || null,
+          ].filter(Boolean).join(' · ')}
         </Label>
       </div>
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -120,6 +133,7 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
       notes: re.notes,
     })) ?? [],
   )
+  const [day, setDay] = useState<number | null>(routine?.day_of_week ?? null)
   const [picking, setPicking] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -150,8 +164,8 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
     setSaving(true)
     try {
       const id = routine
-        ? (await updateRoutine(routine.id, { name: name.trim(), notes: notes.trim() || null }), routine.id)
-        : (await createRoutine(name, notes.trim() || null)).id
+        ? (await updateRoutine(routine.id, { name: name.trim(), notes: notes.trim() || null, day_of_week: day }), routine.id)
+        : (await createRoutine(name, notes.trim() || null, day)).id
       await setRoutineExercises(id, rows.map(({ exercise, ...r }) => { void exercise; return r }))
       success(routine ? 'Routine updated' : 'Routine created')
       onDone()
@@ -170,6 +184,35 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
 
       <Label style={{ marginBottom: 5 }}>NAME</Label>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push Day" />
+
+      <Label style={{ margin: '12px 0 5px' }}>SCHEDULE</Label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {DAY_NAMES.map((d, i) => {
+          const on = day === i
+          return (
+            <button
+              key={d} type="button"
+              onClick={() => setDay(on ? null : i)}
+              title={on ? `Unschedule from ${DAY_FULL[i]}` : `Schedule for ${DAY_FULL[i]}`}
+              style={{
+                flex: '1 1 52px', padding: '7px 4px', cursor: 'pointer',
+                fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em',
+                background: on ? `${ACCENT}22` : 'transparent',
+                border: `1px solid ${on ? ACCENT : 'var(--border-dim)'}`,
+                color: on ? ACCENT : 'var(--text-dim)',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              {d}
+            </button>
+          )
+        })}
+      </div>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', marginTop: 6, lineHeight: 1.6 }}>
+        {day == null
+          ? 'Not scheduled — load it by hand from the Today tab.'
+          : `Loads automatically on the Today tab every ${DAY_FULL[day]}. Tap again to unschedule.`}
+      </p>
 
       <Label style={{ margin: '12px 0 5px' }}>NOTES</Label>
       <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" style={{ minHeight: 48 }} />

@@ -100,6 +100,17 @@ export async function listRoutines(): Promise<Routine[]> {
   return (data ?? []) as Routine[]
 }
 
+// The routine scheduled for a given weekday, if any. Drives the Today tab's
+// auto-load: open the app on leg day and leg day is already laid out.
+export async function getRoutineForDay(dayOfWeek: number): Promise<Routine | null> {
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_routines').select('*')
+    .eq('user_id', userId).eq('archived', false).eq('day_of_week', dayOfWeek)
+    .order('updated_at', { ascending: false }).limit(1)
+  return ((data ?? []) as Routine[])[0] ?? null
+}
+
 export async function getRoutine(id: string): Promise<RoutineDetail | null> {
   const { data: routine } = await supabase.from('web_routines').select('*').eq('id', id).maybeSingle()
   if (!routine) return null
@@ -117,16 +128,16 @@ export async function getRoutine(id: string): Promise<RoutineDetail | null> {
   }
 }
 
-export async function createRoutine(name: string, notes: string | null = null): Promise<Routine> {
+export async function createRoutine(name: string, notes: string | null = null, dayOfWeek: number | null = null): Promise<Routine> {
   const user_id = await currentUserId()
   const { data, error } = await supabase
-    .from('web_routines').insert({ user_id, name: name.trim(), notes }).select().single()
+    .from('web_routines').insert({ user_id, name: name.trim(), notes, day_of_week: dayOfWeek }).select().single()
   if (error) throw error
   notifyChanged()
   return data as Routine
 }
 
-export async function updateRoutine(id: string, patch: Partial<Pick<Routine, 'name' | 'notes' | 'archived'>>): Promise<void> {
+export async function updateRoutine(id: string, patch: Partial<Pick<Routine, 'name' | 'notes' | 'archived' | 'day_of_week'>>): Promise<void> {
   const { error } = await supabase
     .from('web_routines').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) throw error
@@ -136,8 +147,11 @@ export async function updateRoutine(id: string, patch: Partial<Pick<Routine, 'na
 export async function deleteRoutine(id: string): Promise<void> {
   // Logged workouts survive: web_workouts.routine_id is ON DELETE SET NULL and
   // routine_name keeps the label history already showed.
-  const { error } = await supabase.from('web_routines').delete().eq('id', id)
+  // .select() so a delete blocked by RLS comes back as zero rows rather than a
+  // silent success — without it a no-op is indistinguishable from a real delete.
+  const { data, error } = await supabase.from('web_routines').delete().eq('id', id).select('id')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was deleted — the routine may already be gone.')
   notifyChanged()
 }
 
@@ -258,8 +272,9 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
 }
 
 export async function deleteWorkout(id: string): Promise<void> {
-  const { error } = await supabase.from('web_workouts').delete().eq('id', id)
+  const { data, error } = await supabase.from('web_workouts').delete().eq('id', id).select('id')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was deleted — the workout may already be gone.')
   notifyChanged()
 }
 
@@ -342,7 +357,9 @@ export async function createGoal(input: {
 }
 
 export async function deleteGoal(id: string): Promise<void> {
-  await supabase.from('web_goals').delete().eq('id', id)
+  const { data, error } = await supabase.from('web_goals').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was deleted — the goal may already be gone.')
   notifyChanged()
 }
 

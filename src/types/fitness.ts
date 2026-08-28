@@ -23,6 +23,9 @@ export interface Routine {
   id: string
   name: string
   notes: string | null
+  // 0 = Sunday .. 6 = Saturday, matching Date.getDay(). Null = not tied to a day.
+  // A routine scheduled for today pre-loads on the Today tab.
+  day_of_week: number | null
   archived: boolean
   created_at: string
   updated_at: string
