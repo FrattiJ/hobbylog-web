@@ -45,8 +45,8 @@ interface Column { key: keyof DraftSet; label: string; placeholder: (ghost?: Dat
 // ask you for "1 set of 30:00 lbs".
 const COLUMNS: Record<TrackingType, Column[]> = {
   weight_reps: [
-    { key: 'weight', label: 'LBS', placeholder: (g) => (g?.weight != null ? String(g.weight) : '—') },
     { key: 'reps', label: 'REPS', placeholder: (g) => (g?.reps != null ? String(g.reps) : '—') },
+    { key: 'weight', label: 'LBS', placeholder: (g) => (g?.weight != null ? String(g.weight) : '—') },
   ],
   reps: [
     { key: 'reps', label: 'REPS', placeholder: (g) => (g?.reps != null ? String(g.reps) : '—') },

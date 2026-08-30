@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, X, Save, Trophy, RotateCcw, CalendarCheck } from 'lucide-react'
 import type { Exercise, LastNote, Routine } from '@/types/fitness'
 import { getLastNotes, getLastSets, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
-import { personalRecords, isoDay, fmtSet, type PrValue } from '@/lib/fitness/calc'
+import { personalRecords, isoDay, fmtPrValue, PR_LABELS, type PrValue } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
 import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet } from './SetGrid'
@@ -276,8 +276,9 @@ export default function TodayTab() {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, color: 'var(--text-hi)', fontWeight: 500 }}>{d.exercise.name}</div>
               <Label style={{ marginTop: 3 }}>
-                {TRACKING_LABELS[d.exercise.tracking_type].toUpperCase()}
-                {d.lastSets.length > 0 && ` · LAST: ${d.lastSets.map((s) => fmtSet(d.exercise.tracking_type, s)).join(', ')}`}
+                {d.lastSets.length > 0
+                  ? `GREYED VALUES = ${formatNoteDate(d.lastSets[0].date)}`
+                  : TRACKING_LABELS[d.exercise.tracking_type].toUpperCase()}
               </Label>
             </div>
             <button
@@ -297,7 +298,7 @@ export default function TodayTab() {
             }}>
               <Trophy size={11} style={{ color: '#eab308' }} />
               {d.records.map((r) => (
-                <span key={r.kind}>{r.kind.toUpperCase()} {formatPr(r)}</span>
+                <span key={r.kind}>{PR_LABELS[r.kind]} {fmtPrValue(r.kind, r.value)}</span>
               ))}
             </div>
           )}
@@ -375,12 +376,3 @@ function formatNoteDate(date: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()
 }
 
-function formatPr(r: PrValue): string {
-  const n = Math.round(r.value * 10) / 10
-  if (r.kind === 'seconds' || r.kind === 'pace') {
-    const m = Math.floor(n / 60)
-    const s = Math.round(n % 60)
-    return `${m}:${String(s).padStart(2, '0')}`
-  }
-  return String(n)
-}

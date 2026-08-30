@@ -240,7 +240,7 @@ export function fmtSet(trackingType: TrackingType, s: SetLike): string {
     return s.weight ? `${s.reps} x +${round(s.weight)} lbs` : `${s.reps} reps`
   }
   if (!s.reps && !s.weight) return '--'
-  return `${round(s.weight ?? 0)} lbs x ${s.reps ?? 0}`
+  return `${s.reps ?? 0} x ${round(s.weight ?? 0)} lbs`
 }
 
 // Total pounds moved in a workout - the headline number for a strength session.
