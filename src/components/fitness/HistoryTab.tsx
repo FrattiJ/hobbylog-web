@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, Trash2 } from 'lucide-react'
 import type { Exercise, WorkoutDetail, WorkoutSet } from '@/types/fitness'
-import { deleteWorkout, listExercises, listWorkouts } from '@/lib/fitness/db'
+import { deleteWorkout, getWorkoutNotes, listExercises, listWorkouts } from '@/lib/fitness/db'
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import { Button, Label, Empty, Confirm, ACCENT } from './ui'
@@ -15,9 +15,15 @@ export default function HistoryTab() {
   const [open, setOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [confirming, setConfirming] = useState<WorkoutDetail | null>(null)
+  // Keyed 'workoutId:exerciseId' -- the setup note left on that exercise that day.
+  const [notes, setNotes] = useState<Map<string, string>>(new Map())
 
   const reload = () => Promise.all([listWorkouts(), listExercises(true)])
-    .then(([w, e]) => { setWorkouts(w); setExercises(new Map(e.map((x) => [x.id, x]))) })
+    .then(async ([w, e]) => {
+      setWorkouts(w)
+      setExercises(new Map(e.map((x) => [x.id, x])))
+      setNotes(await getWorkoutNotes(w.map((x) => x.id)).catch(() => new Map()))
+    })
     .catch(() => {})
     .finally(() => setLoading(false))
 
@@ -108,6 +114,14 @@ export default function HistoryTab() {
                         </span>
                       ))}
                     </div>
+                    {g.exercise && notes.get(`${w.id}:${g.exercise.id}`) && (
+                      <p style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+                        marginTop: 5, lineHeight: 1.5, fontStyle: 'italic',
+                      }}>
+                        {notes.get(`${w.id}:${g.exercise.id}`)}
+                      </p>
+                    )}
                   </div>
                 ))}
 

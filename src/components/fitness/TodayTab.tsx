@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, X, Save, Trophy, RotateCcw, CalendarCheck } from 'lucide-react'
-import type { Exercise, Routine } from '@/types/fitness'
-import { getLastSets, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
+import type { Exercise, LastNote, Routine } from '@/types/fitness'
+import { getLastNotes, getLastSets, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
 import { personalRecords, isoDay, fmtSet, type PrValue } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
@@ -15,6 +15,10 @@ interface DraftExercise {
   sets: DraftSet[]
   lastSets: DatedSet[]
   records: PrValue[]
+  // Setup note for this session, and the last one you actually wrote (which may
+  // be several sessions back, since blank notes are never stored).
+  note: string
+  lastNote: LastNote | null
 }
 
 // A workout in progress survives a refresh or a tab close — losing half a
@@ -28,7 +32,7 @@ interface StoredDraft {
   duration: string
   bodyweight: string
   notes: string
-  exercises: { exerciseId: string; sets: DraftSet[] }[]
+  exercises: { exerciseId: string; sets: DraftSet[]; note?: string }[]
 }
 
 export default function TodayTab() {
@@ -54,15 +58,18 @@ export default function TodayTab() {
 
   // Pull an exercise's history once, so the grid can show ghosts and PR badges.
   const hydrate = useCallback(async (exercise: Exercise): Promise<DraftExercise> => {
-    const [lastMap, history] = await Promise.all([
+    const [lastMap, history, noteMap] = await Promise.all([
       getLastSets([exercise.id]),
       getSetHistory(exercise.id),
+      getLastNotes([exercise.id]),
     ])
     return {
       exercise,
       sets: [emptySet(), emptySet(), emptySet()],
       lastSets: lastMap.get(exercise.id) ?? [],
       records: personalRecords(exercise, history, (s) => (s as DatedSet).date),
+      note: '',
+      lastNote: noteMap.get(exercise.id) ?? null,
     }
   }, [])
 
@@ -94,6 +101,7 @@ export default function TodayTab() {
     Promise.all(found.map(async (d) => ({
       ...(await hydrate(byId.get(d.exerciseId)!)),
       sets: d.sets.length ? d.sets : [emptySet()],
+      note: d.note ?? '',
     }))).then(setDraft)
   }, [restored, loading, allExercises, hydrate])
 
@@ -103,7 +111,7 @@ export default function TodayTab() {
     if (draft.length === 0) { localStorage.removeItem(DRAFT_KEY); return }
     const stored: StoredDraft = {
       routineId, routineName, date, duration, bodyweight, notes,
-      exercises: draft.map((d) => ({ exerciseId: d.exercise.id, sets: d.sets })),
+      exercises: draft.map((d) => ({ exerciseId: d.exercise.id, sets: d.sets, note: d.note })),
     }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stored)) } catch { /* quota — not worth failing over */ }
   }, [draft, routineId, routineName, date, duration, bodyweight, notes, restored])
@@ -139,9 +147,9 @@ export default function TodayTab() {
     setPicking(false)
     if (draft.some((d) => d.exercise.id === e.id)) return
     setAllExercises((prev) => (prev.some((x) => x.id === e.id) ? prev : [...prev, e].sort((a, b) => a.name.localeCompare(b.name))))
-    setDraft((prev) => [...prev, { exercise: e, sets: [emptySet(), emptySet(), emptySet()], lastSets: [], records: [] }])
+    setDraft((prev) => [...prev, { exercise: e, sets: [emptySet(), emptySet(), emptySet()], lastSets: [], records: [], note: '', lastNote: null }])
     const full = await hydrate(e)
-    setDraft((prev) => prev.map((d) => (d.exercise.id === e.id ? { ...d, lastSets: full.lastSets, records: full.records } : d)))
+    setDraft((prev) => prev.map((d) => (d.exercise.id === e.id ? { ...d, lastSets: full.lastSets, records: full.records, lastNote: full.lastNote } : d)))
   }
 
   function reset() {
@@ -177,6 +185,7 @@ export default function TodayTab() {
           exercise_id: d.exercise.id,
           ...draftToSet(d.exercise.tracking_type, s),
         })),
+        exerciseNotes: draft.map((d) => ({ exercise_id: d.exercise.id, note: d.note })),
       })
       // Any goal this workout just met flips to achieved right away.
       const progress = await evaluateGoals().catch(() => [])
@@ -300,6 +309,27 @@ export default function TodayTab() {
             records={d.records}
             onChange={(sets) => setDraft(draft.map((x, j) => (j === i ? { ...x, sets } : x)))}
           />
+
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border-dim)', paddingTop: 9 }}>
+            <Label style={{ marginBottom: 5 }}>SETUP NOTES</Label>
+            {/* The carried-forward note stays visible while you type over it, so
+                you can copy a seat position rather than retype it from memory. */}
+            {d.lastNote && (
+              <p style={{
+                fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+                border: '1px dashed var(--border-dim)', padding: '6px 8px', marginBottom: 6,
+                lineHeight: 1.5, fontStyle: 'italic',
+              }}>
+                {formatNoteDate(d.lastNote.date)}: {d.lastNote.note}
+              </p>
+            )}
+            <TextArea
+              value={d.note}
+              onChange={(e) => setDraft(draft.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
+              placeholder={d.lastNote ? 'Same as above unless you change it' : 'Seat position, incline, grip width…'}
+              style={{ minHeight: 42, fontSize: 13 }}
+            />
+          </div>
         </div>
       ))}
 
@@ -337,6 +367,12 @@ export default function TodayTab() {
       {picking && <ExercisePicker mine={allExercises} onPick={addExercise} onClose={() => setPicking(false)} />}
     </>
   )
+}
+
+function formatNoteDate(date: string): string {
+  if (!date) return 'LAST TIME'
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()
 }
 
 function formatPr(r: PrValue): string {

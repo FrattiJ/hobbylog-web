@@ -102,6 +102,24 @@ export function prsBrokenBy(
   return broken
 }
 
+// -- Setup notes -------------------------------------------------------------
+
+// The two rules that make a note carry forward across sessions you left blank.
+
+// 1. Blank notes are never written. An empty field must not overwrite the note
+//    being carried forward -- it means "unchanged", not "erase it".
+export function notesToPersist<T extends { note: string }>(list: T[]): T[] {
+  return list.filter((n) => n.note.trim()).map((n) => ({ ...n, note: n.note.trim() }))
+}
+
+// 2. Given every stored note for an exercise, the newest wins. Combined with
+//    rule 1, that's the last thing actually typed, however long ago.
+export function latestNote<T extends { date: string }>(rows: T[]): T | null {
+  let best: T | null = null
+  for (const r of rows) if (!best || r.date > best.date) best = r
+  return best
+}
+
 // -- Consistency -------------------------------------------------------------
 
 // Dates are 'YYYY-MM-DD'. Parsed at local noon so a timezone shift can't slide a

@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Build routines from a built-in catalog of 873 exercises, or type in your own',
       'Exercises track what actually fits them: weight × reps, reps, a timed hold, or time + distance for runs',
       'Last session\'s numbers show up as you log, so you always know what to beat',
+      'Setup notes per exercise — seat position, incline, grip — carried forward until you change them',
       'Personal records tracked automatically — heaviest lift, estimated 1RM, best pace, longest hold',
       'Progress charts per exercise, plus a consistency heatmap and workout streaks',
       'Schedule routines to a weekday — one loads itself on the Today tab, and if two share a day you pick which',

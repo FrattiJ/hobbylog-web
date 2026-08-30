@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/supabaseClient'
 import type {
   Exercise, Goal, GoalMetric, Routine, RoutineDetail, RoutineExercise,
-  TrackingType, Workout, WorkoutDetail, WorkoutSet,
+  LastNote, TrackingType, Workout, WorkoutDetail, WorkoutSet,
 } from '@/types/fitness'
 import type { CatalogExercise } from './catalog'
 import { defaultTracking } from './catalog'
-import { personalRecords, type PrValue } from './calc'
+import { latestNote, notesToPersist, personalRecords, type PrValue } from './calc'
 
 // Anything that mutates fitness data fires this, mirroring ENTRIES_CHANGED_EVENT
 // in lib/db.ts so open tabs/panels re-read rather than showing stale numbers.
@@ -244,6 +244,8 @@ export interface WorkoutDraft {
   bodyweight: number | null
   notes: string | null
   sets: WorkoutSetDraft[]
+  // Per-exercise setup notes. Blank ones are dropped before insert.
+  exerciseNotes?: { exercise_id: string; note: string }[]
 }
 
 export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
@@ -268,6 +270,16 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
       throw setErr
     }
   }
+
+  // Only non-empty notes are stored: an empty one must not overwrite the note
+  // being carried forward from an earlier session.
+  const notes = notesToPersist(draft.exerciseNotes ?? [])
+    .map((n) => ({ user_id, workout_id: workout.id, exercise_id: n.exercise_id, note: n.note }))
+  if (notes.length > 0) {
+    // A failed note shouldn't discard a logged workout, so this isn't fatal.
+    await supabase.from('web_exercise_notes').insert(notes)
+  }
+
   notifyChanged()
   return workout as Workout
 }
@@ -285,6 +297,16 @@ export interface DatedSet extends WorkoutSet { date: string }
 
 // Every set ever logged for an exercise, newest first, each tagged with its
 // workout's date. Feeds the progress chart, the PR list, and "last time" values.
+// PostgREST returns an embedded to-one relation as an object, but the generated
+// types (and some queries) present it as a one-element array. Normalise both so a
+// shape surprise can't silently blank out every date.
+function embeddedDate(rel: unknown): string {
+  if (!rel) return ''
+  const row = Array.isArray(rel) ? rel[0] : rel
+  const date = (row as { date?: unknown } | undefined)?.date
+  return typeof date === 'string' ? date : ''
+}
+
 export async function getSetHistory(exerciseId: string): Promise<DatedSet[]> {
   const userId = await currentUserId()
   const { data, error } = await supabase
@@ -294,10 +316,62 @@ export async function getSetHistory(exerciseId: string): Promise<DatedSet[]> {
     .eq('exercise_id', exerciseId)
   if (error) throw error
 
-  type Row = WorkoutSet & { workout: { date: string } | null }
-  return ((data ?? []) as Row[])
-    .map((r) => ({ ...r, date: r.workout?.date ?? '' }))
+  return ((data ?? []) as unknown as (WorkoutSet & { workout: unknown })[])
+    .map((r) => ({ ...r, date: embeddedDate(r.workout) }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.position - b.position))
+}
+
+// The newest note for each exercise, with the date it was written. Because blank
+// notes are never stored, this is the last thing you actually typed -- sessions
+// where you left it empty don't blank it out.
+export async function getLastNotes(exerciseIds: string[]): Promise<Map<string, LastNote>> {
+  const out = new Map<string, LastNote>()
+  if (exerciseIds.length === 0) return out
+  const userId = await currentUserId()
+
+  const { data, error } = await supabase
+    .from('web_exercise_notes')
+    .select('note, exercise_id, workout:web_workouts!inner(date)')
+    .eq('user_id', userId)
+    .in('exercise_id', exerciseIds)
+  if (error) throw error
+
+  const byExercise = new Map<string, LastNote[]>()
+  for (const r of (data ?? []) as unknown as { note: string; exercise_id: string; workout: unknown }[]) {
+    const row = { note: r.note, date: embeddedDate(r.workout) }
+    const arr = byExercise.get(r.exercise_id)
+    if (arr) arr.push(row)
+    else byExercise.set(r.exercise_id, [row])
+  }
+  for (const [exerciseId, rows] of byExercise) {
+    const best = latestNote(rows)
+    if (best) out.set(exerciseId, best)
+  }
+  return out
+}
+
+// Every note ever left on an exercise, newest first -- the history view.
+export async function getNoteHistory(exerciseId: string): Promise<LastNote[]> {
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_exercise_notes')
+    .select('note, workout:web_workouts!inner(date)')
+    .eq('user_id', userId).eq('exercise_id', exerciseId)
+  return ((data ?? []) as unknown as { note: string; workout: unknown }[])
+    .map((r) => ({ note: r.note, date: embeddedDate(r.workout) }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+}
+
+// Notes attached to one logged workout, keyed by exercise -- for History.
+export async function getWorkoutNotes(workoutIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (workoutIds.length === 0) return out
+  const { data } = await supabase
+    .from('web_exercise_notes').select('workout_id, exercise_id, note').in('workout_id', workoutIds)
+  for (const r of (data ?? []) as { workout_id: string; exercise_id: string; note: string }[]) {
+    out.set(`${r.workout_id}:${r.exercise_id}`, r.note)
+  }
+  return out
 }
 
 export async function getPersonalRecords(exercise: Exercise): Promise<PrValue[]> {
@@ -319,9 +393,8 @@ export async function getLastSets(exerciseIds: string[]): Promise<Map<string, Da
     .in('exercise_id', exerciseIds)
   if (error) throw error
 
-  type Row = WorkoutSet & { workout: { date: string } | null }
-  for (const r of (data ?? []) as Row[]) {
-    const row: DatedSet = { ...r, date: r.workout?.date ?? '' }
+  for (const r of (data ?? []) as unknown as (WorkoutSet & { workout: unknown })[]) {
+    const row: DatedSet = { ...r, date: embeddedDate(r.workout) }
     const prev = out.get(row.exercise_id)
     if (!prev) out.set(row.exercise_id, [row])
     else if (row.date > prev[0].date) out.set(row.exercise_id, [row]) // newer session wins

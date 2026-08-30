@@ -92,6 +92,22 @@ export interface Goal {
   created_at: string
 }
 
+// A setup note for one exercise on one workout: seat position, incline, grip.
+// Blank notes are never persisted, so the newest row is always the newest thing
+// actually typed -- that's what lets it carry forward across blank sessions.
+export interface ExerciseNote {
+  id: string
+  workout_id: string
+  exercise_id: string
+  note: string
+}
+
+// The note to show as a ghost, plus when it was written.
+export interface LastNote {
+  note: string
+  date: string
+}
+
 // A routine with its exercise list resolved — what the editor and the logger both want.
 export interface RoutineDetail extends Routine {
   exercises: (RoutineExercise & { exercise: Exercise })[]
