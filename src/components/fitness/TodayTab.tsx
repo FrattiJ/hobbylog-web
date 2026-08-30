@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, X, Save, Trophy, RotateCcw, CalendarCheck } from 'lucide-react'
 import type { Exercise, Routine } from '@/types/fitness'
-import { getLastSets, getRoutine, getRoutineForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
+import { getLastSets, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
 import { personalRecords, isoDay, fmtSet, type PrValue } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
 import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet } from './SetGrid'
-import { Button, Input, TextArea, Label, Rule, Empty, DAY_FULL, ACCENT } from './ui'
+import { Button, Input, TextArea, Label, Rule, Empty, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
 
 interface DraftExercise {
   exercise: Exercise
@@ -112,7 +112,11 @@ export default function TodayTab() {
     if (!restored || loading || autoLoaded.current) return
     autoLoaded.current = true
     if (draft.length > 0) return // a restored session wins over the schedule
-    getRoutineForDay(todayDow).then((r) => { if (r) loadRoutine(r.id) }).catch(() => {})
+    // Only auto-load an unambiguous day. With two routines on the same weekday
+    // (home gym vs school gym) picking one for you would be a coin flip.
+    getRoutinesForDay(todayDow)
+      .then((rs) => { if (rs.length === 1) loadRoutine(rs[0].id) })
+      .catch(() => {})
     // loadRoutine is stable enough here: it only reads setState setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restored, loading, todayDow])
@@ -150,6 +154,11 @@ export default function TodayTab() {
     setDate(isoDay(new Date()))
     localStorage.removeItem(DRAFT_KEY)
   }
+
+  // Routines scheduled for today vs the rest, so the start screen can lead with
+  // the ones that actually apply.
+  const todays = routines.filter((r) => r.day_of_week === todayDow)
+  const others = routines.filter((r) => r.day_of_week !== todayDow)
 
   const loggedSets = draft.flatMap((d) => d.sets.filter(draftHasData).map((s) => ({ d, s })))
 
@@ -189,27 +198,38 @@ export default function TodayTab() {
     return (
       <>
         <Rule>START A SESSION</Rule>
-        {routines.length > 0 && (
+        {todays.length > 0 && (
           <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-              {routines.map((r) => {
-                const isToday = r.day_of_week === todayDow
-                return (
-                  <Button key={r.id} variant={isToday ? 'solid' : 'ghost'} onClick={() => loadRoutine(r.id)}>
-                    {isToday && <CalendarCheck size={12} />}
-                    {r.name.toUpperCase()}
-                    {r.day_of_week != null && !isToday && (
-                      <span style={{ opacity: 0.5, marginLeft: 2 }}>· {DAY_FULL[r.day_of_week].slice(0, 3).toUpperCase()}</span>
-                    )}
-                  </Button>
-                )
-              })}
-            </div>
-            <Label style={{ marginBottom: 14 }}>
-              {routines.some((r) => r.day_of_week === todayDow)
-                ? `SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()} — LOADS AUTOMATICALLY`
-                : `NOTHING SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()} — PICK ONE OR GO FREESTYLE`}
+            <Label style={{ marginBottom: 8 }}>
+              {todays.length > 1
+                ? `${DAY_FULL[todayDow].toUpperCase()} — PICK ONE`
+                : `SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()}`}
             </Label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {todays.map((r) => (
+                <Button key={r.id} variant="solid" onClick={() => loadRoutine(r.id)}>
+                  <CalendarCheck size={12} /> {r.name.toUpperCase()}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {others.length > 0 && (
+          <>
+            <Label style={{ marginBottom: 8 }}>
+              {todays.length > 0 ? 'OTHER ROUTINES' : `NOTHING SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()}`}
+            </Label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {others.map((r) => (
+                <Button key={r.id} variant="ghost" onClick={() => loadRoutine(r.id)}>
+                  {r.name.toUpperCase()}
+                  {r.day_of_week != null && (
+                    <span style={{ opacity: 0.5, marginLeft: 2 }}>· {DAY_NAMES[r.day_of_week]}</span>
+                  )}
+                </Button>
+              ))}
+            </div>
           </>
         )}
         <Empty

@@ -100,15 +100,16 @@ export async function listRoutines(): Promise<Routine[]> {
   return (data ?? []) as Routine[]
 }
 
-// The routine scheduled for a given weekday, if any. Drives the Today tab's
-// auto-load: open the app on leg day and leg day is already laid out.
-export async function getRoutineForDay(dayOfWeek: number): Promise<Routine | null> {
+// Every routine scheduled for a given weekday. A day can hold more than one --
+// e.g. a Monday home-gym session and a Monday school-gym session -- so the Today
+// tab auto-loads only when there's exactly one and otherwise offers the choice.
+export async function getRoutinesForDay(dayOfWeek: number): Promise<Routine[]> {
   const userId = await currentUserId()
   const { data } = await supabase
     .from('web_routines').select('*')
     .eq('user_id', userId).eq('archived', false).eq('day_of_week', dayOfWeek)
-    .order('updated_at', { ascending: false }).limit(1)
-  return ((data ?? []) as Routine[])[0] ?? null
+    .order('updated_at', { ascending: false })
+  return (data ?? []) as Routine[]
 }
 
 export async function getRoutine(id: string): Promise<RoutineDetail | null> {
