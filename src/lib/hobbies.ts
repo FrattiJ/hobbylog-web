@@ -15,6 +15,10 @@ export interface HobbyConfig {
   percentBased?: boolean
   // Hide the 10/10 rating field (doesn't fit productivity-style hobbies).
   hideRating?: boolean
+  // This hobby has a purpose-built section instead of the shared backlog list, so
+  // it's skipped anywhere the UI assumes "a list of entries with a status". e.g.
+  // fitness, which tracks routines, sets and PRs rather than things to finish.
+  customSection?: boolean
 }
 
 export const HOBBIES: HobbyConfig[] = [
@@ -80,10 +84,11 @@ export const HOBBIES: HobbyConfig[] = [
     pluralLabel: 'Fitness',
     accent: '#ea580c',
     icon: 'Dumbbell',
-    progressLabel: 'Sessions',
-    progressUnit: 'sessions',
+    progressLabel: 'Workouts',
+    progressUnit: 'workouts',
     manualOnly: true,
     hideRating: true,
+    customSection: true,
   },
   {
     id: 'art',
@@ -97,6 +102,10 @@ export const HOBBIES: HobbyConfig[] = [
     percentBased: true,
   },
 ]
+
+// Hobbies that live in the shared entries table. Use this anywhere the UI is about
+// backlog items — quick-add, per-category entry counts, completion charts.
+export const ENTRY_HOBBIES: HobbyConfig[] = HOBBIES.filter((h) => !h.customSection)
 
 export const HOBBY_MAP: Record<HobbyCategory, HobbyConfig> = Object.fromEntries(
   HOBBIES.map((h) => [h.id, h])

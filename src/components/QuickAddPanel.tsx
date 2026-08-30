@@ -24,7 +24,8 @@ export default function QuickAddPanel({ onClose, onAdded }: { onClose: () => voi
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', margin: '0 0 4px' }}>QUICK ADD /</p>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.1em', margin: '0 0 16px' }}>PICK A CATEGORY</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            {enabledHobbies.map((h) => {
+            {/* Fitness isn't an entry you add — it has its own section. */}
+            {enabledHobbies.filter((h) => !h.customSection).map((h) => {
               const Icon = HOBBY_ICON_MAP[h.icon]
               return (
                 <button key={h.id} onClick={() => setSelected(h.id)}
