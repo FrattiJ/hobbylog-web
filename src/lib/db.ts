@@ -252,6 +252,14 @@ export async function searchUsers(q: string): Promise<UserRef[]> {
   return (data ?? []) as UserRef[]
 }
 
+// Everyone else on the app, newest first. Search only ever answered a handle you
+// already knew, so this is what the Friends page shows before you type anything.
+export async function discoverUsers(limit = 24): Promise<UserRef[]> {
+  const { data, error } = await supabase.rpc('discover_users', { limit_n: limit })
+  if (error) throw error
+  return (data ?? []) as UserRef[]
+}
+
 async function usernamesFor(ids: string[]): Promise<Map<string, { username: string; avatar_url: string | null }>> {
   if (ids.length === 0) return new Map()
   const { data } = await supabase.rpc('usernames_for', { ids })
@@ -308,6 +316,19 @@ export async function respondToRequest(id: string, accept: boolean): Promise<voi
 
 export async function removeFriend(id: string): Promise<void> {
   await supabase.from('friendships').delete().eq('id', id)
+  notifyProfileChanged()
+}
+
+// Take back a request you sent. Deleting the row (rather than marking it
+// declined) is what lets you send another one later -- the table's unique pair
+// index would otherwise treat the withdrawn request as one still standing.
+//
+// The delete policy already allowed either side to remove a friendship row, so
+// this needed no new grant; there was simply no way to ask for it.
+export async function cancelFriendRequest(id: string): Promise<void> {
+  const { data, error } = await supabase.from('friendships').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('That request is already gone — they may have just accepted it.')
   notifyProfileChanged()
 }
 

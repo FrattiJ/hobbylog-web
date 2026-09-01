@@ -10,6 +10,7 @@ import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type Di
 import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
 import { useHobbies } from '@/components/HobbyContext'
+import ExportPanel from '@/components/ExportPanel'
 
 const ACCENT = '#7c3aed'
 
@@ -162,6 +163,9 @@ export default function SettingsPage() {
         </div>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
       </Link>
+
+      {/* Export */}
+      <ExportPanel />
 
       {/* Feedback */}
       <div style={{ ...card, borderLeftColor: '#0891b2' }}>
