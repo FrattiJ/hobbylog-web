@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const avatarRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
+    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? ''))
     getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url) }).catch(() => {})
     isAdminUser().then((admin) => { setIsAdmin(admin); if (admin) loadInbox() }).catch(() => {})
   }, [])
