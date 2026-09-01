@@ -39,34 +39,54 @@ export function draftToSet(t: TrackingType, s: DraftSet) {
   }
 }
 
-interface Column { key: keyof DraftSet; label: string; placeholder: (ghost?: DatedSet) => string }
+// What the routine asked for on this exercise. Shown greyed when there's no
+// previous session to ghost instead, so loading a routine you built with 3x8
+// doesn't read as an empty grid.
+export interface SetTargets {
+  // Seeds how many rows the grid starts with; the other two are placeholders.
+  sets: number | null
+  reps: number | null
+  seconds: number | null
+}
+
+interface Column {
+  key: keyof DraftSet
+  label: string
+  placeholder: (ghost: DatedSet | undefined, target: SetTargets | null) => string
+}
 
 // Which inputs each tracking type shows. This is the whole reason a run doesn't
 // ask you for "1 set of 30:00 lbs".
+//
+// Placeholder precedence is last session, then the routine target, then a dash.
+// Weight and distance have no target to fall back on -- a routine says how many
+// reps to do, never how much to load.
 const COLUMNS: Record<TrackingType, Column[]> = {
   weight_reps: [
-    { key: 'reps', label: 'REPS', placeholder: (g) => (g?.reps != null ? String(g.reps) : '—') },
+    { key: 'reps', label: 'REPS', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
     { key: 'weight', label: 'LBS', placeholder: (g) => (g?.weight != null ? String(g.weight) : '—') },
   ],
   reps: [
-    { key: 'reps', label: 'REPS', placeholder: (g) => (g?.reps != null ? String(g.reps) : '—') },
+    { key: 'reps', label: 'REPS', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
     { key: 'weight', label: '+ LBS', placeholder: (g) => (g?.weight ? String(g.weight) : 'bw') },
   ],
   time: [
-    { key: 'duration', label: 'TIME', placeholder: (g) => (g?.seconds != null ? fmtDuration(g.seconds) : 'mm:ss') },
+    { key: 'duration', label: 'TIME', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
   ],
   time_distance: [
-    { key: 'duration', label: 'TIME', placeholder: (g) => (g?.seconds != null ? fmtDuration(g.seconds) : 'mm:ss') },
+    { key: 'duration', label: 'TIME', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
     { key: 'distance', label: 'MILES', placeholder: (g) => (g?.distance != null ? String(g.distance) : '—') },
   ],
 }
 
-export default function SetGrid({ exercise, sets, lastSets, records, onChange }: {
+export default function SetGrid({ exercise, sets, lastSets, records, targets = null, onChange }: {
   exercise: Exercise
   sets: DraftSet[]
   // Last session's sets, shown as ghost placeholders so you know what to beat.
   lastSets: DatedSet[]
   records: PrValue[]
+  // The routine's targets, used as placeholders when there's no session to ghost.
+  targets?: SetTargets | null
   onChange: (sets: DraftSet[]) => void
 }) {
   const cols = COLUMNS[exercise.tracking_type]
@@ -107,7 +127,7 @@ export default function SetGrid({ exercise, sets, lastSets, records, onChange }:
                 key={c.key}
                 value={s[c.key] as string}
                 onChange={(e) => update(s.key, { [c.key]: e.target.value } as Partial<DraftSet>)}
-                placeholder={c.placeholder(ghost)}
+                placeholder={c.placeholder(ghost, targets)}
                 inputMode={c.key === 'duration' ? 'text' : 'decimal'}
                 style={{ padding: '7px 8px', textAlign: 'center' }}
               />

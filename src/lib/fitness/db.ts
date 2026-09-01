@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentUserId } from '@/lib/currentUser'
 import type {
   Exercise, Goal, GoalMetric, Routine, RoutineDetail, RoutineExercise,
   LastNote, TrackingType, Workout, WorkoutDetail, WorkoutSet,
@@ -15,10 +16,6 @@ function notifyChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(FITNESS_CHANGED_EVENT))
 }
 
-async function currentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.id ?? ''
-}
 
 // -- Exercises ---------------------------------------------------------------
 
@@ -87,6 +84,60 @@ export async function updateExercise(id: string, patch: Partial<Pick<Exercise, '
 // Archive rather than delete: the sets already logged against it stay meaningful.
 export async function archiveExercise(id: string): Promise<void> {
   await updateExercise(id, { archived: true })
+}
+
+// Which of these exercises you've actually logged a set against.
+//
+// An exercise row is created the moment you add it to a routine or pick it from
+// the catalog, so the list of exercises you own is much longer than the list you
+// have data for. Anywhere that's really asking "what can I chart?" wants this,
+// not listExercises.
+export async function exercisesWithHistory(): Promise<Set<string>> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_workout_sets').select('exercise_id').eq('user_id', userId)
+  return new Set(((data ?? []) as { exercise_id: string }[]).map((r) => r.exercise_id))
+}
+
+// Remove an exercise from your library.
+//
+// web_workout_sets cascades on exercise_id, so a plain delete would silently take
+// logged sets with it. An exercise you've trained is therefore archived (hidden
+// everywhere, history intact) while one you never used is really deleted -- which
+// is the case that matters, since those are the rows cluttering the pickers.
+export type ExerciseRemoval = 'deleted' | 'archived'
+
+export async function removeExercise(id: string): Promise<ExerciseRemoval> {
+  const userId = await currentUserId()
+  const { count } = await supabase
+    .from('web_workout_sets').select('id', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('exercise_id', id)
+
+  if ((count ?? 0) > 0) {
+    await archiveExercise(id)
+    return 'archived'
+  }
+
+  // .select() so a delete blocked by RLS surfaces as zero rows, not a silent no-op.
+  const { data, error } = await supabase.from('web_exercises').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was deleted — the exercise may already be gone.')
+  notifyChanged()
+  return 'deleted'
+}
+
+// Bodyweight over time, oldest first. Logged per workout but, until now, only
+// ever shown on a single expanded history card -- captured and then invisible.
+export interface BodyweightPoint { date: string; weight: number }
+
+export async function getBodyweightHistory(): Promise<BodyweightPoint[]> {
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_workouts').select('date, bodyweight')
+    .eq('user_id', userId).not('bodyweight', 'is', null)
+    .order('date', { ascending: true })
+  return ((data ?? []) as { date: string; bodyweight: number | null }[])
+    .filter((r) => r.bodyweight != null)
+    .map((r) => ({ date: r.date, weight: Number(r.bodyweight) }))
 }
 
 // -- Routines ----------------------------------------------------------------
@@ -319,6 +370,67 @@ export async function getSetHistory(exerciseId: string): Promise<DatedSet[]> {
   return ((data ?? []) as unknown as (WorkoutSet & { workout: unknown })[])
     .map((r) => ({ ...r, date: embeddedDate(r.workout) }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.position - b.position))
+}
+
+// Every set logged against a whole list of exercises, in ONE query.
+//
+// The logger needs two things per exercise: its full history (for PR badges) and
+// just its last session (for the ghost placeholders). Asking for those separately
+// meant getSetHistory and getLastSets each downloaded the same complete history,
+// once per exercise -- so an eight-exercise routine issued dozens of requests and
+// pulled every set twice. One query, split locally, covers both.
+export interface ExerciseHistory {
+  // Every set ever, newest session first.
+  history: DatedSet[]
+  // Only the most recent session's sets, back in the order they were logged.
+  lastSets: DatedSet[]
+}
+
+export async function getHistories(exerciseIds: string[]): Promise<Map<string, ExerciseHistory>> {
+  const out = new Map<string, ExerciseHistory>()
+  if (exerciseIds.length === 0) return out
+  const userId = await currentUserId()
+
+  const { data, error } = await supabase
+    .from('web_workout_sets')
+    .select('*, workout:web_workouts!inner(date)')
+    .eq('user_id', userId)
+    .in('exercise_id', exerciseIds)
+  if (error) throw error
+
+  const byExercise = new Map<string, DatedSet[]>()
+  for (const r of (data ?? []) as unknown as (WorkoutSet & { workout: unknown })[]) {
+    const row: DatedSet = { ...r, date: embeddedDate(r.workout) }
+    const arr = byExercise.get(row.exercise_id)
+    if (arr) arr.push(row)
+    else byExercise.set(row.exercise_id, [row])
+  }
+
+  for (const id of exerciseIds) {
+    const history = byExercise.get(id) ?? []
+    history.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.position - b.position))
+    // Sorted newest first, so the leading run sharing the newest date is the last session.
+    const newest = history[0]?.date
+    const lastSets = newest
+      ? history.filter((r) => r.date === newest).sort((a, b) => a.position - b.position)
+      : []
+    out.set(id, { history, lastSets })
+  }
+  return out
+}
+
+// Exercise count per routine, in one query. The routine list shows a count on
+// every card; fetching each routine in full just to take the length of its array
+// cost two extra requests per card.
+export async function getRoutineExerciseCounts(): Promise<Map<string, number>> {
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_routine_exercises').select('routine_id').eq('user_id', userId)
+  const out = new Map<string, number>()
+  for (const r of (data ?? []) as { routine_id: string }[]) {
+    out.set(r.routine_id, (out.get(r.routine_id) ?? 0) + 1)
+  }
+  return out
 }
 
 // The newest note for each exercise, with the date it was written. Because blank

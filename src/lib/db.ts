@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { currentUserId } from './currentUser'
 import type { Entry, EntryStatus, HobbyCategory, Profile, Session } from '@/types/database'
 
 // Web data layer: mirrors the desktop app's src/lib/db.ts API surface, but backed by
@@ -14,10 +15,6 @@ function notifyProfileChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT))
 }
 
-async function currentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.id ?? ''
-}
 
 type Row = Record<string, unknown>
 function parseEntry(r: Row): Entry {
@@ -154,9 +151,12 @@ export async function clearAllData(): Promise<void> {
 export type WebProfile = Profile & { onboarded: boolean; steam_id: string | null; steam_persona: string | null; steam_sync_playtime: boolean; steam_auto_import: boolean }
 
 export async function getProfile(): Promise<WebProfile> {
-  const { data: u } = await supabase.auth.getUser()
-  const userId = u.user?.id ?? ''
-  const emailName = (u.user?.email ?? 'operator').split('@')[0].toUpperCase()
+  // getSession() reads the stored JWT locally; getUser() would round-trip to the
+  // auth server, and this runs on every page load and every profile change.
+  const { data: s } = await supabase.auth.getSession()
+  const user = s.session?.user
+  const userId = user?.id ?? ''
+  const emailName = (user?.email ?? 'operator').split('@')[0].toUpperCase()
   let username = emailName
   let enabled: HobbyCategory[] | null = null
   let onboarded = false
@@ -406,11 +406,13 @@ export async function submitFeedback(kind: 'bug' | 'feature', message: string): 
   if (error) throw error
 }
 
-const ADMIN_EMAIL = 'you@example.com'
+// The one account that can read the feedback inbox. Supabase stores emails
+// lower-cased, so compare that way rather than trusting the literal casing.
+const ADMIN_EMAIL = 'admin@example.com'
 
 export async function currentUserEmail(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.email ?? null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user?.email ?? null
 }
 
 export interface FeedbackItem {
@@ -432,7 +434,7 @@ export async function getFeedbackInbox(): Promise<FeedbackItem[]> {
 }
 
 export async function isAdminUser(): Promise<boolean> {
-  return (await currentUserEmail()) === ADMIN_EMAIL
+  return (await currentUserEmail())?.toLowerCase() === ADMIN_EMAIL
 }
 
 // Permanently delete the current user's account and all their data.
