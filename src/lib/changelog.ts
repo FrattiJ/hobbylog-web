@@ -1,10 +1,26 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.8.0'
+export const APP_VERSION = '0.9.0'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.9.0',
+    date: 'Sep 2026',
+    items: [
+      "Export everything to a spreadsheet — pick your hobbies, get an Excel workbook with a sheet each, or CSVs",
+      "Browse everyone on Hobbylog instead of having to know someone's exact username first",
+      "Take back a friend request you sent by mistake",
+      "Much lighter on your phone's battery — opening a page used to fire dozens of needless requests",
+      "Fitness: a routine's target sets and reps now show when you load it, instead of an empty grid",
+      "Fitness: rename, re-measure or remove exercises — custom ones used to be write-once",
+      "Fitness: the bodyweight you log each session is finally charted over time",
+      "Fitness: the progress picker lists only lifts you've actually logged",
+      "Fitness: goals can name any exercise in the catalog, not just ones you've already done",
+      "Fitness: the consistency heatmap opens on today, and the scrollbars are gone from it and the tab bar",
+    ],
+  },
   {
     version: '0.8.0',
     date: 'Aug 2026',

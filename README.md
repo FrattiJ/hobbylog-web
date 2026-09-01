@@ -19,9 +19,10 @@ Just sign up with an email and password — there's nothing to install and no AP
 - **Log progress & sessions** — track hours, pages, or episodes, and keep a session history per entry.
 - **Rate & review** — score out of 10 and leave a field-report review when you finish something.
 - **Stats** — hours backlogged vs. finished, completion rates, top-rated, and a **"You vs. the Field"** benchmark against the average of everyone on the app.
-- **Friends** — search someone by username, send a request, and once you're both in, browse each other's libraries. When you've both finished the same title, see your rating head-to-head. On any entry you'll also see **the crowd's** average score.
+- **Friends** — browse who else is on the app or search by username, send a request (and take it back if you change your mind), and once you're both in, browse each other's libraries. When you've both finished the same title, see your rating head-to-head. On any entry you'll also see **the crowd's** average score.
 - **Steam** — connect with one click ("Sign in through Steam"), then sync playtime onto your games or import your whole library.
 - **Import your existing lists** — MyAnimeList (`.xml`), Letterboxd (`.csv`), and Goodreads (`.csv`).
+- **Export everything** — pick any set of hobbies and download one Excel workbook with a sheet per hobby (plus session logs, workouts, sets, records, bodyweight and goals), or the same tables as CSV.
 - **Themes** — dark and light, with the same mech / blueprint aesthetic throughout.
 
 ## Getting started
@@ -43,6 +44,8 @@ A real server-rendered Next.js app (not a static export) deployed on Vercel, bac
 
 - `src/lib/db.ts` is a data adapter that mirrors the original desktop app's `db.ts` API surface, but backed by Supabase — which is what let the desktop UI components port over almost unchanged.
 - Per-user data lives in `web_entries`, `web_sessions`, `web_photos`, `web_notes`, and `web_profile`, each protected by RLS (`auth.uid() = user_id`). Friends can read each other's entries via an `are_friends()`-gated policy; aggregate stats and username lookups go through `SECURITY DEFINER` RPCs restricted to authenticated users.
+- `currentUserId()` (`src/lib/currentUser.ts`) reads the stored session rather than calling `supabase.auth.getUser()`, which round-trips to the auth server on *every* call. Nearly every data helper needs the caller's id, so that one detail was worth dozens of requests per screen on mobile. The id only filters queries — RLS re-derives `auth.uid()` from the JWT server-side, so a stale one returns nothing rather than someone else's rows.
+- The `.xlsx` / `.zip` export writers (`src/lib/xlsx.ts`, `src/lib/zip.ts`) are hand-rolled and dependency-free — an xlsx is a zip of XML, and only the simplest case is needed. Both load on demand.
 - External catalog searches run **server-side** in Next.js route handlers (`/api/search`, `/api/details`) so the API keys stay secret and friends need zero setup. Steam uses OpenID 2.0 (`/api/steam/*`) with one shared server-side key.
 
 ### Environment
