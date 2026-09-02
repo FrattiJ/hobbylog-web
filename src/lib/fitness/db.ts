@@ -6,7 +6,7 @@ import type {
 } from '@/types/fitness'
 import type { CatalogExercise } from './catalog'
 import { defaultTracking } from './catalog'
-import { latestNote, notesToPersist, personalRecords, type PrValue } from './calc'
+import { bodyweightGoalMet, latestNote, notesToPersist, personalRecords, type BodyweightMetric, type PrValue } from './calc'
 
 // Anything that mutates fitness data fires this, mirroring ENTRIES_CHANGED_EVENT
 // in lib/db.ts so open tabs/panels re-read rather than showing stale numbers.
@@ -607,13 +607,31 @@ export async function setGoalAchieved(id: string, achieved: boolean): Promise<vo
 
 // Current value of every goal, and which unachieved ones have just been met.
 // Run after saving a workout so a goal ticks over the moment you hit it.
-export interface GoalProgress { goal: Goal; current: number | null; met: boolean }
+export interface GoalProgress {
+  goal: Goal
+  current: number | null
+  met: boolean
+  // Where a bodyweight goal started from, so its bar can measure the distance
+  // actually covered. Without it, "200 lbs, heading for 175" would read as 87%
+  // before a single pound moved. Null for every other metric.
+  baseline?: number | null
+}
+
+export function isBodyweightMetric(m: GoalMetric): boolean {
+  return m === 'bodyweight_at_most' || m === 'bodyweight_at_least'
+}
 
 export async function evaluateGoals(): Promise<GoalProgress[]> {
   const [goals, exercises] = await Promise.all([listGoals(), listExercises(true)])
   if (goals.length === 0) return []
   const exById = new Map(exercises.map((e) => [e.id, e]))
   const workoutCount = (await listWorkoutDates()).length
+
+  // Only fetched when something actually asks for it.
+  const weights = goals.some((g) => isBodyweightMetric(g.metric))
+    ? await getBodyweightHistory().catch(() => [])
+    : []
+  const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : null
 
   const out: GoalProgress[] = []
   for (const goal of goals) {
@@ -627,6 +645,22 @@ export async function evaluateGoals(): Promise<GoalProgress[]> {
 
     if (goal.metric === 'workout_count') {
       current = workoutCount
+    } else if (isBodyweightMetric(goal.metric)) {
+      // The most recent reading is where you are now; a session logged without
+      // a bodyweight leaves the last real one standing.
+      current = latestWeight
+      // Baseline is the reading you were at when the goal was set, so the bar
+      // measures ground covered rather than distance from zero. Goals set before
+      // any weighing fall back to the earliest reading there is.
+      const atCreation = weights.filter((w) => w.date <= goal.created_at.slice(0, 10))
+      const base = atCreation.length > 0
+        ? atCreation[atCreation.length - 1].weight
+        : weights[0]?.weight ?? null
+
+      const met = current != null && bodyweightGoalMet(goal.metric as BodyweightMetric, current, goal.target)
+      if (met && !goal.achieved_at) await setGoalAchieved(goal.id, true)
+      out.push({ goal, current, met, baseline: base })
+      continue
     } else if (goal.exercise_id) {
       const ex = exById.get(goal.exercise_id)
       if (ex) {

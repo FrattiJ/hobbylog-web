@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Trash2, Pencil, Save, X } from 'lucide-react'
 import type { Exercise, WorkoutDetail, WorkoutSet } from '@/types/fitness'
 import {
-  deleteWorkout, getWorkoutNotes, listExercises, listWorkouts,
+  deleteWorkout, evaluateGoals, getWorkoutNotes, listExercises, listWorkouts,
   replaceWorkoutSets, setWorkoutNotes, updateWorkout,
 } from '@/lib/fitness/db'
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
@@ -120,7 +120,13 @@ export default function HistoryTab() {
                 groups={groups}
                 notes={notes}
                 onCancel={() => setEditing(null)}
-                onSaved={() => { setEditing(null); success('Workout updated'); reload() }}
+                onSaved={(hit) => {
+                  setEditing(null)
+                  success(hit.length > 0
+                    ? `Workout updated — goal reached: ${hit.join(', ')}`
+                    : 'Workout updated')
+                  reload()
+                }}
               />
             )}
 
@@ -217,7 +223,7 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
   groups: Group[]
   notes: Map<string, string>
   onCancel: () => void
-  onSaved: () => void
+  onSaved: (hitGoals: string[]) => void
 }) {
   const { error: toastError } = useToast()
   const [date, setDate] = useState(workout.date)
@@ -269,7 +275,11 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
       })
       await replaceWorkoutSets(workout.id, [...kept, ...orphans])
       await setWorkoutNotes(workout.id, rows.map((r) => ({ exercise_id: r.exercise.id, note: r.note })))
-      onSaved()
+
+      // A correction can satisfy a goal as readily as a new session can —
+      // fixing a mistyped bodyweight is the obvious case.
+      const progress = await evaluateGoals().catch(() => [])
+      onSaved(progress.filter((g) => g.met && !g.goal.achieved_at).map((g) => g.goal.name))
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Could not save those changes')
       setSaving(false)
