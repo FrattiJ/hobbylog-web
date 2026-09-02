@@ -1,12 +1,11 @@
 import { supabase } from './supabaseClient'
 import { currentUserId } from './currentUser'
 import { getAllEntries } from './db'
-import { getBodyweightHistory, listExercises, listGoals, listWorkouts } from './fitness/db'
-import { fmtDuration, fmtPrValue, personalRecords } from './fitness/calc'
+import { getWorkoutNotes, listExercises, listWorkouts } from './fitness/db'
+import { fmtDuration } from './fitness/calc'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS } from './hobbies'
 import type { HobbyCategory } from '@/types/database'
-import type { Sheet } from './xlsx'
-import type { DatedSet } from './fitness/db'
+import type { CellValue, Sheet } from './xlsx'
 
 // Turns the account into spreadsheet tables.
 //
@@ -121,128 +120,71 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
 
 // -- Fitness -----------------------------------------------------------------
 
-async function fitnessSheets(): Promise<Sheet[]> {
+// Fitness as a single table: one row per set, with the workout and exercise it
+// belongs to repeated across it.
+//
+// It was six sheets -- workouts, sets, records, exercises, bodyweight, goals --
+// which is the shape a database wants, not the shape a spreadsheet wants. Flat
+// and denormalised, you can pivot the whole thing: volume by month, best set per
+// exercise, bodyweight over time all come out of this one sheet. The columns that
+// used to be their own tables (duration, bodyweight, session notes, how an
+// exercise is measured, the setup note) ride along on every row.
+async function fitnessSheet(): Promise<Sheet[]> {
   // listWorkouts caps at 100 by default, which would quietly truncate an export.
-  const [workouts, exercises, goals, bodyweight] = await Promise.all([
+  const [workouts, exercises] = await Promise.all([
     listWorkouts(100000),
     listExercises(true),
-    listGoals(),
-    getBodyweightHistory(),
   ])
+  if (workouts.length === 0) return []
+
   const byId = new Map(exercises.map((e) => [e.id, e]))
-  const sheets: Sheet[] = []
+  // Setup notes are per (workout, exercise), so they land on every set of that
+  // exercise in that session.
+  const notes = await getWorkoutNotes(workouts.map((w) => w.id)).catch(() => new Map<string, string>())
 
-  sheets.push({
-    name: 'Workouts',
-    headers: ['Date', 'Routine', 'Sets', 'Volume (lbs)', 'Duration (min)', 'Bodyweight (lbs)', 'Notes'],
-    rows: workouts.map((w) => [
-      w.date,
-      w.routine_name ?? 'Freestyle',
-      w.sets.length,
-      Math.round(w.sets.reduce((t, s) => t + (s.weight ?? 0) * (s.reps ?? 0), 0)),
-      w.duration_minutes,
-      w.bodyweight,
-      w.notes ?? '',
-    ]),
-  })
-
-  // One row per set: the table you'd actually pivot on.
-  const setRows: (string | number | null)[][] = []
+  const rows: CellValue[][] = []
   for (const w of workouts) {
-    w.sets.forEach((s, i) => {
-      const ex = byId.get(s.exercise_id)
-      setRows.push([
+    // Number sets within their exercise, matching how the logger showed them,
+    // rather than across the whole session.
+    const seen = new Map<string, number>()
+    for (const set of w.sets) {
+      const ex = byId.get(set.exercise_id)
+      const n = (seen.get(set.exercise_id) ?? 0) + 1
+      seen.set(set.exercise_id, n)
+      rows.push([
         w.date,
         w.routine_name ?? 'Freestyle',
         ex?.name ?? 'Deleted exercise',
-        i + 1,
-        s.is_warmup ? 'Yes' : '',
-        s.reps,
-        s.weight,
-        s.seconds,
-        s.seconds != null ? fmtDuration(s.seconds) : '',
-        s.distance,
-        (s.weight ?? 0) * (s.reps ?? 0) || null,
+        n,
+        set.is_warmup ? 'Yes' : '',
+        set.reps,
+        set.weight,
+        set.seconds,
+        set.seconds != null ? fmtDuration(set.seconds) : '',
+        set.distance,
+        (set.weight ?? 0) * (set.reps ?? 0) || null,
+        ex?.tracking_type ?? '',
+        ex?.muscle ?? '',
+        ex?.equipment ?? '',
+        ex ? notes.get(`${w.id}:${ex.id}`) ?? '' : '',
+        w.duration_minutes,
+        w.bodyweight,
+        w.notes ?? '',
       ])
-    })
+    }
   }
-  sheets.push({
-    name: 'Sets',
+
+  return [{
+    name: 'Fitness',
     headers: [
       'Date', 'Routine', 'Exercise', 'Set #', 'Warm-up',
       'Reps', 'Weight (lbs)', 'Seconds', 'Time', 'Distance (mi)', 'Volume (lbs)',
+      'Measured As', 'Muscle', 'Equipment', 'Setup Note',
+      'Workout Duration (min)', 'Bodyweight (lbs)', 'Workout Notes',
     ],
-    rows: setRows,
-  })
-
-  // Personal records, computed from the sets already in hand rather than
-  // re-querying per exercise.
-  const historyByExercise = new Map<string, DatedSet[]>()
-  for (const w of workouts) {
-    for (const s of w.sets) {
-      const arr = historyByExercise.get(s.exercise_id)
-      const dated: DatedSet = { ...s, date: w.date }
-      if (arr) arr.push(dated)
-      else historyByExercise.set(s.exercise_id, [dated])
-    }
-  }
-
-  const prRows: (string | number | null)[][] = []
-  for (const ex of exercises) {
-    const history = historyByExercise.get(ex.id) ?? []
-    if (history.length === 0) continue
-    for (const pr of personalRecords(ex, history, (s) => (s as DatedSet).date)) {
-      prRows.push([ex.name, pr.kind, fmtPrValue(pr.kind, pr.value), Math.round(pr.value * 100) / 100, pr.date ?? ''])
-    }
-  }
-  if (prRows.length > 0) {
-    sheets.push({
-      name: 'Personal Records',
-      headers: ['Exercise', 'Record', 'Value', 'Raw Value', 'Set On'],
-      rows: prRows,
-    })
-  }
-
-  sheets.push({
-    name: 'Exercises',
-    headers: ['Name', 'Measured As', 'Muscle', 'Equipment', 'Custom', 'Archived', 'Added'],
-    rows: exercises.map((e) => [
-      e.name,
-      e.tracking_type,
-      e.muscle ?? '',
-      e.equipment ?? '',
-      e.catalog_id ? '' : 'Yes',
-      e.archived ? 'Yes' : '',
-      iso(e.created_at),
-    ]),
-  })
-
-  if (bodyweight.length > 0) {
-    sheets.push({
-      name: 'Bodyweight',
-      headers: ['Date', 'Weight (lbs)'],
-      rows: bodyweight.map((b) => [b.date, b.weight]),
-    })
-  }
-
-  if (goals.length > 0) {
-    sheets.push({
-      name: 'Goals',
-      headers: ['Goal', 'Exercise', 'Measure', 'Target', 'Target Date', 'Achieved'],
-      rows: goals.map((g) => [
-        g.name,
-        g.exercise_id ? byId.get(g.exercise_id)?.name ?? '' : '',
-        g.metric,
-        g.target,
-        iso(g.target_date),
-        iso(g.achieved_at),
-      ]),
-    })
-  }
-
-  return sheets
+    rows,
+  }]
 }
-
 // -- Entry point -------------------------------------------------------------
 
 // Sheets for the chosen hobbies, in the order the hobby list defines them so an
@@ -251,7 +193,7 @@ export async function collectSheets(hobbies: HobbyCategory[]): Promise<Sheet[]> 
   const entryHobbies = hobbies.filter((h) => h !== FITNESS)
   const [entries, fitness] = await Promise.all([
     entryHobbies.length > 0 ? entrySheets(entryHobbies) : Promise.resolve([]),
-    hobbies.includes(FITNESS) ? fitnessSheets() : Promise.resolve([]),
+    hobbies.includes(FITNESS) ? fitnessSheet() : Promise.resolve([]),
   ])
   return [...entries, ...fitness].filter((s) => s.rows.length > 0)
 }

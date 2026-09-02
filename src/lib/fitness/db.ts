@@ -335,6 +335,57 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
   return workout as Workout
 }
 
+// -- Editing a logged workout ------------------------------------------------
+
+// Correcting a session had exactly one option: delete it and log it again. A
+// mistyped bodyweight is not worth losing a workout over.
+export async function updateWorkout(
+  id: string,
+  patch: Partial<Pick<Workout, 'date' | 'duration_minutes' | 'bodyweight' | 'notes'>>,
+): Promise<void> {
+  const { data, error } = await supabase.from('web_workouts').update(patch).eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was updated — the workout may already be gone.')
+  notifyChanged()
+}
+
+// Replace a logged workout's sets wholesale, the way setRoutineExercises replaces
+// a routine: simpler than diffing an edit down to inserts, updates and deletes,
+// and a session is a few dozen rows at most. Set ids change, which nothing
+// depends on -- records and charts are computed from the rows themselves.
+export async function replaceWorkoutSets(workoutId: string, sets: WorkoutSetDraft[]): Promise<void> {
+  const user_id = await currentUserId()
+  const { error: delErr } = await supabase.from('web_workout_sets').delete().eq('workout_id', workoutId)
+  if (delErr) throw delErr
+
+  if (sets.length > 0) {
+    const rows = sets.map((s, i) => ({ ...s, user_id, workout_id: workoutId, position: i }))
+    const { error } = await supabase.from('web_workout_sets').insert(rows)
+    if (error) throw error
+  }
+  notifyChanged()
+}
+
+// Setup notes for one logged session. A blank note is removed rather than stored,
+// the same rule logging follows -- an empty row would otherwise become the newest
+// note and shadow the one being carried forward.
+export async function setWorkoutNotes(
+  workoutId: string,
+  notes: { exercise_id: string; note: string }[],
+): Promise<void> {
+  const user_id = await currentUserId()
+  await supabase.from('web_exercise_notes').delete().eq('workout_id', workoutId)
+
+  const keep = notesToPersist(notes).map((n) => ({
+    user_id, workout_id: workoutId, exercise_id: n.exercise_id, note: n.note,
+  }))
+  if (keep.length > 0) {
+    const { error } = await supabase.from('web_exercise_notes').insert(keep)
+    if (error) throw error
+  }
+  notifyChanged()
+}
+
 export async function deleteWorkout(id: string): Promise<void> {
   const { data, error } = await supabase.from('web_workouts').delete().eq('id', id).select('id')
   if (error) throw error

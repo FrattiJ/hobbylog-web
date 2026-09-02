@@ -15,6 +15,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Much lighter on your phone's battery — opening a page used to fire dozens of needless requests",
       "Fitness: a routine's target sets and reps now show when you load it, instead of an empty grid",
       "Fitness: rename, re-measure or remove exercises — custom ones used to be write-once",
+      "Fitness: edit a logged workout — fix a mistyped bodyweight, date or set without deleting the session",
       "Fitness: the bodyweight you log each session is finally charted over time",
       "Fitness: the progress picker lists only lifts you've actually logged",
       "Fitness: goals can name any exercise in the catalog, not just ones you've already done",
