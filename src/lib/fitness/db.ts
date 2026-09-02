@@ -263,6 +263,36 @@ export async function listWorkoutDates(): Promise<string[]> {
   return ((data ?? []) as { date: string }[]).map((r) => r.date)
 }
 
+// Everything the Progress header needs, in two queries rather than three.
+//
+// The workout rows carry both the dates (streak + heatmap) and the durations
+// (time trained), so asking for them separately was a wasted round trip. Volume
+// needs the set rows, but only two columns of them.
+export interface ProgressTotals {
+  dates: string[]
+  minutes: number
+  volume: number
+}
+
+export async function getProgressTotals(): Promise<ProgressTotals> {
+  const userId = await currentUserId()
+  const [workoutRes, setRes] = await Promise.all([
+    supabase.from('web_workouts').select('date, duration_minutes').eq('user_id', userId),
+    supabase.from('web_workout_sets').select('weight, reps').eq('user_id', userId),
+  ])
+
+  const workouts = (workoutRes.data ?? []) as { date: string; duration_minutes: number | null }[]
+  const sets = (setRes.data ?? []) as { weight: number | null; reps: number | null }[]
+
+  return {
+    dates: workouts.map((w) => w.date),
+    minutes: workouts.reduce((t, w) => t + (w.duration_minutes ?? 0), 0),
+    // Warm-ups count here: you moved the weight either way, and this matches the
+    // per-workout volume History already shows.
+    volume: sets.reduce((t, x) => t + (x.weight ?? 0) * (x.reps ?? 0), 0),
+  }
+}
+
 // Headline numbers for the dashboard and stats page. Fitness has no entries any
 // more, so these are what it contributes to the cross-hobby totals.
 export interface WorkoutTotals { count: number; minutes: number }

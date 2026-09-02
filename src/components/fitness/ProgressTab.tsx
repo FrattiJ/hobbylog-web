@@ -5,8 +5,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { Trophy } from 'lucide-react'
 import type { Exercise } from '@/types/fitness'
 import {
-  exercisesWithHistory, getBodyweightHistory, getSetHistory, listExercises, listWorkoutDates,
-  type BodyweightPoint, type DatedSet,
+  exercisesWithHistory, getBodyweightHistory, getProgressTotals, getSetHistory, listExercises,
+  type BodyweightPoint, type DatedSet, type ProgressTotals,
 } from '@/lib/fitness/db'
 import {
   PR_KINDS, PR_LABELS, LOWER_IS_BETTER, dayStreak, heatmapDays, personalRecords,
@@ -22,26 +22,25 @@ export default function ProgressTab() {
   // routine (or deleting the workouts that used it) leaves the exercise row
   // behind, which is why the chart picker used to list lifts with no data.
   const [trained, setTrained] = useState<Set<string>>(new Set())
-  const [dates, setDates] = useState<string[]>([])
+  const [totals, setTotals] = useState<ProgressTotals>({ dates: [], minutes: 0, volume: 0 })
   const [bodyweight, setBodyweight] = useState<BodyweightPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([listExercises(), listWorkoutDates(), exercisesWithHistory(), getBodyweightHistory()])
-      .then(([e, d, t, bw]) => { setExercises(e); setDates(d); setTrained(t); setBodyweight(bw) })
+    Promise.all([listExercises(), getProgressTotals(), exercisesWithHistory(), getBodyweightHistory()])
+      .then(([e, t, trainedIds, bw]) => { setExercises(e); setTotals(t); setTrained(trainedIds); setBodyweight(bw) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
+  const dates = totals.dates
   const streak = useMemo(() => dayStreak(dates), [dates])
-  const thisWeek = useMemo(() => {
-    const now = new Date()
-    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
-    return dates.filter((d) => {
-      const [y, m, day] = d.split('-').map(Number)
-      return new Date(y, m - 1, day) >= sunday
-    }).length
-  }, [dates])
+
+  // Under an hour of logging, hours would just read "0" -- show the minutes
+  // instead until there are enough of them to be worth rounding.
+  const timeTrained = totals.minutes < 60
+    ? { value: totals.minutes, unit: 'MINUTES' }
+    : { value: Math.round(totals.minutes / 60), unit: 'HOURS' }
 
   const charted = useMemo(() => exercises.filter((e) => trained.has(e.id)), [exercises, trained])
 
@@ -52,8 +51,11 @@ export default function ProgressTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
         <StatCard label="WORKOUTS" value={dates.length} accent={ACCENT} index={0} />
         <StatCard label="CURRENT STREAK" value={streak.current} sub="DAYS" accent="#eab308" index={1} />
-        <StatCard label="LONGEST STREAK" value={streak.longest} sub="DAYS" accent="#22c55e" index={2} />
-        <StatCard label="THIS WEEK" value={thisWeek} sub="SESSIONS" accent="#0891b2" index={3} />
+        {/* Longest streak and this-week were both restating what the heatmap
+            directly below already shows. Volume and time trained are the two
+            totals nothing else on the page adds up. */}
+        <StatCard label="VOLUME LIFTED" value={Math.round(totals.volume)} sub="LBS" accent="#22c55e" index={2} />
+        <StatCard label="TIME TRAINED" value={timeTrained.value} sub={timeTrained.unit} accent="#0891b2" index={3} />
       </div>
 
       <Rule>CONSISTENCY</Rule>

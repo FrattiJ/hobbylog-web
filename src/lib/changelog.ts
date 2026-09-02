@@ -17,6 +17,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Fitness: rename, re-measure or remove exercises — custom ones used to be write-once",
       "Fitness: set a goal bodyweight — going up or coming down — and it completes itself the moment you log a weigh-in that reaches it",
       "Fitness: edit a logged workout — fix a mistyped bodyweight, date or set without deleting the session",
+      "Fitness: Progress now totals the volume you have lifted and the time you have trained, in place of two stats the heatmap already showed",
       "Fitness: the bodyweight you log each session is finally charted over time",
       "Fitness: the progress picker lists only lifts you've actually logged",
       "Fitness: goals can name any exercise in the catalog, not just ones you've already done",
