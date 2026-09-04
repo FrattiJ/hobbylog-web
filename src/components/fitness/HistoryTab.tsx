@@ -1,28 +1,54 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { ChevronDown, Trash2, Pencil, Save, X } from 'lucide-react'
 import type { Exercise, WorkoutDetail, WorkoutSet } from '@/types/fitness'
-import { deleteWorkout, getWorkoutNotes, listExercises, listWorkouts } from '@/lib/fitness/db'
+import {
+  deleteWorkout, evaluateGoals, getBodyweightOn, getWorkoutNotes, listExercises, listWorkouts,
+  replaceWorkoutSets, setWorkoutNotes, updateWorkout,
+} from '@/lib/fitness/db'
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
-import { Button, Label, Empty, Confirm, ACCENT } from './ui'
+import SetGrid, { draftHasData, draftToSet, type DraftSet } from './SetGrid'
+import { Button, Input, TextArea, Label, Empty, Confirm, Rule, ACCENT } from './ui'
+
+// Sets belonging to one exercise within a workout, in the order they were logged.
+interface Group { exercise: Exercise | undefined; sets: WorkoutSet[] }
+
+function groupSets(sets: WorkoutSet[], exercises: Map<string, Exercise>): Group[] {
+  const groups: Group[] = []
+  for (const s of sets) {
+    const last = groups[groups.length - 1]
+    if (last && last.sets[0].exercise_id === s.exercise_id) last.sets.push(s)
+    else groups.push({ exercise: exercises.get(s.exercise_id), sets: [s] })
+  }
+  return groups
+}
 
 export default function HistoryTab() {
   const { success, error: toastError } = useToast()
   const [workouts, setWorkouts] = useState<WorkoutDetail[]>([])
   const [exercises, setExercises] = useState<Map<string, Exercise>>(new Map())
   const [open, setOpen] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [confirming, setConfirming] = useState<WorkoutDetail | null>(null)
   // Keyed 'workoutId:exerciseId' -- the setup note left on that exercise that day.
   const [notes, setNotes] = useState<Map<string, string>>(new Map())
+  // The weigh-in recorded on each workout's date, if there was one. Bodyweight
+  // is its own log now, so it is looked up by date rather than read off the row.
+  const [weights, setWeights] = useState<Map<string, number>>(new Map())
 
   const reload = () => Promise.all([listWorkouts(), listExercises(true)])
     .then(async ([w, e]) => {
       setWorkouts(w)
       setExercises(new Map(e.map((x) => [x.id, x])))
-      setNotes(await getWorkoutNotes(w.map((x) => x.id)).catch(() => new Map()))
+      const [n, bw] = await Promise.all([
+        getWorkoutNotes(w.map((x) => x.id)).catch(() => new Map<string, string>()),
+        getBodyweightOn([...new Set(w.map((x) => x.date))]).catch(() => new Map<string, number>()),
+      ])
+      setNotes(n)
+      setWeights(bw)
     })
     .catch(() => {})
     .finally(() => setLoading(false))
@@ -51,14 +77,9 @@ export default function HistoryTab() {
       <Label style={{ marginBottom: 12 }}>{workouts.length} WORKOUT{workouts.length === 1 ? '' : 'S'}</Label>
       {workouts.map((w) => {
         const expanded = open === w.id
+        const isEditing = editing === w.id
         const volume = setsVolume(w.sets)
-        // Group sets under their exercise, preserving the order they were logged in.
-        const groups: { exercise: Exercise | undefined; sets: WorkoutSet[] }[] = []
-        for (const s of w.sets) {
-          const last = groups[groups.length - 1]
-          if (last && last.sets[0].exercise_id === s.exercise_id) last.sets.push(s)
-          else groups.push({ exercise: exercises.get(s.exercise_id), sets: [s] })
-        }
+        const groups = groupSets(w.sets, exercises)
 
         return (
           <div key={w.id} style={{
@@ -66,11 +87,14 @@ export default function HistoryTab() {
             background: 'var(--bg-card)', marginBottom: 8,
           }}>
             <button
-              onClick={() => setOpen(expanded ? null : w.id)}
+              onClick={() => {
+                if (isEditing) return // don't collapse an open editor by accident
+                setOpen(expanded ? null : w.id)
+              }}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                 width: '100%', padding: '12px 14px', background: 'none', border: 'none',
-                cursor: 'pointer', textAlign: 'left',
+                cursor: isEditing ? 'default' : 'pointer', textAlign: 'left',
               }}
             >
               <div style={{ minWidth: 0 }}>
@@ -83,19 +107,38 @@ export default function HistoryTab() {
                     `${w.sets.length} SETS`,
                     volume > 0 ? `${Math.round(volume).toLocaleString()} LBS` : null,
                     w.duration_minutes ? `${w.duration_minutes} MIN` : null,
+                    weights.get(w.date) ? `${weights.get(w.date)} LBS BW` : null,
                   ].filter(Boolean).join(' · ')}
                 </Label>
               </div>
-              <ChevronDown
-                size={16}
-                style={{
-                  color: 'var(--text-dim)', flexShrink: 0,
-                  transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease',
-                }}
-              />
+              {!isEditing && (
+                <ChevronDown
+                  size={16}
+                  style={{
+                    color: 'var(--text-dim)', flexShrink: 0,
+                    transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease',
+                  }}
+                />
+              )}
             </button>
 
-            {expanded && (
+            {expanded && isEditing && (
+              <WorkoutEditor
+                workout={w}
+                groups={groups}
+                notes={notes}
+                onCancel={() => setEditing(null)}
+                onSaved={(hit) => {
+                  setEditing(null)
+                  success(hit.length > 0
+                    ? `Workout updated — goal reached: ${hit.join(', ')}`
+                    : 'Workout updated')
+                  reload()
+                }}
+              />
+            )}
+
+            {expanded && !isEditing && (
               <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-dim)' }}>
                 {groups.map((g, i) => (
                   <div key={i} style={{ marginTop: 10 }}>
@@ -131,9 +174,12 @@ export default function HistoryTab() {
                   </p>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                  <Label>{w.bodyweight ? `BODYWEIGHT ${w.bodyweight} LBS` : ''}</Label>
-                  <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> DELETE</Button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                  <Label>{weights.get(w.date) ? `BODYWEIGHT ${weights.get(w.date)} LBS` : ''}</Label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Button variant="ghost" onClick={() => setEditing(w.id)}><Pencil size={13} /> EDIT</Button>
+                    <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> DELETE</Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -150,6 +196,179 @@ export default function HistoryTab() {
         />
       )}
     </>
+  )
+}
+
+// -- Editing a logged workout ------------------------------------------------
+
+interface EditGroup {
+  exercise: Exercise
+  sets: DraftSet[]
+  note: string
+}
+
+// Numbers become strings here for the same reason the logger does it: a half-typed
+// value shouldn't be thrown away mid-keystroke.
+function toDraft(s: WorkoutSet): DraftSet {
+  return {
+    key: s.id,
+    reps: s.reps != null ? String(s.reps) : '',
+    weight: s.weight != null ? String(s.weight) : '',
+    duration: s.seconds != null ? secondsToText(s.seconds) : '',
+    distance: s.distance != null ? String(s.distance) : '',
+    warmup: s.is_warmup,
+  }
+}
+
+function secondsToText(total: number): string {
+  const m = Math.floor(total / 60)
+  const sec = Math.round(total % 60)
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
+  workout: WorkoutDetail
+  groups: Group[]
+  notes: Map<string, string>
+  onCancel: () => void
+  onSaved: (hitGoals: string[]) => void
+}) {
+  const { error: toastError } = useToast()
+  const [date, setDate] = useState(workout.date)
+  const [duration, setDuration] = useState(workout.duration_minutes != null ? String(workout.duration_minutes) : '')
+  const [sessionNotes, setSessionNotes] = useState(workout.notes ?? '')
+  const [saving, setSaving] = useState(false)
+
+  // A set logged against an exercise that was since hard-deleted has nothing to
+  // edit against -- no name, no tracking type -- so those groups are left alone
+  // and preserved untouched on save.
+  const [rows, setRows] = useState<EditGroup[]>(() =>
+    groups.filter((g): g is Group & { exercise: Exercise } => !!g.exercise).map((g) => ({
+      exercise: g.exercise,
+      sets: g.sets.map(toDraft),
+      note: notes.get(`${workout.id}:${g.exercise.id}`) ?? '',
+    })),
+  )
+
+  const orphanSets = groups.filter((g) => !g.exercise).flatMap((g) => g.sets)
+
+  async function save() {
+    const kept = rows.flatMap((r) =>
+      r.sets.filter(draftHasData).map((s) => ({
+        exercise_id: r.exercise.id,
+        ...draftToSet(r.exercise.tracking_type, s),
+      })),
+    )
+    // Orphans carry through as-is: they're real logged work, just no longer
+    // attached to an exercise this UI can render.
+    const orphans = orphanSets.map((s) => ({
+      exercise_id: s.exercise_id,
+      reps: s.reps, weight: s.weight, seconds: s.seconds,
+      distance: s.distance, rpe: s.rpe, is_warmup: s.is_warmup,
+    }))
+
+    if (kept.length + orphans.length === 0) {
+      toastError('A workout needs at least one set — delete it instead if that\'s what you meant')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await updateWorkout(workout.id, {
+        date,
+        duration_minutes: duration.trim() ? Math.round(Number(duration)) || null : null,
+        notes: sessionNotes.trim() || null,
+      })
+      await replaceWorkoutSets(workout.id, [...kept, ...orphans])
+      await setWorkoutNotes(workout.id, rows.map((r) => ({ exercise_id: r.exercise.id, note: r.note })))
+
+      // A correction can satisfy a goal as readily as a new session can —
+      // fixing a mistyped bodyweight is the obvious case.
+      const progress = await evaluateGoals().catch(() => [])
+      onSaved(progress.filter((g) => g.met && !g.goal.achieved_at).map((g) => g.goal.name))
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Could not save those changes')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border-dim)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
+        <Label>EDITING THIS SESSION</Label>
+        <Button variant="quiet" onClick={onCancel}><X size={13} /> CANCEL</Button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 8 }}>
+        <div>
+          <Label style={{ marginBottom: 5 }}>DATE</Label>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div>
+          <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
+          <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="—" inputMode="numeric" />
+        </div>
+      </div>
+
+      {/* Bodyweight is edited where it is logged -- the weigh-in card on Today,
+          or the Progress tab for any past date. Repeating the field here would
+          be a second way to write one value, and blanking it would have to mean
+          deleting a weigh-in you may have recorded that morning independently. */}
+      <Label style={{ marginTop: 10, color: 'var(--text-mute)' }}>
+        BODYWEIGHT IS LOGGED SEPARATELY — SEE THE WEIGH-IN CARD ON TODAY, OR PROGRESS FOR AN OLDER DAY
+      </Label>
+
+      <Rule>SETS</Rule>
+
+      {rows.map((r, i) => (
+        <div key={r.exercise.id} style={{
+          border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`,
+          background: 'var(--bg-base)', padding: 12, marginBottom: 8,
+        }}>
+          <div style={{ fontSize: 14, color: 'var(--text-hi)', marginBottom: 8 }}>{r.exercise.name}</div>
+          {/* No ghosts and no PR badges here: this is a correction, not a session
+              being logged, so "what to beat" would be noise. */}
+          <SetGrid
+            exercise={r.exercise}
+            sets={r.sets}
+            lastSets={[]}
+            records={[]}
+            onChange={(sets) => setRows(rows.map((x, j) => (j === i ? { ...x, sets } : x)))}
+          />
+          <div style={{ marginTop: 10 }}>
+            <Label style={{ marginBottom: 5 }}>SETUP NOTES</Label>
+            <TextArea
+              value={r.note}
+              onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
+              placeholder="Seat position, incline, grip width…"
+              style={{ minHeight: 40, fontSize: 13 }}
+            />
+          </div>
+        </div>
+      ))}
+
+      {rows.length === 0 && (
+        <Empty title="NOTHING EDITABLE" hint="Every set here belongs to an exercise that has since been deleted." />
+      )}
+
+      {orphanSets.length > 0 && (
+        <Label style={{ marginBottom: 8 }}>
+          {orphanSets.length} SET{orphanSets.length === 1 ? '' : 'S'} FROM A DELETED EXERCISE ARE KEPT AS-IS
+        </Label>
+      )}
+
+      <div style={{ marginTop: 4 }}>
+        <Label style={{ marginBottom: 5 }}>SESSION NOTES</Label>
+        <TextArea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} placeholder="How did it feel?" />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+        <Button variant="quiet" onClick={onCancel}>CANCEL</Button>
+        <Button variant="solid" onClick={save} disabled={saving}>
+          <Save size={13} /> {saving ? 'SAVING…' : 'SAVE CHANGES'}
+        </Button>
+      </div>
+    </div>
   )
 }
 

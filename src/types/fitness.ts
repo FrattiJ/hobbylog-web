@@ -79,6 +79,11 @@ export type GoalMetric =
   | 'pace'           // fastest min/mile — lower is better
   | 'workout_count'  // total workouts logged (no exercise attached)
   | 'manual'         // free-text intention with nothing to measure; you tick it off
+  // Bodyweight is the one measure whose direction isn't fixed by the metric:
+  // cutting and bulking are both "reach a bodyweight" and succeed on opposite
+  // comparisons, so each gets its own metric rather than being inferred.
+  | 'bodyweight_at_most'   // met when a reading is <= target (cutting)
+  | 'bodyweight_at_least'  // met when a reading is >= target (bulking)
 
 export interface Goal {
   id: string

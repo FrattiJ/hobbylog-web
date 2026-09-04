@@ -50,7 +50,7 @@ export default function FitnessPage() {
         BUILD ROUTINES · LOG SETS · TRACK RECORDS
       </p>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 18, overflowX: 'auto' }}>
+      <div className="scroll-hide" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 18, overflowX: 'auto' }}>
         {TABS.map((t) => {
           const active = tab === t.id
           return (

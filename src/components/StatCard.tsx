@@ -59,7 +59,7 @@ export default function StatCard({ label, value, accent = '#7c3aed', sub, index 
             marginBottom: 6,
           }}
         >
-          {isNumeric ? animated : value}
+          {isNumeric ? animated.toLocaleString() : value}
         </p>
         {sub && (
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>

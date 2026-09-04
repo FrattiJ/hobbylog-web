@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Trash2, Target, Check } from 'lucide-react'
+import { Plus, Trash2, Target, Check, Search } from 'lucide-react'
 import type { Exercise, GoalMetric } from '@/types/fitness'
-import { createGoal, deleteGoal, evaluateGoals, setGoalAchieved, type GoalProgress } from '@/lib/fitness/db'
-import { PR_KINDS, fmtPrValue, parseDuration, type PrKind } from '@/lib/fitness/calc'
+import { createGoal, deleteGoal, evaluateGoals, isBodyweightMetric, setGoalAchieved, type GoalProgress } from '@/lib/fitness/db'
+import { PR_KINDS, bodyweightGoalPct, fmtPrValue, parseDuration, type PrKind } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import { Button, Input, Select, Label, Empty, Modal, ACCENT } from './ui'
+import ExercisePicker from './ExercisePicker'
 
 // Goal metrics are the PR kinds you'd actually chase, plus a whole-practice count.
 // 'volume' is a PR kind but a poor goal, so it isn't offered.
@@ -19,12 +20,14 @@ const METRIC_LABELS: Record<GoalMetric, string> = {
   pace: 'Pace per mile (mm:ss)',
   workout_count: 'Total workouts logged',
   manual: "Just something to do — I'll tick it off",
+  bodyweight_at_most: 'Bodyweight — get down to (lbs)',
+  bodyweight_at_least: 'Bodyweight — get up to (lbs)',
 }
 
 function metricsFor(exercise: Exercise | null): GoalMetric[] {
-  // With no exercise attached a goal is either a workout tally or a plain
-  // intention ("get back in the gym") that you tick off yourself.
-  if (!exercise) return ['manual', 'workout_count']
+  // With no exercise attached a goal measures the whole practice: a workout
+  // tally, a bodyweight, or a plain intention you tick off yourself.
+  if (!exercise) return ['manual', 'workout_count', 'bodyweight_at_most', 'bodyweight_at_least']
   return PR_KINDS[exercise.tracking_type].filter((k): k is Exclude<PrKind, 'volume'> => k !== 'volume')
 }
 
@@ -62,16 +65,20 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
       {loading ? <Label>LOADING…</Label> : goals.length === 0 ? (
         <Empty
           title="NO GOALS SET"
-          hint="Set a number to chase — a 225 bench, a sub-8:00 mile, 100 workouts logged — and it ticks over the moment a workout hits it. Or add a plain reminder like “work out today” and check it off yourself."
+          hint="Set a number to chase — a 225 bench, a sub-8:00 mile, 100 workouts logged, a goal bodyweight — and it ticks over the moment a workout hits it. Or add a plain reminder like “work out today” and check it off yourself."
         />
       ) : (
-        goals.map(({ goal, current, met }) => {
+        goals.map(({ goal, current, met, baseline }) => {
           const exercise = goal.exercise_id ? byId.get(goal.exercise_id) : null
           // Pace counts down toward the target, so its bar fills the other way.
-          const pct = current == null ? 0 : Math.max(0, Math.min(100,
-            goal.metric === 'pace'
-              ? (goal.target / current) * 100
-              : (current / goal.target) * 100))
+          // Bodyweight is measured from where you started instead: 200 lbs with a
+          // 175 target would otherwise read as 87% full before a pound had moved.
+          const pct = isBodyweightMetric(goal.metric)
+            ? bodyweightGoalPct(baseline ?? null, current, goal.target, met)
+            : current == null ? 0 : Math.max(0, Math.min(100,
+              goal.metric === 'pace'
+                ? (goal.target / current) * 100
+                : (current / goal.target) * 100))
           const done = met || !!goal.achieved_at
           const color = done ? '#22c55e' : ACCENT
 
@@ -134,6 +141,7 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
 
 function fmtGoalValue(metric: GoalMetric, value: number): string {
   if (metric === 'workout_count') return String(Math.round(value))
+  if (isBodyweightMetric(metric)) return `${Math.round(value * 10) / 10} lbs`
   return fmtPrValue(metric as PrKind, value)
 }
 
@@ -144,14 +152,14 @@ function AddGoal({ exercises, onClose, onSaved }: {
 }) {
   const { error: toastError } = useToast()
   const [name, setName] = useState('')
-  const [exerciseId, setExerciseId] = useState<string>('')
+  const [picked, setPicked] = useState<Exercise | null>(null)
+  const [picking, setPicking] = useState(false)
   const [metric, setMetric] = useState<GoalMetric>('manual')
   const [target, setTarget] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const exercise = exercises.find((e) => e.id === exerciseId) ?? null
-  const metrics = metricsFor(exercise)
+  const metrics = metricsFor(picked)
 
   // Keep the metric valid whenever the exercise changes.
   useEffect(() => {
@@ -169,7 +177,7 @@ function AddGoal({ exercises, onClose, onSaved }: {
     try {
       await createGoal({
         name: name.trim(),
-        exercise_id: exerciseId || null,
+        exercise_id: picked?.id ?? null,
         metric,
         target: value,
         target_date: targetDate || null,
@@ -186,11 +194,26 @@ function AddGoal({ exercises, onClose, onSaved }: {
       <Label style={{ marginBottom: 5 }}>NAME</Label>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bench 225" />
 
+      {/* A bodyweight goal measures you, not a lift, so the picker would only
+          confuse things — choosing one swaps the metric out from under it. */}
+      {!isBodyweightMetric(metric) && (<>
       <Label style={{ margin: '14px 0 5px' }}>EXERCISE</Label>
-      <Select value={exerciseId} onChange={(e) => setExerciseId(e.target.value)} style={{ width: '100%' }}>
-        <option value="">None — a whole-practice goal</option>
-        {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-      </Select>
+      {/* The picker searches the whole catalog, not just your library. A goal is
+          something you haven't hit yet, so requiring you to have already logged
+          the lift was backwards -- picking a new one creates it, ready to track. */}
+      <Button
+        variant="ghost" style={{ width: '100%', justifyContent: 'flex-start' }}
+        onClick={() => setPicking(true)}
+      >
+        <Search size={13} />
+        {picked ? picked.name.toUpperCase() : 'ANY EXERCISE — SEARCH THE CATALOG'}
+      </Button>
+      {picked && (
+        <Button variant="quiet" style={{ marginTop: 4 }} onClick={() => setPicked(null)}>
+          CLEAR — MAKE IT A WHOLE-PRACTICE GOAL
+        </Button>
+      )}
+      </>)}
 
       <Label style={{ margin: '14px 0 5px' }}>MEASURE</Label>
       <Select value={metric} onChange={(e) => setMetric(e.target.value as GoalMetric)} style={{ width: '100%' }}>
@@ -203,7 +226,7 @@ function AddGoal({ exercises, onClose, onSaved }: {
             <Label style={{ marginBottom: 5 }}>TARGET</Label>
             <Input
               value={target} onChange={(e) => setTarget(e.target.value)}
-              placeholder={isTimeMetric(metric) ? 'mm:ss' : '225'}
+              placeholder={isTimeMetric(metric) ? 'mm:ss' : isBodyweightMetric(metric) ? '175' : '225'}
               inputMode={isTimeMetric(metric) ? 'text' : 'decimal'}
             />
           </div>
@@ -218,6 +241,14 @@ function AddGoal({ exercises, onClose, onSaved }: {
         <Button variant="quiet" onClick={onClose}>CANCEL</Button>
         <Button variant="solid" onClick={save} disabled={saving}>{saving ? 'SAVING…' : 'ADD GOAL'}</Button>
       </div>
+
+      {picking && (
+        <ExercisePicker
+          mine={exercises}
+          onPick={(e) => { setPicked(e); setPicking(false) }}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </Modal>
   )
 }

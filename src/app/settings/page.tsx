@@ -10,6 +10,7 @@ import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type Di
 import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
 import { useHobbies } from '@/components/HobbyContext'
+import ExportPanel from '@/components/ExportPanel'
 
 const ACCENT = '#7c3aed'
 
@@ -39,7 +40,7 @@ export default function SettingsPage() {
   const avatarRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''))
+    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? ''))
     getProfile().then((p) => { setUsernameState(p.username ?? ''); setAvatarState(p.avatar_url) }).catch(() => {})
     isAdminUser().then((admin) => { setIsAdmin(admin); if (admin) loadInbox() }).catch(() => {})
   }, [])
@@ -162,6 +163,9 @@ export default function SettingsPage() {
         </div>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
       </Link>
+
+      {/* Export */}
+      <ExportPanel />
 
       {/* Feedback */}
       <div style={{ ...card, borderLeftColor: '#0891b2' }}>

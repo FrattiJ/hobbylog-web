@@ -124,6 +124,16 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.05em; }
   animation: scan-line 1.6s ease-in-out infinite;
 }
 
+/* ── Scroll without a scrollbar ─────────────────────────────────────────────── */
+/* For strips that are meant to be swiped rather than scrolled deliberately: the
+   fitness tab bar and the consistency heatmap. The bar is pure noise there on a
+   phone, where the gesture is obvious and the track just clutters the layout. */
+.scroll-hide {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.scroll-hide::-webkit-scrollbar { display: none; }
+
 /* ── Input reset ────────────────────────────────────────────────────────────── */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; }
