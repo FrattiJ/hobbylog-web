@@ -2,10 +2,10 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { Trophy } from 'lucide-react'
+import { Trophy, Scale } from 'lucide-react'
 import type { Exercise } from '@/types/fitness'
 import {
-  exercisesWithHistory, getBodyweightHistory, getProgressTotals, getSetHistory, listExercises,
+  exercisesWithHistory, getProgressTotals, getSetHistory, listBodyweight, listExercises,
   type BodyweightPoint, type DatedSet, type ProgressTotals,
 } from '@/lib/fitness/db'
 import {
@@ -14,7 +14,8 @@ import {
 } from '@/lib/fitness/calc'
 import StatCard from '../StatCard'
 import GoalsPanel from './GoalsPanel'
-import { Select, Label, Rule, Empty, ACCENT } from './ui'
+import { Select, Label, Rule, Empty, Button, ACCENT } from './ui'
+import { WeighInModal } from './WeighIn'
 
 export default function ProgressTab() {
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -25,9 +26,10 @@ export default function ProgressTab() {
   const [totals, setTotals] = useState<ProgressTotals>({ dates: [], minutes: 0, volume: 0 })
   const [bodyweight, setBodyweight] = useState<BodyweightPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [loggingWeight, setLoggingWeight] = useState(false)
 
   useEffect(() => {
-    Promise.all([listExercises(), getProgressTotals(), exercisesWithHistory(), getBodyweightHistory()])
+    Promise.all([listExercises(), getProgressTotals(), exercisesWithHistory(), listBodyweight()])
       .then(([e, t, trainedIds, bw]) => { setExercises(e); setTotals(t); setTrained(trainedIds); setBodyweight(bw) })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -45,6 +47,8 @@ export default function ProgressTab() {
   const charted = useMemo(() => exercises.filter((e) => trained.has(e.id)), [exercises, trained])
 
   if (loading) return <Label>LOADING…</Label>
+
+  const reloadWeights = () => listBodyweight().then(setBodyweight).catch(() => {})
 
   return (
     <>
@@ -64,7 +68,7 @@ export default function ProgressTab() {
         : <Heatmap dates={dates} />}
 
       <Rule>BODYWEIGHT</Rule>
-      <Bodyweight points={bodyweight} />
+      <Bodyweight points={bodyweight} onLog={() => setLoggingWeight(true)} />
 
       <Rule>EXERCISE PROGRESS</Rule>
       {charted.length === 0
@@ -75,6 +79,14 @@ export default function ProgressTab() {
           done yet, which is the whole point of setting a target. */}
       <Rule>TARGETS</Rule>
       <GoalsPanel exercises={exercises} />
+
+      {loggingWeight && (
+        <WeighInModal
+          existing={bodyweight}
+          onClose={() => setLoggingWeight(false)}
+          onSaved={() => { setLoggingWeight(false); reloadWeights() }}
+        />
+      )}
     </>
   )
 }
@@ -144,7 +156,7 @@ function Heatmap({ dates }: { dates: string[] }) {
 
 // Bodyweight is captured on every workout but was only ever visible on a single
 // expanded history card. One point per day (the last reading of that day wins).
-function Bodyweight({ points }: { points: BodyweightPoint[] }) {
+function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () => void }) {
   const series = useMemo(() => {
     const byDate = new Map<string, number>()
     for (const p of points) byDate.set(p.date, p.weight)
@@ -157,7 +169,8 @@ function Bodyweight({ points }: { points: BodyweightPoint[] }) {
     return (
       <Empty
         title="NO BODYWEIGHT LOGGED"
-        hint="Fill in the bodyweight field when you finish a session and it charts here."
+        hint="Weigh in whenever suits you — first thing in the morning, on a rest day, whenever. It charts here."
+        action={<Button variant="ghost" onClick={onLog}><Scale size={13} /> LOG A WEIGH-IN</Button>}
       />
     )
   }
@@ -168,7 +181,7 @@ function Bodyweight({ points }: { points: BodyweightPoint[] }) {
 
   return (
     <>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         <Stat label="CURRENT" value={`${latest} lbs`} />
         <Stat label="READINGS" value={String(series.length)} />
         {series.length > 1 && (
@@ -178,6 +191,9 @@ function Bodyweight({ points }: { points: BodyweightPoint[] }) {
             color={change === 0 ? undefined : change > 0 ? '#eab308' : '#22c55e'}
           />
         )}
+        <Button variant="ghost" onClick={onLog} style={{ marginLeft: 'auto' }}>
+          <Scale size={13} /> LOG A WEIGH-IN
+        </Button>
       </div>
 
       {series.length < 2 ? (

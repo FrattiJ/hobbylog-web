@@ -13,7 +13,7 @@ Just sign up with an email and password — there's nothing to install and no AP
 ## What you can do
 
 - **Track seven hobby types** — games, movies, TV, books (with manga / audiobook / comic / light-novel sub-types), manual-entry projects and art, and fitness.
-- **Fitness is its own thing** — build workout routines from a bundled catalog of 873 exercises (or type your own), log sets and reps, and track personal records, progress charts, streaks and goals. Exercises measure what suits them: weight × reps, plain reps, a timed hold, or time + distance for runs.
+- **Fitness is its own thing** — build workout routines from a bundled catalog of 873 exercises (or type your own), log sets and reps, weigh in whenever you actually step on the scale, and track personal records, progress charts, streaks and goals (including a target bodyweight). Exercises measure what suits them: weight × reps, plain reps, a timed hold, or time + distance for runs.
 - **Search to add** — type a title and pick from live results. Cover art, runtime / episode counts / time-to-beat, and other details fill in automatically (RAWG for games, TMDB for movies & TV, OpenLibrary for books, MyAnimeList for manga).
 - **Rank your backlog** — drag entries into priority order; new items join at the bottom.
 - **Log progress & sessions** — track hours, pages, or episodes, and keep a session history per entry.

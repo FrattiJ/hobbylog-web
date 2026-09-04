@@ -125,19 +125,53 @@ export async function removeExercise(id: string): Promise<ExerciseRemoval> {
   return 'deleted'
 }
 
-// Bodyweight over time, oldest first. Logged per workout but, until now, only
-// ever shown on a single expanded history card -- captured and then invisible.
+// -- Bodyweight ---------------------------------------------------------------
+
+// Weigh-ins live in their own table rather than on a workout row. You step on
+// the scale in the morning and train hours later, or not at all that day, so
+// tying a reading to a session meant the morning number had nowhere to go.
 export interface BodyweightPoint { date: string; weight: number }
 
-export async function getBodyweightHistory(): Promise<BodyweightPoint[]> {
+export async function listBodyweight(): Promise<BodyweightPoint[]> {
+  const userId = await currentUserId()
+  const { data, error } = await supabase
+    .from('web_bodyweight').select('date, weight')
+    .eq('user_id', userId).order('date', { ascending: true })
+  if (error) throw error
+  return ((data ?? []) as { date: string; weight: number }[])
+    .map((r) => ({ date: r.date, weight: Number(r.weight) }))
+}
+
+// One reading per day: weighing twice before breakfast is the same measurement,
+// so a repeat replaces rather than stacking up. That is what the (user, date)
+// unique constraint is for.
+export async function setBodyweight(date: string, weight: number): Promise<void> {
+  const user_id = await currentUserId()
+  const { error } = await supabase
+    .from('web_bodyweight')
+    .upsert({ user_id, date, weight }, { onConflict: 'user_id,date' })
+  if (error) throw error
+  notifyChanged()
+}
+
+export async function deleteBodyweight(date: string): Promise<void> {
+  const user_id = await currentUserId()
+  const { error } = await supabase.from('web_bodyweight').delete().eq('user_id', user_id).eq('date', date)
+  if (error) throw error
+  notifyChanged()
+}
+
+// The reading on each of the given days, for History's workout rows.
+export async function getBodyweightOn(dates: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  if (dates.length === 0) return out
   const userId = await currentUserId()
   const { data } = await supabase
-    .from('web_workouts').select('date, bodyweight')
-    .eq('user_id', userId).not('bodyweight', 'is', null)
-    .order('date', { ascending: true })
-  return ((data ?? []) as { date: string; bodyweight: number | null }[])
-    .filter((r) => r.bodyweight != null)
-    .map((r) => ({ date: r.date, weight: Number(r.bodyweight) }))
+    .from('web_bodyweight').select('date, weight').eq('user_id', userId).in('date', dates)
+  for (const r of (data ?? []) as { date: string; weight: number }[]) {
+    out.set(r.date, Number(r.weight))
+  }
+  return out
 }
 
 // -- Routines ----------------------------------------------------------------
@@ -317,12 +351,14 @@ export interface WorkoutSetDraft {
   is_warmup: boolean
 }
 
+// Bodyweight is deliberately absent: weigh-ins live in web_bodyweight now, so a
+// workout no longer carries one. web_workouts.bodyweight remains in the schema
+// holding pre-migration values but is never written from here.
 export interface WorkoutDraft {
   routine_id: string | null
   routine_name: string | null
   date: string
   duration_minutes: number | null
-  bodyweight: number | null
   notes: string | null
   sets: WorkoutSetDraft[]
   // Per-exercise setup notes. Blank ones are dropped before insert.
@@ -337,7 +373,6 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
     routine_name: draft.routine_name,
     date: draft.date,
     duration_minutes: draft.duration_minutes,
-    bodyweight: draft.bodyweight,
     notes: draft.notes,
   }).select().single()
   if (error) throw error
@@ -659,7 +694,7 @@ export async function evaluateGoals(): Promise<GoalProgress[]> {
 
   // Only fetched when something actually asks for it.
   const weights = goals.some((g) => isBodyweightMetric(g.metric))
-    ? await getBodyweightHistory().catch(() => [])
+    ? await listBodyweight().catch(() => [])
     : []
   const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : null
 

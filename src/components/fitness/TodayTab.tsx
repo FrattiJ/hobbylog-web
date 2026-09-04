@@ -10,6 +10,7 @@ import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
 import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet, type SetTargets } from './SetGrid'
 import { Button, Input, TextArea, Label, Rule, Empty, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
+import WeighInCard from './WeighIn'
 
 interface DraftExercise {
   exercise: Exercise
@@ -34,7 +35,6 @@ interface StoredDraft {
   routineName: string | null
   date: string
   duration: string
-  bodyweight: string
   notes: string
   exercises: { exerciseId: string; sets: DraftSet[]; note?: string; targets?: SetTargets | null }[]
 }
@@ -49,7 +49,6 @@ export default function TodayTab() {
   const [routineName, setRoutineName] = useState<string | null>(null)
   const [date, setDate] = useState(() => isoDay(new Date()))
   const [duration, setDuration] = useState('')
-  const [bodyweight, setBodyweight] = useState('')
   const [notes, setNotes] = useState('')
   const [draft, setDraft] = useState<DraftExercise[]>([])
   const [picking, setPicking] = useState(false)
@@ -116,7 +115,6 @@ export default function TodayTab() {
     setRoutineName(stored.routineName)
     setDate(stored.date)
     setDuration(stored.duration)
-    setBodyweight(stored.bodyweight)
     setNotes(stored.notes)
     hydrateAll(found.map((d) => ({
       exercise: byId.get(d.exerciseId)!,
@@ -131,13 +129,13 @@ export default function TodayTab() {
     if (!restored) return
     if (draft.length === 0) { localStorage.removeItem(DRAFT_KEY); return }
     const stored: StoredDraft = {
-      routineId, routineName, date, duration, bodyweight, notes,
+      routineId, routineName, date, duration, notes,
       exercises: draft.map((d) => ({
         exerciseId: d.exercise.id, sets: d.sets, note: d.note, targets: d.targets,
       })),
     }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stored)) } catch { /* quota — not worth failing over */ }
-  }, [draft, routineId, routineName, date, duration, bodyweight, notes, restored])
+  }, [draft, routineId, routineName, date, duration, notes, restored])
 
   useEffect(() => {
     if (!restored || loading || autoLoaded.current) return
@@ -183,7 +181,6 @@ export default function TodayTab() {
     setRoutineId(null)
     setRoutineName(null)
     setDuration('')
-    setBodyweight('')
     setNotes('')
     setDate(isoDay(new Date()))
     localStorage.removeItem(DRAFT_KEY)
@@ -205,7 +202,6 @@ export default function TodayTab() {
         routine_name: routineName,
         date,
         duration_minutes: duration.trim() ? Math.round(Number(duration)) || null : null,
-        bodyweight: bodyweight.trim() ? Number(bodyweight) || null : null,
         notes: notes.trim() || null,
         sets: loggedSets.map(({ d, s }) => ({
           exercise_id: d.exercise.id,
@@ -232,6 +228,7 @@ export default function TodayTab() {
   if (draft.length === 0) {
     return (
       <>
+        <WeighInCard />
         <Rule>START A SESSION</Rule>
         {todays.length > 0 && (
           <>
@@ -281,6 +278,7 @@ export default function TodayTab() {
 
   return (
     <>
+      <WeighInCard />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.06em' }}>
@@ -370,10 +368,6 @@ export default function TodayTab() {
         <div>
           <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" inputMode="numeric" />
-        </div>
-        <div>
-          <Label style={{ marginBottom: 5 }}>BODYWEIGHT (LBS)</Label>
-          <Input value={bodyweight} onChange={(e) => setBodyweight(e.target.value)} placeholder="—" inputMode="decimal" />
         </div>
       </div>
       <div style={{ marginTop: 10 }}>

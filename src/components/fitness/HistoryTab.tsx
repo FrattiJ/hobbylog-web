@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Trash2, Pencil, Save, X } from 'lucide-react'
 import type { Exercise, WorkoutDetail, WorkoutSet } from '@/types/fitness'
 import {
-  deleteWorkout, evaluateGoals, getWorkoutNotes, listExercises, listWorkouts,
+  deleteWorkout, evaluateGoals, getBodyweightOn, getWorkoutNotes, listExercises, listWorkouts,
   replaceWorkoutSets, setWorkoutNotes, updateWorkout,
 } from '@/lib/fitness/db'
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
@@ -35,12 +35,20 @@ export default function HistoryTab() {
   const [confirming, setConfirming] = useState<WorkoutDetail | null>(null)
   // Keyed 'workoutId:exerciseId' -- the setup note left on that exercise that day.
   const [notes, setNotes] = useState<Map<string, string>>(new Map())
+  // The weigh-in recorded on each workout's date, if there was one. Bodyweight
+  // is its own log now, so it is looked up by date rather than read off the row.
+  const [weights, setWeights] = useState<Map<string, number>>(new Map())
 
   const reload = () => Promise.all([listWorkouts(), listExercises(true)])
     .then(async ([w, e]) => {
       setWorkouts(w)
       setExercises(new Map(e.map((x) => [x.id, x])))
-      setNotes(await getWorkoutNotes(w.map((x) => x.id)).catch(() => new Map()))
+      const [n, bw] = await Promise.all([
+        getWorkoutNotes(w.map((x) => x.id)).catch(() => new Map<string, string>()),
+        getBodyweightOn([...new Set(w.map((x) => x.date))]).catch(() => new Map<string, number>()),
+      ])
+      setNotes(n)
+      setWeights(bw)
     })
     .catch(() => {})
     .finally(() => setLoading(false))
@@ -99,7 +107,7 @@ export default function HistoryTab() {
                     `${w.sets.length} SETS`,
                     volume > 0 ? `${Math.round(volume).toLocaleString()} LBS` : null,
                     w.duration_minutes ? `${w.duration_minutes} MIN` : null,
-                    w.bodyweight ? `${w.bodyweight} LBS BW` : null,
+                    weights.get(w.date) ? `${weights.get(w.date)} LBS BW` : null,
                   ].filter(Boolean).join(' · ')}
                 </Label>
               </div>
@@ -167,7 +175,7 @@ export default function HistoryTab() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                  <Label>{w.bodyweight ? `BODYWEIGHT ${w.bodyweight} LBS` : ''}</Label>
+                  <Label>{weights.get(w.date) ? `BODYWEIGHT ${weights.get(w.date)} LBS` : ''}</Label>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <Button variant="ghost" onClick={() => setEditing(w.id)}><Pencil size={13} /> EDIT</Button>
                     <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> DELETE</Button>
@@ -228,7 +236,6 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
   const { error: toastError } = useToast()
   const [date, setDate] = useState(workout.date)
   const [duration, setDuration] = useState(workout.duration_minutes != null ? String(workout.duration_minutes) : '')
-  const [bodyweight, setBodyweight] = useState(workout.bodyweight != null ? String(workout.bodyweight) : '')
   const [sessionNotes, setSessionNotes] = useState(workout.notes ?? '')
   const [saving, setSaving] = useState(false)
 
@@ -270,7 +277,6 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
       await updateWorkout(workout.id, {
         date,
         duration_minutes: duration.trim() ? Math.round(Number(duration)) || null : null,
-        bodyweight: bodyweight.trim() ? Number(bodyweight) || null : null,
         notes: sessionNotes.trim() || null,
       })
       await replaceWorkoutSets(workout.id, [...kept, ...orphans])
@@ -302,11 +308,15 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
           <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="—" inputMode="numeric" />
         </div>
-        <div>
-          <Label style={{ marginBottom: 5 }}>BODYWEIGHT (LBS)</Label>
-          <Input value={bodyweight} onChange={(e) => setBodyweight(e.target.value)} placeholder="—" inputMode="decimal" />
-        </div>
       </div>
+
+      {/* Bodyweight is edited where it is logged -- the weigh-in card on Today,
+          or the Progress tab for any past date. Repeating the field here would
+          be a second way to write one value, and blanking it would have to mean
+          deleting a weigh-in you may have recorded that morning independently. */}
+      <Label style={{ marginTop: 10, color: 'var(--text-mute)' }}>
+        BODYWEIGHT IS LOGGED SEPARATELY — SEE THE WEIGH-IN CARD ON TODAY, OR PROGRESS FOR AN OLDER DAY
+      </Label>
 
       <Rule>SETS</Rule>
 

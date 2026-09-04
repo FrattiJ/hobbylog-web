@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient'
 import { currentUserId } from './currentUser'
 import { getAllEntries } from './db'
-import { getWorkoutNotes, listExercises, listWorkouts } from './fitness/db'
+import { getWorkoutNotes, listBodyweight, listExercises, listWorkouts } from './fitness/db'
 import { fmtDuration } from './fitness/calc'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS } from './hobbies'
 import type { HobbyCategory } from '@/types/database'
@@ -131,11 +131,14 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
 // exercise is measured, the setup note) ride along on every row.
 async function fitnessSheet(): Promise<Sheet[]> {
   // listWorkouts caps at 100 by default, which would quietly truncate an export.
-  const [workouts, exercises] = await Promise.all([
+  const [workouts, exercises, weighIns] = await Promise.all([
     listWorkouts(100000),
     listExercises(true),
+    listBodyweight(),
   ])
-  if (workouts.length === 0) return []
+  if (workouts.length === 0 && weighIns.length === 0) return []
+
+  const weightOn = new Map(weighIns.map((w) => [w.date, w.weight]))
 
   const byId = new Map(exercises.map((e) => [e.id, e]))
   // Setup notes are per (workout, exercise), so they land on every set of that
@@ -168,11 +171,24 @@ async function fitnessSheet(): Promise<Sheet[]> {
         ex?.equipment ?? '',
         ex ? notes.get(`${w.id}:${ex.id}`) ?? '' : '',
         w.duration_minutes,
-        w.bodyweight,
+        weightOn.get(w.date) ?? null,
         w.notes ?? '',
       ])
     }
   }
+
+  // A weigh-in on a rest day belongs to no set, so it would fall out of a
+  // row-per-set sheet entirely. Rather than lose it -- or split fitness back
+  // into two tabs -- those days get a row of their own, marked in the exercise
+  // column so they are trivial to filter out when pivoting the training log.
+  const trainedOn = new Set(workouts.map((w) => w.date))
+  for (const w of weighIns) {
+    if (trainedOn.has(w.date)) continue
+    rows.push([w.date, '', '(weigh-in)', null, '', null, null, null, '', null, null, '', '', '', '', null, w.weight, ''])
+  }
+
+  // Newest first, matching how History reads.
+  rows.sort((a, b) => (String(a[0]) < String(b[0]) ? 1 : String(a[0]) > String(b[0]) ? -1 : 0))
 
   return [{
     name: 'Fitness',
