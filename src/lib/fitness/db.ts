@@ -406,7 +406,7 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
 // mistyped bodyweight is not worth losing a workout over.
 export async function updateWorkout(
   id: string,
-  patch: Partial<Pick<Workout, 'date' | 'duration_minutes' | 'bodyweight' | 'notes'>>,
+  patch: Partial<Pick<Workout, 'date' | 'duration_minutes' | 'notes'>>,
 ): Promise<void> {
   const { data, error } = await supabase.from('web_workouts').update(patch).eq('id', id).select('id')
   if (error) throw error
