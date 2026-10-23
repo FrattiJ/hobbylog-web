@@ -1,10 +1,25 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.9.0'
+export const APP_VERSION = '0.10.0'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.10.0',
+    date: 'Oct 2026',
+    items: [
+      'New "What Next" page — suggestions built entirely from your own library, with the reasoning shown',
+      'Next Up picks from your backlog: your ranking still leads, but it gets corrected for what you actually finish',
+      'Finish or Drop calls out anything you started and abandoned, with a verdict and the hours left',
+      'Discover suggests new titles — rationed against how buried your backlog already is, so it never just piles more on',
+      'The engine learns your length tolerance: if you finish short games and bail on 80-hour ones, it stops suggesting 80-hour ones',
+      'Genres now come down from every catalog (films, TV, books, manga), plus whether a show has actually ended',
+      'Every suggestion says why — genre affinity, your finish rate at that length, and your own pace in hours per week',
+      'Idle-since dates for Steam games now come from Steam itself, so a sync no longer makes an abandoned game look freshly played',
+      'Housekeeping writes (genre backfill, time-to-beat lookups, Steam appid linking) no longer count as activity on an entry',
+    ],
+  },
   {
     version: '0.9.0',
     date: 'Sep 2026',

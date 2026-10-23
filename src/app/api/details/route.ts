@@ -10,6 +10,12 @@ const TMDB = process.env.TMDB_API_KEY
 
 type Raw = Record<string, unknown>
 
+function genreNames(raw: unknown): string | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const names = (raw as Raw[]).map((g) => g.name as string).filter(Boolean)
+  return names.length > 0 ? names.join(', ') : undefined
+}
+
 function watchProviders(data: Raw | undefined): string | undefined {
   const us = (data?.results as Record<string, Raw> | undefined)?.US
   const flatrate = us?.flatrate as Raw[] | undefined
@@ -35,6 +41,8 @@ export async function GET(req: NextRequest) {
         progress_total: (d.runtime as number) || null,
         metadata: {
           runtime: (d.runtime as number) || undefined,
+          genres: genreNames(d.genres),
+          release_year: d.release_date ? Number(String(d.release_date).slice(0, 4)) || undefined : undefined,
           director: director || undefined,
           studios: studios || undefined,
           streaming: watchProviders(d['watch/providers']),
@@ -54,6 +62,12 @@ export async function GET(req: NextRequest) {
       metadata: {
         episode_runtime: episodeRuntime,
         seasons: (d.number_of_seasons as number) || undefined,
+        genres: genreNames(d.genres),
+        release_year: d.first_air_date ? Number(String(d.first_air_date).slice(0, 4)) || undefined : undefined,
+        // "Is this thing finished?" — a still-running show is an open-ended
+        // commitment, which the suggestion engine treats very differently.
+        show_status: (d.status as string) || undefined,
+        in_production: typeof d.in_production === 'boolean' ? (d.in_production as boolean) : undefined,
         creator: creator || undefined,
         networks: networks || undefined,
         streaming: watchProviders(d['watch/providers']),

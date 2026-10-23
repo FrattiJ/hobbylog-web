@@ -16,6 +16,7 @@ Just sign up with an email and password — there's nothing to install and no AP
 - **Fitness is its own thing** — build workout routines from a bundled catalog of 873 exercises (or type your own), log sets and reps, weigh in whenever you actually step on the scale, and track personal records, progress charts, streaks and goals (including a target bodyweight). Exercises measure what suits them: weight × reps, plain reps, a timed hold, or time + distance for runs.
 - **Search to add** — type a title and pick from live results. Cover art, runtime / episode counts / time-to-beat, and other details fill in automatically (RAWG for games, TMDB for movies & TV, OpenLibrary for books, MyAnimeList for manga).
 - **Rank your backlog** — drag entries into priority order; new items join at the bottom.
+- **"What Next"** — suggestions built only from your own library. **Next Up** picks from your backlog, leading with your own ranking but correcting it for what you actually finish; **Finish or Drop** gives a verdict on anything you started and abandoned; **Discover** offers new titles, rationed against how many months deep your backlog already is. Every pick shows its reasoning — genre affinity, your finish rate at that length, your pace in hours per week. No model calls, no cost.
 - **Log progress & sessions** — track hours, pages, or episodes, and keep a session history per entry.
 - **Rate & review** — score out of 10 and leave a field-report review when you finish something.
 - **Stats** — hours backlogged vs. finished, completion rates, top-rated, and a **"You vs. the Field"** benchmark against the average of everyone on the app.
@@ -42,6 +43,7 @@ A real server-rendered Next.js app (not a static export) deployed on Vercel, bac
 
 ### Architecture notes
 
+- `src/lib/taste.ts` builds a taste profile — genre affinity, finish rate by length, pace, stalled items — as a pure function over entries plus the session log, so it is cheap to recompute and testable line by line. `src/lib/recommend.ts` scores backlog items and new candidates against it with the same yardstick; `/api/recommend` only fetches candidates, because that is where the catalog keys live.
 - `src/lib/db.ts` is a data adapter that mirrors the original desktop app's `db.ts` API surface, but backed by Supabase — which is what let the desktop UI components port over almost unchanged.
 - Per-user data lives in `web_entries`, `web_sessions`, `web_photos`, `web_notes`, and `web_profile`, each protected by RLS (`auth.uid() = user_id`). Friends can read each other's entries via an `are_friends()`-gated policy; aggregate stats and username lookups go through `SECURITY DEFINER` RPCs restricted to authenticated users.
 - `currentUserId()` (`src/lib/currentUser.ts`) reads the stored session rather than calling `supabase.auth.getUser()`, which round-trips to the auth server on *every* call. Nearly every data helper needs the caller's id, so that one detail was worth dozens of requests per screen on mobile. The id only filters queries — RLS re-derives `auth.uid()` from the JWT server-side, so a stale one returns nothing rather than someone else's rows.
