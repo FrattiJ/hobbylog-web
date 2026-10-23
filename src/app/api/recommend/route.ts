@@ -51,6 +51,20 @@ const ENRICH_LIMIT = 12
 /** How far past the brief's length ceiling a candidate may still go. */
 const LENGTH_CEILING_SLACK = 1.25
 
+/**
+ * Enforce the brief's length ceiling on whatever lengths we actually know.
+ * Every source routes through this: upstream length filters are unreliable
+ * (TMDB's with_runtime.lte doesn't hold on /discover) or absent (IGDB has no
+ * time-to-beat facet, TV runtime isn't a discover field), so the bound is applied
+ * here rather than trusted to each catalog. Unknown lengths are kept — the client
+ * scores those neutral, so dropping them would bias toward measured titles.
+ */
+function capLength(rows: CandidateRow[], maxHours: number | null | undefined): CandidateRow[] {
+  if (!maxHours) return rows
+  const ceiling = maxHours * LENGTH_CEILING_SLACK
+  return rows.filter((c) => c.hours == null || c.hours <= ceiling)
+}
+
 // Catalog lookups are all best-effort — one dead upstream shouldn't fail the whole
 // request. But swallowing the reason made a broken query indistinguishable from
 // "no good matches", which hid a bad IGDB filter for a whole release. Failures are
@@ -255,12 +269,7 @@ async function discoverTmdb(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
     }
   }))
 
-  // TMDB's with_runtime.lte doesn't reliably hold on /discover, and it can't apply
-  // to TV at all, so the brief's ceiling is enforced here on the lengths we now
-  // actually know. Rows whose length is still unknown are kept — the client scores
-  // those as neutral rather than silently preferring them.
-  const ceiling = brief.maxHours ? brief.maxHours * LENGTH_CEILING_SLACK : null
-  return ceiling == null ? mapped : mapped.filter((c) => c.hours == null || c.hours <= ceiling)
+  return capLength(mapped, brief.maxHours)
 }
 
 // ── Manga (AniList) ──────────────────────────────────────────────────────────
@@ -395,7 +404,7 @@ async function runBrief(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
     rows = brief.subtype === 'manga' ? await discoverManga(brief, ctx) : await discoverBooks(brief, ctx)
   }
   // Seeded rows sort first so the cap can never cut "more like what you loved".
-  const ranked = uniqBy(rows, (r) => `${r.external_source}:${r.external_id}`)
+  const ranked = capLength(uniqBy(rows, (r) => `${r.external_source}:${r.external_id}`), brief.maxHours)
     .sort((a, b) => Number(!!b.via) - Number(!!a.via))
   return ranked.slice(0, CANDIDATES_PER_CATEGORY)
 }
