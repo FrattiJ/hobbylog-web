@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { currentUserId } from './currentUser'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails } from './search'
 
 export interface WebEntry {
@@ -28,11 +29,11 @@ export interface WebEntry {
 
 export async function listEntries(): Promise<WebEntry[]> {
   // Scope to the current user — friend-read RLS would otherwise return friends' rows too.
-  const { data: u } = await supabase.auth.getUser()
+  const userId = await currentUserId()
   const { data, error } = await supabase
     .from('web_entries')
     .select('*')
-    .eq('user_id', u.user?.id ?? '')
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as WebEntry[]

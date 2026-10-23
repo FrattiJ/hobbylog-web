@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { UserPlus, Check, X, Users } from 'lucide-react'
+import { UserPlus, Check, X, Users, Undo2 } from 'lucide-react'
 import Link from 'next/link'
 import {
-  searchUsers, sendFriendRequest, listFriends, listIncomingRequests, listOutgoingRequests,
-  respondToRequest, removeFriend, getProfile, getFriendsFeed, PROFILE_CHANGED_EVENT,
+  searchUsers, discoverUsers, sendFriendRequest, listFriends, listIncomingRequests,
+  listOutgoingRequests, respondToRequest, removeFriend, cancelFriendRequest,
+  getProfile, getFriendsFeed, PROFILE_CHANGED_EVENT,
   type UserRef, type FriendView, type FeedItem,
 } from '@/lib/db'
 import { HOBBY_MAP, STATUS_LABELS } from '@/lib/hobbies'
@@ -51,6 +52,9 @@ export default function FriendsPage() {
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserRef[]>([])
+  // Who else is on the app, shown before you type. Search alone meant you could
+  // only find someone whose handle you'd already been told.
+  const [suggested, setSuggested] = useState<UserRef[]>([])
   const [searching, setSearching] = useState(false)
   const [requested, setRequested] = useState<Set<string>>(new Set())
   const [msg, setMsg] = useState<string | null>(null)
@@ -67,6 +71,7 @@ export default function FriendsPage() {
     listOutgoingRequests().then(setOutgoing).catch(() => {})
     getFriendsFeed().then(setFeed).catch(() => {})
     getProfile().then((p) => setMyHandle(p.username ?? '')).catch(() => {})
+    discoverUsers().then(setSuggested).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -100,11 +105,27 @@ export default function FriendsPage() {
   async function respond(id: string, accept: boolean) { await respondToRequest(id, accept); load() }
   async function unfriend(id: string) { await removeFriend(id); load() }
 
+  async function unsend(r: FriendView) {
+    setMsg(null)
+    try {
+      await cancelFriendRequest(r.id)
+      // Drop it from the just-requested set too, so the ADD button comes back
+      // rather than the row staying stuck on PENDING.
+      setRequested((prev) => { const next = new Set(prev); next.delete(r.user_id); return next })
+      load()
+    } catch (e) { setMsg((e as Error).message) }
+  }
+
   const knownIds = new Set<string>([
     ...friends.map((f) => f.user_id),
     ...incoming.map((f) => f.user_id),
     ...outgoing.map((f) => f.user_id),
   ])
+
+  // Empty box: a directory of everyone else, minus anyone already in your
+  // network (they have their own section). Two characters in, it becomes search.
+  const browsing = query.trim().length >= 2
+  const shown = browsing ? results : suggested.filter((u) => !knownIds.has(u.user_id))
 
   if (selected) {
     return (
@@ -136,35 +157,39 @@ export default function FriendsPage() {
           <Link href="/settings" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>change in Settings →</Link>
         </div>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.6 }}>
-          Share that handle so friends can search you. Search is by username — pick a memorable one. You only see someone&apos;s logs once you&apos;re friends.
+          Share that handle so friends can find you — pick a memorable one. You can also browse everyone on Hobbylog below. You only see someone&apos;s logs once you&apos;re friends.
         </p>
       </div>
 
       {/* Find people */}
       <div style={card}>
         <h2 style={h2}>FIND OPERATORS</h2>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by username…" spellCheck={false}
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by username, or browse below…" spellCheck={false}
           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${GREEN}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none' }} />
         {msg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f59e0b', margin: '10px 0 0' }}>{msg}</p>}
-        {(searching || results.length > 0) && (
-          <div style={{ marginTop: 10 }}>
-            {searching && results.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>SEARCHING…</p>}
-            {results.map((u) => {
-              const already = knownIds.has(u.user_id) || requested.has(u.user_id)
-              return (
-                <div key={u.user_id} style={row}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <Avatar url={u.avatar_url} name={u.username} />
-                    <span style={nameStyle}>{u.username}</span>
-                  </div>
-                  {already
-                    ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{friends.some((f) => f.user_id === u.user_id) ? 'FRIENDS' : 'PENDING'}</span>
-                    : <button onClick={() => add(u)} style={smallBtn(GREEN)}><UserPlus size={12} /> ADD</button>}
+        <div style={{ marginTop: 10 }}>
+          {searching && results.length === 0 && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>SEARCHING…</p>}
+          {!searching && browsing && results.length === 0 && (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>NO ONE BY THAT NAME.</p>
+          )}
+          {shown.length > 0 && (
+            <p style={{ ...subLabel, marginTop: 4 }}>{browsing ? 'RESULTS' : 'ON HOBBYLOG'}</p>
+          )}
+          {shown.map((u) => {
+            const already = knownIds.has(u.user_id) || requested.has(u.user_id)
+            return (
+              <div key={u.user_id} style={row}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <Avatar url={u.avatar_url} name={u.username} />
+                  <span style={nameStyle}>{u.username}</span>
                 </div>
-              )
-            })}
-          </div>
-        )}
+                {already
+                  ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{friends.some((f) => f.user_id === u.user_id) ? 'FRIENDS' : 'PENDING'}</span>
+                  : <button onClick={() => add(u)} style={smallBtn(GREEN)}><UserPlus size={12} /> ADD</button>}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Your network — friends + requests combined */}
@@ -217,7 +242,12 @@ export default function FriendsPage() {
                   <Avatar url={r.avatar_url} name={r.username} />
                   <span style={{ ...nameStyle, color: 'var(--text-mid)' }}>{r.username}</span>
                 </div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>PENDING</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>PENDING</span>
+                  <button onClick={() => unsend(r)} style={smallBtn('#f59e0b')} title="Take this request back">
+                    <Undo2 size={12} /> UNSEND
+                  </button>
+                </div>
               </div>
             ))}
           </div>

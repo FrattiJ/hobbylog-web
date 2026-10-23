@@ -1,12 +1,12 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.9.0'
+export const APP_VERSION = '0.10.0'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.9.0',
+    version: '0.10.0',
     date: 'Oct 2026',
     items: [
       'New "What Next" page — suggestions built entirely from your own library, with the reasoning shown',
@@ -18,6 +18,25 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Every suggestion says why — genre affinity, your finish rate at that length, and your own pace in hours per week',
       'Idle-since dates for Steam games now come from Steam itself, so a sync no longer makes an abandoned game look freshly played',
       'Housekeeping writes (genre backfill, time-to-beat lookups, Steam appid linking) no longer count as activity on an entry',
+    ],
+  },
+  {
+    version: '0.9.0',
+    date: 'Sep 2026',
+    items: [
+      "Export everything to a spreadsheet — pick your hobbies, get an Excel workbook with a sheet each, or CSVs",
+      "Browse everyone on Hobbylog instead of having to know someone's exact username first",
+      "Take back a friend request you sent by mistake",
+      "Much lighter on your phone's battery — opening a page used to fire dozens of needless requests",
+      "Fitness: a routine's target sets and reps now show when you load it, instead of an empty grid",
+      "Fitness: rename, re-measure or remove exercises — custom ones used to be write-once",
+      "Fitness: log your bodyweight whenever you actually weigh yourself — first thing in the morning, on a rest day — instead of only while finishing a workout, and see it charted over time",
+      "Fitness: set a goal bodyweight — going up or coming down — and it completes itself the moment you log a weigh-in that reaches it",
+      "Fitness: edit a logged workout — fix a wrong date, duration, set or note without deleting the session",
+      "Fitness: Progress now totals the volume you have lifted and the time you have trained, in place of two stats the heatmap already showed",
+      "Fitness: the progress picker lists only lifts you've actually logged",
+      "Fitness: goals can name any exercise in the catalog, not just ones you've already done",
+      "Fitness: the consistency heatmap opens on today, and the scrollbars are gone from it and the tab bar",
     ],
   },
   {

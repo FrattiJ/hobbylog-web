@@ -3,18 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, X, Save, Trophy, RotateCcw, CalendarCheck } from 'lucide-react'
 import type { Exercise, LastNote, Routine } from '@/types/fitness'
-import { getLastNotes, getLastSets, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals, getSetHistory, type DatedSet } from '@/lib/fitness/db'
+import { getHistories, getLastNotes, getRoutine, getRoutinesForDay, listExercises, listRoutines, saveWorkout, evaluateGoals } from '@/lib/fitness/db'
 import { personalRecords, isoDay, fmtPrValue, PR_LABELS, type PrValue } from '@/lib/fitness/calc'
+import type { DatedSet } from '@/lib/fitness/db'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
-import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet } from './SetGrid'
+import SetGrid, { emptySet, draftHasData, draftToSet, type DraftSet, type SetTargets } from './SetGrid'
 import { Button, Input, TextArea, Label, Rule, Empty, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
+import WeighInCard from './WeighIn'
 
 interface DraftExercise {
   exercise: Exercise
   sets: DraftSet[]
   lastSets: DatedSet[]
   records: PrValue[]
+  // What the routine asked for, if this came from one. Shown as placeholders when
+  // there's no previous session to ghost instead.
+  targets: SetTargets | null
   // Setup note for this session, and the last one you actually wrote (which may
   // be several sessions back, since blank notes are never stored).
   note: string
@@ -30,9 +35,8 @@ interface StoredDraft {
   routineName: string | null
   date: string
   duration: string
-  bodyweight: string
   notes: string
-  exercises: { exerciseId: string; sets: DraftSet[]; note?: string }[]
+  exercises: { exerciseId: string; sets: DraftSet[]; note?: string; targets?: SetTargets | null }[]
 }
 
 export default function TodayTab() {
@@ -45,7 +49,6 @@ export default function TodayTab() {
   const [routineName, setRoutineName] = useState<string | null>(null)
   const [date, setDate] = useState(() => isoDay(new Date()))
   const [duration, setDuration] = useState('')
-  const [bodyweight, setBodyweight] = useState('')
   const [notes, setNotes] = useState('')
   const [draft, setDraft] = useState<DraftExercise[]>([])
   const [picking, setPicking] = useState(false)
@@ -56,21 +59,37 @@ export default function TodayTab() {
   const autoLoaded = useRef(false)
   const todayDow = new Date().getDay()
 
-  // Pull an exercise's history once, so the grid can show ghosts and PR badges.
-  const hydrate = useCallback(async (exercise: Exercise): Promise<DraftExercise> => {
-    const [lastMap, history, noteMap] = await Promise.all([
-      getLastSets([exercise.id]),
-      getSetHistory(exercise.id),
-      getLastNotes([exercise.id]),
+  // Pull the history for a whole list of exercises at once, so the grid can show
+  // ghosts and PR badges.
+  //
+  // This is deliberately batched. Done per exercise it was six requests each --
+  // two of them downloading the same full history twice -- so an eight-exercise
+  // routine cost around fifty round trips to open. Now it's two, whatever the
+  // routine's length.
+  const hydrateAll = useCallback(async (
+    list: { exercise: Exercise; targets: SetTargets | null; sets?: DraftSet[]; note?: string }[],
+  ): Promise<DraftExercise[]> => {
+    const ids = list.map((l) => l.exercise.id)
+    const [histories, noteMap] = await Promise.all([
+      getHistories(ids),
+      getLastNotes(ids),
     ])
-    return {
-      exercise,
-      sets: [emptySet(), emptySet(), emptySet()],
-      lastSets: lastMap.get(exercise.id) ?? [],
-      records: personalRecords(exercise, history, (s) => (s as DatedSet).date),
-      note: '',
-      lastNote: noteMap.get(exercise.id) ?? null,
-    }
+    return list.map(({ exercise, targets, sets, note }) => {
+      const h = histories.get(exercise.id)
+      // A routine's target set count seeds the grid; freestyle starts at three.
+      const rows = sets?.length
+        ? sets
+        : Array.from({ length: Math.max(1, targets?.sets ?? 3) }, emptySet)
+      return {
+        exercise,
+        sets: rows,
+        lastSets: h?.lastSets ?? [],
+        records: personalRecords(exercise, h?.history ?? [], (s) => (s as DatedSet).date),
+        targets,
+        note: note ?? '',
+        lastNote: noteMap.get(exercise.id) ?? null,
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -96,25 +115,27 @@ export default function TodayTab() {
     setRoutineName(stored.routineName)
     setDate(stored.date)
     setDuration(stored.duration)
-    setBodyweight(stored.bodyweight)
     setNotes(stored.notes)
-    Promise.all(found.map(async (d) => ({
-      ...(await hydrate(byId.get(d.exerciseId)!)),
+    hydrateAll(found.map((d) => ({
+      exercise: byId.get(d.exerciseId)!,
+      targets: d.targets ?? null,
       sets: d.sets.length ? d.sets : [emptySet()],
       note: d.note ?? '',
-    }))).then(setDraft)
-  }, [restored, loading, allExercises, hydrate])
+    }))).then(setDraft).catch(() => {})
+  }, [restored, loading, allExercises, hydrateAll])
 
   // Persist on every change; clear it once the workout is saved.
   useEffect(() => {
     if (!restored) return
     if (draft.length === 0) { localStorage.removeItem(DRAFT_KEY); return }
     const stored: StoredDraft = {
-      routineId, routineName, date, duration, bodyweight, notes,
-      exercises: draft.map((d) => ({ exerciseId: d.exercise.id, sets: d.sets, note: d.note })),
+      routineId, routineName, date, duration, notes,
+      exercises: draft.map((d) => ({
+        exerciseId: d.exercise.id, sets: d.sets, note: d.note, targets: d.targets,
+      })),
     }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stored)) } catch { /* quota — not worth failing over */ }
-  }, [draft, routineId, routineName, date, duration, bodyweight, notes, restored])
+  }, [draft, routineId, routineName, date, duration, notes, restored])
 
   useEffect(() => {
     if (!restored || loading || autoLoaded.current) return
@@ -134,22 +155,25 @@ export default function TodayTab() {
     if (!r) return
     setRoutineId(r.id)
     setRoutineName(r.name)
-    const hydrated = await Promise.all(r.exercises.map(async (re) => {
-      const d = await hydrate(re.exercise)
-      // Seed the grid with the routine's target set count.
-      const n = Math.max(1, re.target_sets ?? 3)
-      return { ...d, sets: Array.from({ length: n }, emptySet) }
-    }))
-    setDraft(hydrated)
+    setDraft(await hydrateAll(r.exercises.map((re) => ({
+      exercise: re.exercise,
+      targets: { sets: re.target_sets, reps: re.target_reps, seconds: re.target_seconds },
+    }))))
   }
 
   async function addExercise(e: Exercise) {
     setPicking(false)
     if (draft.some((d) => d.exercise.id === e.id)) return
     setAllExercises((prev) => (prev.some((x) => x.id === e.id) ? prev : [...prev, e].sort((a, b) => a.name.localeCompare(b.name))))
-    setDraft((prev) => [...prev, { exercise: e, sets: [emptySet(), emptySet(), emptySet()], lastSets: [], records: [], note: '', lastNote: null }])
-    const full = await hydrate(e)
-    setDraft((prev) => prev.map((d) => (d.exercise.id === e.id ? { ...d, lastSets: full.lastSets, records: full.records, lastNote: full.lastNote } : d)))
+    // Show the row immediately, then fill in history when it lands.
+    setDraft((prev) => [...prev, {
+      exercise: e, sets: [emptySet(), emptySet(), emptySet()],
+      lastSets: [], records: [], targets: null, note: '', lastNote: null,
+    }])
+    const [full] = await hydrateAll([{ exercise: e, targets: null }])
+    setDraft((prev) => prev.map((d) => (d.exercise.id === e.id
+      ? { ...d, lastSets: full.lastSets, records: full.records, lastNote: full.lastNote }
+      : d)))
   }
 
   function reset() {
@@ -157,7 +181,6 @@ export default function TodayTab() {
     setRoutineId(null)
     setRoutineName(null)
     setDuration('')
-    setBodyweight('')
     setNotes('')
     setDate(isoDay(new Date()))
     localStorage.removeItem(DRAFT_KEY)
@@ -179,7 +202,6 @@ export default function TodayTab() {
         routine_name: routineName,
         date,
         duration_minutes: duration.trim() ? Math.round(Number(duration)) || null : null,
-        bodyweight: bodyweight.trim() ? Number(bodyweight) || null : null,
         notes: notes.trim() || null,
         sets: loggedSets.map(({ d, s }) => ({
           exercise_id: d.exercise.id,
@@ -206,6 +228,7 @@ export default function TodayTab() {
   if (draft.length === 0) {
     return (
       <>
+        <WeighInCard />
         <Rule>START A SESSION</Rule>
         {todays.length > 0 && (
           <>
@@ -255,6 +278,7 @@ export default function TodayTab() {
 
   return (
     <>
+      <WeighInCard />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.06em' }}>
@@ -275,11 +299,7 @@ export default function TodayTab() {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, color: 'var(--text-hi)', fontWeight: 500 }}>{d.exercise.name}</div>
-              <Label style={{ marginTop: 3 }}>
-                {d.lastSets.length > 0
-                  ? `GREYED VALUES = ${formatNoteDate(d.lastSets[0].date)}`
-                  : TRACKING_LABELS[d.exercise.tracking_type].toUpperCase()}
-              </Label>
+              <Label style={{ marginTop: 3 }}>{grayLegend(d)}</Label>
             </div>
             <button
               onClick={() => setDraft(draft.filter((_, j) => j !== i))}
@@ -308,6 +328,7 @@ export default function TodayTab() {
             sets={d.sets}
             lastSets={d.lastSets}
             records={d.records}
+            targets={d.targets}
             onChange={(sets) => setDraft(draft.map((x, j) => (j === i ? { ...x, sets } : x)))}
           />
 
@@ -348,10 +369,6 @@ export default function TodayTab() {
           <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" inputMode="numeric" />
         </div>
-        <div>
-          <Label style={{ marginBottom: 5 }}>BODYWEIGHT (LBS)</Label>
-          <Input value={bodyweight} onChange={(e) => setBodyweight(e.target.value)} placeholder="—" inputMode="decimal" />
-        </div>
       </div>
       <div style={{ marginTop: 10 }}>
         <Label style={{ marginBottom: 5 }}>NOTES</Label>
@@ -370,9 +387,17 @@ export default function TodayTab() {
   )
 }
 
+// What the greyed-out numbers in the grid mean. Last session wins when there is
+// one; otherwise it's the routine's target, which is what stops a freshly loaded
+// routine from looking empty.
+function grayLegend(d: DraftExercise): string {
+  if (d.lastSets.length > 0) return `GREYED VALUES = ${formatNoteDate(d.lastSets[0].date)}`
+  if (d.targets && (d.targets.reps != null || d.targets.seconds != null)) return 'GREYED VALUES = ROUTINE TARGET'
+  return TRACKING_LABELS[d.exercise.tracking_type].toUpperCase()
+}
+
 function formatNoteDate(date: string): string {
   if (!date) return 'LAST TIME'
   const [y, m, d] = date.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()
 }
-

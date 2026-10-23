@@ -129,7 +129,6 @@ export default function SuggestionsPage() {
         current_season: null,
         current_episode: null,
         priority: null,
-        is_private: false,
         date_started: null,
         date_completed: null,
       })

@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Save } from 'lucide-react'
-import type { Exercise, Routine, RoutineDetail } from '@/types/fitness'
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Save, GripVertical } from 'lucide-react'
+import type { Exercise, Routine, RoutineDetail, TrackingType } from '@/types/fitness'
 import {
-  createRoutine, deleteRoutine, getRoutine, listExercises, listRoutines,
-  setRoutineExercises, updateRoutine, type RoutineExerciseDraft,
+  createRoutine, deleteRoutine, getRoutine, getRoutineExerciseCounts, listExercises, listRoutines,
+  removeExercise, setRoutineExercises, updateExercise, updateRoutine, type RoutineExerciseDraft,
 } from '@/lib/fitness/db'
 import { fmtDuration, parseDuration } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
-import { Button, Input, TextArea, Label, Rule, Empty, Confirm, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
+import { Button, Input, Select, TextArea, Label, Rule, Empty, Confirm, Modal, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
 
 // One row of the routine being edited: the exercise plus its targets.
 interface EditRow extends RoutineExerciseDraft {
@@ -20,13 +20,16 @@ interface EditRow extends RoutineExerciseDraft {
 export default function RoutinesTab() {
   const { success, error: toastError } = useToast()
   const [routines, setRoutines] = useState<Routine[]>([])
+  const [counts, setCounts] = useState<Map<string, number>>(new Map())
   const [allExercises, setAllExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<RoutineDetail | 'new' | null>(null)
   const [confirming, setConfirming] = useState<Routine | null>(null)
 
-  const reload = () => Promise.all([listRoutines(), listExercises()])
-    .then(([r, e]) => { setRoutines(r); setAllExercises(e) })
+  // One query for every card's exercise count, instead of re-fetching each
+  // routine in full just to take the length of its array.
+  const reload = () => Promise.all([listRoutines(), listExercises(), getRoutineExerciseCounts()])
+    .then(([r, e, c]) => { setRoutines(r); setAllExercises(e); setCounts(c) })
     .catch(() => {})
     .finally(() => setLoading(false))
 
@@ -70,8 +73,18 @@ export default function RoutinesTab() {
           action={<Button variant="ghost" onClick={() => setEditing('new')}><Plus size={13} /> BUILD ONE</Button>}
         />
       ) : (
-        routines.map((r) => <RoutineCard key={r.id} routine={r} onEdit={async () => setEditing((await getRoutine(r.id)) ?? 'new')} onDelete={() => setConfirming(r)} />)
+        routines.map((r) => (
+          <RoutineCard
+            key={r.id}
+            routine={r}
+            count={counts.get(r.id) ?? 0}
+            onEdit={async () => setEditing((await getRoutine(r.id)) ?? 'new')}
+            onDelete={() => setConfirming(r)}
+          />
+        ))
       )}
+
+      <ExerciseLibrary exercises={allExercises} onChanged={reload} />
 
       {confirming && (
         <Confirm
@@ -85,10 +98,9 @@ export default function RoutinesTab() {
   )
 }
 
-function RoutineCard({ routine, onEdit, onDelete }: { routine: Routine; onEdit: () => void; onDelete: () => void }) {
-  const [count, setCount] = useState<number | null>(null)
-  useEffect(() => { getRoutine(routine.id).then((r) => setCount(r?.exercises.length ?? 0)).catch(() => {}) }, [routine.id])
-
+function RoutineCard({ routine, count, onEdit, onDelete }: {
+  routine: Routine; count: number; onEdit: () => void; onDelete: () => void
+}) {
   return (
     <div style={{
       border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`,
@@ -100,7 +112,7 @@ function RoutineCard({ routine, onEdit, onDelete }: { routine: Routine; onEdit: 
         <Label style={{ marginTop: 3 }}>
           {[
             routine.day_of_week != null ? DAY_NAMES[routine.day_of_week] : null,
-            count == null ? '…' : `${count} EXERCISE${count === 1 ? '' : 'S'}`,
+            `${count} EXERCISE${count === 1 ? '' : 'S'}`,
             routine.notes || null,
           ].filter(Boolean).join(' · ')}
         </Label>
@@ -112,6 +124,161 @@ function RoutineCard({ routine, onEdit, onDelete }: { routine: Routine; onEdit: 
     </div>
   )
 }
+
+// -- Exercise library --------------------------------------------------------
+
+// Every exercise you own, with a way to rename one, change how it's measured, or
+// get rid of it. Custom exercises in particular were previously write-once: a
+// typo in the name was permanent, and nothing ever left the pickers.
+function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onChanged: () => void }) {
+  const { success, error: toastError } = useToast()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<Exercise | null>(null)
+  const [confirming, setConfirming] = useState<Exercise | null>(null)
+  const [query, setQuery] = useState('')
+
+  const q = query.trim().toLowerCase()
+  const shown = q ? exercises.filter((e) => e.name.toLowerCase().includes(q)) : exercises
+
+  async function remove(e: Exercise) {
+    setConfirming(null)
+    try {
+      const how = await removeExercise(e.id)
+      success(how === 'deleted'
+        ? `Deleted "${e.name}"`
+        : `Archived "${e.name}" — the sets you logged against it are kept`)
+      onChanged()
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : 'Could not remove that exercise')
+    }
+  }
+
+  return (
+    <>
+      <Rule>YOUR EXERCISES</Rule>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <Label>{exercises.length} IN YOUR LIBRARY</Label>
+        <Button variant="ghost" onClick={() => setOpen(!open)}>
+          {open ? 'HIDE' : 'MANAGE'}
+        </Button>
+      </div>
+
+      {open && (
+        exercises.length === 0 ? (
+          <Empty title="NOTHING YET" hint="Exercises appear here once you add them to a routine or log one." />
+        ) : (
+          <>
+            {exercises.length > 8 && (
+              <Input
+                value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter your exercises…" style={{ marginBottom: 8 }}
+              />
+            )}
+            {shown.map((e) => (
+              <div key={e.id} style={{
+                border: '1px solid var(--border-dim)', background: 'var(--bg-card)',
+                padding: '10px 12px', marginBottom: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text-hi)' }}>{e.name}</div>
+                  <Label style={{ marginTop: 2 }}>
+                    {[
+                      TRACKING_LABELS[e.tracking_type],
+                      e.catalog_id ? null : 'CUSTOM',
+                      e.muscle,
+                    ].filter(Boolean).join(' · ')}
+                  </Label>
+                </div>
+                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                  <Button variant="quiet" onClick={() => setEditing(e)} title="Edit"><Pencil size={13} /></Button>
+                  <Button variant="quiet" onClick={() => setConfirming(e)} title="Remove"><Trash2 size={13} /></Button>
+                </div>
+              </div>
+            ))}
+          </>
+        )
+      )}
+
+      {editing && (
+        <EditExercise
+          exercise={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); success('Exercise updated'); onChanged() }}
+        />
+      )}
+
+      {confirming && (
+        <Confirm
+          title="Remove exercise"
+          confirmLabel="REMOVE"
+          body={`Remove "${confirming.name}" from your library? If you've logged sets against it, it's hidden instead of deleted so your history and records stay intact.`}
+          onConfirm={() => remove(confirming)}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
+    </>
+  )
+}
+
+function EditExercise({ exercise, onClose, onSaved }: {
+  exercise: Exercise; onClose: () => void; onSaved: () => void
+}) {
+  const { error: toastError } = useToast()
+  const [name, setName] = useState(exercise.name)
+  const [tracking, setTracking] = useState<TrackingType>(exercise.tracking_type)
+  const [saving, setSaving] = useState(false)
+
+  const trackingChanged = tracking !== exercise.tracking_type
+
+  async function save() {
+    if (!name.trim()) { toastError('Give the exercise a name'); return }
+    setSaving(true)
+    try {
+      await updateExercise(exercise.id, { name: name.trim(), tracking_type: tracking })
+      onSaved()
+    } catch (e) {
+      // The (user, name) unique index is what keeps PR history continuous, so a
+      // rename onto an existing name has to be refused rather than merged.
+      const msg = e instanceof Error && 'code' in e && (e as { code?: string }).code === '23505'
+        ? 'You already have an exercise with that name.'
+        : e instanceof Error ? e.message : 'Could not save that exercise'
+      toastError(msg)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal title="Edit exercise" onClose={onClose} width={460}>
+      <Label style={{ marginBottom: 6 }}>NAME</Label>
+      <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+
+      <Label style={{ margin: '16px 0 6px' }}>HOW IS IT MEASURED?</Label>
+      <Select value={tracking} onChange={(e) => setTracking(e.target.value as TrackingType)} style={{ width: '100%' }}>
+        {(Object.keys(TRACKING_LABELS) as TrackingType[]).map((t) => (
+          <option key={t} value={t}>{TRACKING_LABELS[t]}</option>
+        ))}
+      </Select>
+
+      {trackingChanged && (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f59e0b', marginTop: 8, lineHeight: 1.6 }}>
+          Sets you already logged keep the numbers they were logged with. Changing
+          how this is measured changes which of those columns are read, so old
+          records may look different.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <Button variant="quiet" onClick={onClose}>CANCEL</Button>
+        <Button variant="solid" onClick={save} disabled={saving || !name.trim()}>
+          {saving ? 'SAVING…' : 'SAVE'}
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
+// -- Routine editor ----------------------------------------------------------
 
 function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
   routine: RoutineDetail | null
@@ -223,6 +390,19 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
         <Empty title="NOTHING ADDED YET" hint="Search the catalog or type your own exercise name." />
       )}
 
+      {/* The order here is the order the Today tab logs them in, so say so — the
+          arrows were previously quiet icons nobody found. */}
+      {rows.length > 1 && (
+        <p style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)',
+          margin: '0 0 10px', lineHeight: 1.6,
+        }}>
+          <GripVertical size={12} style={{ color: ACCENT, flexShrink: 0 }} />
+          You&apos;ll log these top to bottom — use the ↑ ↓ buttons to reorder them.
+        </p>
+      )}
+
       {rows.map((r, i) => {
         const timed = r.exercise.tracking_type === 'time' || r.exercise.tracking_type === 'time_distance'
         return (
@@ -231,13 +411,35 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
             background: 'var(--bg-card)', padding: 12, marginBottom: 8,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: 'var(--text-hi)' }}>{r.exercise.name}</div>
-                <Label style={{ marginTop: 2 }}>{TRACKING_LABELS[r.exercise.tracking_type].toUpperCase()}</Label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                {/* Position badge: makes the ordering itself visible, so the
+                    reorder buttons next to it read as what they are. */}
+                <span style={{
+                  flexShrink: 0, width: 24, height: 24, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-mono)', fontSize: 12,
+                  color: ACCENT, border: `1px solid ${ACCENT}66`, background: `${ACCENT}14`,
+                }}>
+                  {i + 1}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text-hi)' }}>{r.exercise.name}</div>
+                  <Label style={{ marginTop: 2 }}>{TRACKING_LABELS[r.exercise.tracking_type].toUpperCase()}</Label>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                <Button variant="quiet" onClick={() => move(i, -1)} disabled={i === 0} title="Move up"><ChevronUp size={14} /></Button>
-                <Button variant="quiet" onClick={() => move(i, 1)} disabled={i === rows.length - 1} title="Move down"><ChevronDown size={14} /></Button>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <Button
+                  variant="ghost" onClick={() => move(i, -1)} disabled={i === 0}
+                  title="Move up" style={{ padding: '7px 9px' }}
+                >
+                  <ChevronUp size={15} />
+                </Button>
+                <Button
+                  variant="ghost" onClick={() => move(i, 1)} disabled={i === rows.length - 1}
+                  title="Move down" style={{ padding: '7px 9px' }}
+                >
+                  <ChevronDown size={15} />
+                </Button>
                 <Button variant="quiet" onClick={() => setRows(rows.filter((_, j) => j !== i))} title="Remove"><Trash2 size={14} /></Button>
               </div>
             </div>

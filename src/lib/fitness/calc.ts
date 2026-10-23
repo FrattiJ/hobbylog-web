@@ -120,6 +120,40 @@ export function latestNote<T extends { date: string }>(rows: T[]): T | null {
   return best
 }
 
+// -- Bodyweight goals --------------------------------------------------------
+
+// Bodyweight is the only goal measure whose direction isn't implied by the
+// metric itself -- cutting and bulking are both "reach a bodyweight" and
+// succeed on opposite comparisons -- so the two directions are separate
+// metrics and the comparison is picked from which one you chose.
+export type BodyweightMetric = 'bodyweight_at_most' | 'bodyweight_at_least'
+
+export function bodyweightGoalMet(metric: BodyweightMetric, current: number, target: number): boolean {
+  return metric === 'bodyweight_at_most' ? current <= target : current >= target
+}
+
+// How full a bodyweight goal's bar reads: the share of the distance from where
+// you started to where you are going that you have actually covered.
+//
+// The obvious formula (current / target) is wrong here in a way it is not for
+// a lift. Starting at 200 and aiming for 175 it would read 87% full before a
+// single pound moved, and it gets worse the closer the two numbers are. Working
+// from a baseline fixes that, and needs no special-casing per direction: both
+// numerator and denominator flip sign together when the target is above you.
+export function bodyweightGoalPct(
+  baseline: number | null,
+  current: number | null,
+  target: number,
+  met: boolean,
+): number {
+  if (current == null) return 0
+  // No baseline (goal predates any weigh-in), or nothing to travel: the bar has
+  // no distance to describe, so it can only be empty or full.
+  if (baseline == null || baseline === target) return met ? 100 : 0
+  const pct = ((baseline - current) / (baseline - target)) * 100
+  return Math.max(0, Math.min(100, pct))
+}
+
 // -- Consistency -------------------------------------------------------------
 
 // Dates are 'YYYY-MM-DD'. Parsed at local noon so a timezone shift can't slide a

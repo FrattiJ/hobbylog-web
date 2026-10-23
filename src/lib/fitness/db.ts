@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabaseClient'
+import { currentUserId } from '@/lib/currentUser'
 import type {
   Exercise, Goal, GoalMetric, Routine, RoutineDetail, RoutineExercise,
   LastNote, TrackingType, Workout, WorkoutDetail, WorkoutSet,
 } from '@/types/fitness'
 import type { CatalogExercise } from './catalog'
 import { defaultTracking } from './catalog'
-import { latestNote, notesToPersist, personalRecords, type PrValue } from './calc'
+import { bodyweightGoalMet, latestNote, notesToPersist, personalRecords, type BodyweightMetric, type PrValue } from './calc'
 
 // Anything that mutates fitness data fires this, mirroring ENTRIES_CHANGED_EVENT
 // in lib/db.ts so open tabs/panels re-read rather than showing stale numbers.
@@ -15,10 +16,6 @@ function notifyChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(FITNESS_CHANGED_EVENT))
 }
 
-async function currentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.id ?? ''
-}
 
 // -- Exercises ---------------------------------------------------------------
 
@@ -87,6 +84,94 @@ export async function updateExercise(id: string, patch: Partial<Pick<Exercise, '
 // Archive rather than delete: the sets already logged against it stay meaningful.
 export async function archiveExercise(id: string): Promise<void> {
   await updateExercise(id, { archived: true })
+}
+
+// Which of these exercises you've actually logged a set against.
+//
+// An exercise row is created the moment you add it to a routine or pick it from
+// the catalog, so the list of exercises you own is much longer than the list you
+// have data for. Anywhere that's really asking "what can I chart?" wants this,
+// not listExercises.
+export async function exercisesWithHistory(): Promise<Set<string>> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_workout_sets').select('exercise_id').eq('user_id', userId)
+  return new Set(((data ?? []) as { exercise_id: string }[]).map((r) => r.exercise_id))
+}
+
+// Remove an exercise from your library.
+//
+// web_workout_sets cascades on exercise_id, so a plain delete would silently take
+// logged sets with it. An exercise you've trained is therefore archived (hidden
+// everywhere, history intact) while one you never used is really deleted -- which
+// is the case that matters, since those are the rows cluttering the pickers.
+export type ExerciseRemoval = 'deleted' | 'archived'
+
+export async function removeExercise(id: string): Promise<ExerciseRemoval> {
+  const userId = await currentUserId()
+  const { count } = await supabase
+    .from('web_workout_sets').select('id', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('exercise_id', id)
+
+  if ((count ?? 0) > 0) {
+    await archiveExercise(id)
+    return 'archived'
+  }
+
+  // .select() so a delete blocked by RLS surfaces as zero rows, not a silent no-op.
+  const { data, error } = await supabase.from('web_exercises').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was deleted — the exercise may already be gone.')
+  notifyChanged()
+  return 'deleted'
+}
+
+// -- Bodyweight ---------------------------------------------------------------
+
+// Weigh-ins live in their own table rather than on a workout row. You step on
+// the scale in the morning and train hours later, or not at all that day, so
+// tying a reading to a session meant the morning number had nowhere to go.
+export interface BodyweightPoint { date: string; weight: number }
+
+export async function listBodyweight(): Promise<BodyweightPoint[]> {
+  const userId = await currentUserId()
+  const { data, error } = await supabase
+    .from('web_bodyweight').select('date, weight')
+    .eq('user_id', userId).order('date', { ascending: true })
+  if (error) throw error
+  return ((data ?? []) as { date: string; weight: number }[])
+    .map((r) => ({ date: r.date, weight: Number(r.weight) }))
+}
+
+// One reading per day: weighing twice before breakfast is the same measurement,
+// so a repeat replaces rather than stacking up. That is what the (user, date)
+// unique constraint is for.
+export async function setBodyweight(date: string, weight: number): Promise<void> {
+  const user_id = await currentUserId()
+  const { error } = await supabase
+    .from('web_bodyweight')
+    .upsert({ user_id, date, weight }, { onConflict: 'user_id,date' })
+  if (error) throw error
+  notifyChanged()
+}
+
+export async function deleteBodyweight(date: string): Promise<void> {
+  const user_id = await currentUserId()
+  const { error } = await supabase.from('web_bodyweight').delete().eq('user_id', user_id).eq('date', date)
+  if (error) throw error
+  notifyChanged()
+}
+
+// The reading on each of the given days, for History's workout rows.
+export async function getBodyweightOn(dates: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  if (dates.length === 0) return out
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_bodyweight').select('date, weight').eq('user_id', userId).in('date', dates)
+  for (const r of (data ?? []) as { date: string; weight: number }[]) {
+    out.set(r.date, Number(r.weight))
+  }
+  return out
 }
 
 // -- Routines ----------------------------------------------------------------
@@ -212,6 +297,36 @@ export async function listWorkoutDates(): Promise<string[]> {
   return ((data ?? []) as { date: string }[]).map((r) => r.date)
 }
 
+// Everything the Progress header needs, in two queries rather than three.
+//
+// The workout rows carry both the dates (streak + heatmap) and the durations
+// (time trained), so asking for them separately was a wasted round trip. Volume
+// needs the set rows, but only two columns of them.
+export interface ProgressTotals {
+  dates: string[]
+  minutes: number
+  volume: number
+}
+
+export async function getProgressTotals(): Promise<ProgressTotals> {
+  const userId = await currentUserId()
+  const [workoutRes, setRes] = await Promise.all([
+    supabase.from('web_workouts').select('date, duration_minutes').eq('user_id', userId),
+    supabase.from('web_workout_sets').select('weight, reps').eq('user_id', userId),
+  ])
+
+  const workouts = (workoutRes.data ?? []) as { date: string; duration_minutes: number | null }[]
+  const sets = (setRes.data ?? []) as { weight: number | null; reps: number | null }[]
+
+  return {
+    dates: workouts.map((w) => w.date),
+    minutes: workouts.reduce((t, w) => t + (w.duration_minutes ?? 0), 0),
+    // Warm-ups count here: you moved the weight either way, and this matches the
+    // per-workout volume History already shows.
+    volume: sets.reduce((t, x) => t + (x.weight ?? 0) * (x.reps ?? 0), 0),
+  }
+}
+
 // Headline numbers for the dashboard and stats page. Fitness has no entries any
 // more, so these are what it contributes to the cross-hobby totals.
 export interface WorkoutTotals { count: number; minutes: number }
@@ -236,12 +351,14 @@ export interface WorkoutSetDraft {
   is_warmup: boolean
 }
 
+// Bodyweight is deliberately absent: weigh-ins live in web_bodyweight now, so a
+// workout no longer carries one. web_workouts.bodyweight remains in the schema
+// holding pre-migration values but is never written from here.
 export interface WorkoutDraft {
   routine_id: string | null
   routine_name: string | null
   date: string
   duration_minutes: number | null
-  bodyweight: number | null
   notes: string | null
   sets: WorkoutSetDraft[]
   // Per-exercise setup notes. Blank ones are dropped before insert.
@@ -256,7 +373,6 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
     routine_name: draft.routine_name,
     date: draft.date,
     duration_minutes: draft.duration_minutes,
-    bodyweight: draft.bodyweight,
     notes: draft.notes,
   }).select().single()
   if (error) throw error
@@ -282,6 +398,57 @@ export async function saveWorkout(draft: WorkoutDraft): Promise<Workout> {
 
   notifyChanged()
   return workout as Workout
+}
+
+// -- Editing a logged workout ------------------------------------------------
+
+// Correcting a session had exactly one option: delete it and log it again. A
+// mistyped bodyweight is not worth losing a workout over.
+export async function updateWorkout(
+  id: string,
+  patch: Partial<Pick<Workout, 'date' | 'duration_minutes' | 'notes'>>,
+): Promise<void> {
+  const { data, error } = await supabase.from('web_workouts').update(patch).eq('id', id).select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was updated — the workout may already be gone.')
+  notifyChanged()
+}
+
+// Replace a logged workout's sets wholesale, the way setRoutineExercises replaces
+// a routine: simpler than diffing an edit down to inserts, updates and deletes,
+// and a session is a few dozen rows at most. Set ids change, which nothing
+// depends on -- records and charts are computed from the rows themselves.
+export async function replaceWorkoutSets(workoutId: string, sets: WorkoutSetDraft[]): Promise<void> {
+  const user_id = await currentUserId()
+  const { error: delErr } = await supabase.from('web_workout_sets').delete().eq('workout_id', workoutId)
+  if (delErr) throw delErr
+
+  if (sets.length > 0) {
+    const rows = sets.map((s, i) => ({ ...s, user_id, workout_id: workoutId, position: i }))
+    const { error } = await supabase.from('web_workout_sets').insert(rows)
+    if (error) throw error
+  }
+  notifyChanged()
+}
+
+// Setup notes for one logged session. A blank note is removed rather than stored,
+// the same rule logging follows -- an empty row would otherwise become the newest
+// note and shadow the one being carried forward.
+export async function setWorkoutNotes(
+  workoutId: string,
+  notes: { exercise_id: string; note: string }[],
+): Promise<void> {
+  const user_id = await currentUserId()
+  await supabase.from('web_exercise_notes').delete().eq('workout_id', workoutId)
+
+  const keep = notesToPersist(notes).map((n) => ({
+    user_id, workout_id: workoutId, exercise_id: n.exercise_id, note: n.note,
+  }))
+  if (keep.length > 0) {
+    const { error } = await supabase.from('web_exercise_notes').insert(keep)
+    if (error) throw error
+  }
+  notifyChanged()
 }
 
 export async function deleteWorkout(id: string): Promise<void> {
@@ -319,6 +486,67 @@ export async function getSetHistory(exerciseId: string): Promise<DatedSet[]> {
   return ((data ?? []) as unknown as (WorkoutSet & { workout: unknown })[])
     .map((r) => ({ ...r, date: embeddedDate(r.workout) }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.position - b.position))
+}
+
+// Every set logged against a whole list of exercises, in ONE query.
+//
+// The logger needs two things per exercise: its full history (for PR badges) and
+// just its last session (for the ghost placeholders). Asking for those separately
+// meant getSetHistory and getLastSets each downloaded the same complete history,
+// once per exercise -- so an eight-exercise routine issued dozens of requests and
+// pulled every set twice. One query, split locally, covers both.
+export interface ExerciseHistory {
+  // Every set ever, newest session first.
+  history: DatedSet[]
+  // Only the most recent session's sets, back in the order they were logged.
+  lastSets: DatedSet[]
+}
+
+export async function getHistories(exerciseIds: string[]): Promise<Map<string, ExerciseHistory>> {
+  const out = new Map<string, ExerciseHistory>()
+  if (exerciseIds.length === 0) return out
+  const userId = await currentUserId()
+
+  const { data, error } = await supabase
+    .from('web_workout_sets')
+    .select('*, workout:web_workouts!inner(date)')
+    .eq('user_id', userId)
+    .in('exercise_id', exerciseIds)
+  if (error) throw error
+
+  const byExercise = new Map<string, DatedSet[]>()
+  for (const r of (data ?? []) as unknown as (WorkoutSet & { workout: unknown })[]) {
+    const row: DatedSet = { ...r, date: embeddedDate(r.workout) }
+    const arr = byExercise.get(row.exercise_id)
+    if (arr) arr.push(row)
+    else byExercise.set(row.exercise_id, [row])
+  }
+
+  for (const id of exerciseIds) {
+    const history = byExercise.get(id) ?? []
+    history.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.position - b.position))
+    // Sorted newest first, so the leading run sharing the newest date is the last session.
+    const newest = history[0]?.date
+    const lastSets = newest
+      ? history.filter((r) => r.date === newest).sort((a, b) => a.position - b.position)
+      : []
+    out.set(id, { history, lastSets })
+  }
+  return out
+}
+
+// Exercise count per routine, in one query. The routine list shows a count on
+// every card; fetching each routine in full just to take the length of its array
+// cost two extra requests per card.
+export async function getRoutineExerciseCounts(): Promise<Map<string, number>> {
+  const userId = await currentUserId()
+  const { data } = await supabase
+    .from('web_routine_exercises').select('routine_id').eq('user_id', userId)
+  const out = new Map<string, number>()
+  for (const r of (data ?? []) as { routine_id: string }[]) {
+    out.set(r.routine_id, (out.get(r.routine_id) ?? 0) + 1)
+  }
+  return out
 }
 
 // The newest note for each exercise, with the date it was written. Because blank
@@ -444,13 +672,31 @@ export async function setGoalAchieved(id: string, achieved: boolean): Promise<vo
 
 // Current value of every goal, and which unachieved ones have just been met.
 // Run after saving a workout so a goal ticks over the moment you hit it.
-export interface GoalProgress { goal: Goal; current: number | null; met: boolean }
+export interface GoalProgress {
+  goal: Goal
+  current: number | null
+  met: boolean
+  // Where a bodyweight goal started from, so its bar can measure the distance
+  // actually covered. Without it, "200 lbs, heading for 175" would read as 87%
+  // before a single pound moved. Null for every other metric.
+  baseline?: number | null
+}
+
+export function isBodyweightMetric(m: GoalMetric): boolean {
+  return m === 'bodyweight_at_most' || m === 'bodyweight_at_least'
+}
 
 export async function evaluateGoals(): Promise<GoalProgress[]> {
   const [goals, exercises] = await Promise.all([listGoals(), listExercises(true)])
   if (goals.length === 0) return []
   const exById = new Map(exercises.map((e) => [e.id, e]))
   const workoutCount = (await listWorkoutDates()).length
+
+  // Only fetched when something actually asks for it.
+  const weights = goals.some((g) => isBodyweightMetric(g.metric))
+    ? await listBodyweight().catch(() => [])
+    : []
+  const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : null
 
   const out: GoalProgress[] = []
   for (const goal of goals) {
@@ -464,6 +710,22 @@ export async function evaluateGoals(): Promise<GoalProgress[]> {
 
     if (goal.metric === 'workout_count') {
       current = workoutCount
+    } else if (isBodyweightMetric(goal.metric)) {
+      // The most recent reading is where you are now; a session logged without
+      // a bodyweight leaves the last real one standing.
+      current = latestWeight
+      // Baseline is the reading you were at when the goal was set, so the bar
+      // measures ground covered rather than distance from zero. Goals set before
+      // any weighing fall back to the earliest reading there is.
+      const atCreation = weights.filter((w) => w.date <= goal.created_at.slice(0, 10))
+      const base = atCreation.length > 0
+        ? atCreation[atCreation.length - 1].weight
+        : weights[0]?.weight ?? null
+
+      const met = current != null && bodyweightGoalMet(goal.metric as BodyweightMetric, current, goal.target)
+      if (met && !goal.achieved_at) await setGoalAchieved(goal.id, true)
+      out.push({ goal, current, met, baseline: base })
+      continue
     } else if (goal.exercise_id) {
       const ex = exById.get(goal.exercise_id)
       if (ex) {
