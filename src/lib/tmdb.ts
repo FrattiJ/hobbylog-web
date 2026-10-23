@@ -1,5 +1,31 @@
-// Server-only TMDB helpers (used by /api/details and the daily TV refresh cron).
+// Server-only TMDB helpers (used by /api/search, /api/details, /api/recommend and
+// the daily TV refresh cron).
 const TMDB = process.env.TMDB_API_KEY
+
+type Raw = Record<string, unknown>
+
+// Search and discover rows carry genre_ids, not names. The two genre lists are
+// tiny and effectively frozen, so fetch each once per warm instance and reuse it.
+const genreCache: Record<'movie' | 'tv', Map<number, string> | null> = { movie: null, tv: null }
+
+export async function tmdbGenreMap(type: 'movie' | 'tv'): Promise<Map<number, string>> {
+  const cached = genreCache[type]
+  if (cached) return cached
+  const m = new Map<number, string>()
+  try {
+    const r = await fetch(`https://api.themoviedb.org/3/genre/${type}/list?api_key=${TMDB}`)
+    if (r.ok) for (const g of (((await r.json()).genres as Raw[]) ?? [])) m.set(g.id as number, g.name as string)
+  } catch { /* genres are best-effort — a hit without them still works */ }
+  if (m.size > 0) genreCache[type] = m
+  return m
+}
+
+// The reverse direction, for building /discover queries from genre names.
+export async function tmdbGenreIds(type: 'movie' | 'tv', names: string[]): Promise<number[]> {
+  const map = await tmdbGenreMap(type)
+  const byName = new Map([...map.entries()].map(([id, n]) => [n.toLowerCase(), id]))
+  return names.map((n) => byName.get(n.toLowerCase())).filter((x): x is number => x != null)
+}
 
 // Representative per-episode runtime in minutes. TMDB's `episode_run_time` is
 // frequently empty, and a single episode (last aired) is often a long finale — so

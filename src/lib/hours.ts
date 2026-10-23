@@ -23,6 +23,33 @@ function bookHours(e: Entry, count: number): number {
   return (count * perUnit) / 60
 }
 
+// Length of a RAW catalog row, before it's an entry. The suggestion engine scores
+// brand-new titles against the same hour buckets your library is measured in, so
+// both sides have to use the rates above rather than each inventing their own.
+export type CatalogLength =
+  | { kind: 'games'; timeToBeat?: number | null }
+  | { kind: 'movies'; runtimeMin?: number | null }
+  | { kind: 'tv'; episodes?: number | null; episodeRuntimeMin?: number | null }
+  | { kind: 'books'; pages?: number | null }
+  | { kind: 'manga'; chapters?: number | null }
+  | { kind: 'audiobook'; runtimeMin?: number | null }
+
+export function catalogHours(input: CatalogLength): number | null {
+  const round = (h: number) => (h > 0 ? Math.round(h * 10) / 10 : null)
+  switch (input.kind) {
+    case 'games':     return round(Number(input.timeToBeat) || 0)
+    case 'movies':    return round((Number(input.runtimeMin) || 0) / 60)
+    case 'audiobook': return round((Number(input.runtimeMin) || 0) / 60)
+    case 'tv': {
+      const eps = Number(input.episodes) || 0
+      if (!eps) return null
+      return round((eps * (Number(input.episodeRuntimeMin) || 22)) / 60)
+    }
+    case 'books':     return round(((Number(input.pages) || 0) * READ_MIN_PER_PAGE) / 60)
+    case 'manga':     return round(((Number(input.chapters) || 0) * MANGA_MIN_PER_CHAPTER) / 60)
+  }
+}
+
 // Single source of truth for estimated hours so the dashboard and stats page can't drift.
 // basis 'full'  — full length of each entry: games time-to-beat, whole movie runtime,
 //                 every TV episode, a book's whole length. Use for backlog ("time

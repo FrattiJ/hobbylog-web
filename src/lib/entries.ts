@@ -71,10 +71,12 @@ export async function setEntryStatus(id: string, status: string): Promise<void> 
   if (error) throw error
 }
 
-// Generic field update from the entry detail editor
-export async function updateEntry(id: string, patch: Partial<WebEntry>): Promise<void> {
+// Generic field update from the entry detail editor. `touch: false` skips the
+// updated_at bump — see the note on db.ts's updateEntry for why that matters.
+export async function updateEntry(id: string, patch: Partial<WebEntry>, opts: { touch?: boolean } = {}): Promise<void> {
   const { error } = await supabase.from('web_entries')
-    .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
+    .update(opts.touch === false ? patch : { ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) throw error
 }
 
@@ -141,6 +143,75 @@ export async function backfillCovers(onProgress?: (done: number, total: number) 
         updated++
       }
     } catch { /* skip this one */ }
+    onProgress?.(i + 1, targets.length)
+  }
+  return updated
+}
+
+// ── Taste enrichment ──────────────────────────────────────────────────────────
+// The suggestion engine runs on genres, and entries added before genres were
+// captured (or imported from MAL / Letterboxd / Goodreads) don't have them. This
+// is the same lookup as refetchDetails, but it only fills holes — anything the
+// entry already knows, including values you've corrected by hand, is left alone.
+
+function searchTypeForEntry(e: { hobby_category: string; book_subtype?: string | null }): string | null {
+  if (e.hobby_category !== 'books') return searchTypeFor(e.hobby_category)
+  return e.book_subtype === 'manga' ? 'manga' : e.book_subtype === 'audiobook' ? 'audiobook' : 'books'
+}
+
+// True when an entry is missing data the taste profile needs. Genres are the one
+// that matters everywhere; TV additionally needs to know whether a show has ended.
+export function needsTasteEnrichment(
+  e: { hobby_category: string; book_subtype?: string | null; metadata?: Record<string, unknown> | null }
+): boolean {
+  if (!searchTypeForEntry(e)) return false // manual hobbies have nothing to look up
+  const meta = e.metadata ?? {}
+  if (!meta.genres) return true
+  if (e.hobby_category === 'tv' && meta.show_status === undefined) return true
+  return false
+}
+
+// Merge fresh catalog values in WITHOUT overwriting anything already set.
+function fillMissing(existing: Record<string, unknown>, fresh: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...existing }
+  for (const [k, v] of Object.entries(fresh)) {
+    if (v === undefined || v === null || v === '') continue
+    const cur = out[k]
+    if (cur === undefined || cur === null || cur === '') out[k] = v
+  }
+  return out
+}
+
+export async function backfillTaste(onProgress?: (done: number, total: number) => void): Promise<number> {
+  const entries = await listEntries()
+  const targets = entries.filter(needsTasteEnrichment)
+  onProgress?.(0, targets.length)
+  let updated = 0
+  for (let i = 0; i < targets.length; i++) {
+    const e = targets[i]
+    try {
+      const type = searchTypeForEntry(e)!
+      const results = await searchCatalog(type, e.title)
+      const lower = e.title.toLowerCase()
+      const hit = results.find((r) => r.title.toLowerCase() === lower) ?? results[0]
+      if (hit) {
+        let meta = { ...hit.metadata }
+        // Movies/TV keep genres and show status in the per-title details call.
+        if (type === 'movie' || type === 'tv') {
+          const d = await fetchCatalogDetails(type, hit.external_id)
+          meta = { ...meta, ...d.metadata }
+        }
+        const merged = fillMissing(e.metadata ?? {}, meta)
+        await updateEntry(e.id, {
+          metadata: merged,
+          // Link the entry to its catalog row if it never was (lite imports).
+          external_id: e.external_id ?? hit.external_id,
+          external_source: e.external_source ?? hit.external_source,
+          cover_url: e.cover_url || hit.cover_url,
+        }, { touch: false })
+        updated++
+      }
+    } catch { /* skip this one — a single bad lookup shouldn't stop the sweep */ }
     onProgress?.(i + 1, targets.length)
   }
   return updated

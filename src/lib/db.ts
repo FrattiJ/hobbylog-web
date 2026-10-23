@@ -74,7 +74,18 @@ export async function insertEntry(data: Omit<Entry, 'id' | 'created_at' | 'updat
   return parseEntry(inserted)
 }
 
-export async function updateEntry(id: string, data: Partial<Entry> & { metadata_patch?: Record<string, unknown> }): Promise<Entry> {
+/**
+ * `touch: false` leaves updated_at alone. Use it for writes that aren't you doing
+ * something with the entry — filling in genres, backfilling a time-to-beat,
+ * recording a Steam appid. updated_at is read as "when did I last touch this",
+ * both by Recent Activity and by the suggestion engine's stalled detection, so a
+ * housekeeping sweep that bumped every row would wipe out exactly that signal.
+ */
+export async function updateEntry(
+  id: string,
+  data: Partial<Entry> & { metadata_patch?: Record<string, unknown> },
+  opts: { touch?: boolean } = {}
+): Promise<Entry> {
   const patch: Row = {}
   const UPDATABLE = ['status', 'rating', 'notes', 'progress_current', 'progress_total', 'cover_url', 'book_subtype', 'current_season', 'current_episode', 'priority', 'date_started', 'date_completed', 'external_id', 'external_source']
   for (const k of UPDATABLE) if (k in data) patch[k] = (data as Row)[k]
@@ -82,7 +93,7 @@ export async function updateEntry(id: string, data: Partial<Entry> & { metadata_
     const existing = await getEntryById(id)
     patch.metadata = { ...(existing?.metadata ?? {}), ...data.metadata_patch }
   }
-  patch.updated_at = new Date().toISOString()
+  if (opts.touch !== false) patch.updated_at = new Date().toISOString()
   const { error } = await supabase.from('web_entries').update(patch).eq('id', id)
   if (error) throw error
   notifyEntriesChanged()
@@ -387,6 +398,34 @@ export async function getLoggedMinutesByEntry(): Promise<Map<string, number>> {
     if (r.duration_minutes) m.set(r.entry_id, (m.get(r.entry_id) ?? 0) + r.duration_minutes)
   }
   return m
+}
+
+// One pass over the session log, shaped for the suggestion engine: when each entry
+// was last actually touched (so a stalled item can be told apart from a fresh one),
+// and the raw dated minutes so pace per week can be worked out.
+export interface SessionActivity {
+  byEntry: Map<string, { lastDate: string; minutes: number; count: number }>
+  log: Array<{ date: string; minutes: number }>
+}
+
+export async function getSessionActivity(): Promise<SessionActivity> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_sessions')
+    .select('entry_id, date, duration_minutes').eq('user_id', userId)
+  const byEntry = new Map<string, { lastDate: string; minutes: number; count: number }>()
+  const log: Array<{ date: string; minutes: number }> = []
+  for (const r of (data ?? []) as Array<{ entry_id: string; date: string; duration_minutes: number | null }>) {
+    const minutes = r.duration_minutes ?? 0
+    const prev = byEntry.get(r.entry_id)
+    if (!prev) byEntry.set(r.entry_id, { lastDate: r.date, minutes, count: 1 })
+    else byEntry.set(r.entry_id, {
+      lastDate: r.date > prev.lastDate ? r.date : prev.lastDate,
+      minutes: prev.minutes + minutes,
+      count: prev.count + 1,
+    })
+    if (r.date) log.push({ date: r.date, minutes })
+  }
+  return { byEntry, log }
 }
 
 // How the whole site rated one catalog item (matched by external source + id).

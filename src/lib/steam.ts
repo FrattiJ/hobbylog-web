@@ -1,7 +1,7 @@
 import { getEntriesByHobby, updateEntry, insertEntry } from '@/lib/db'
 import { searchCatalog } from '@/lib/search'
 
-export interface SteamGame { appid: number; name: string; playtime_hours: number }
+export interface SteamGame { appid: number; name: string; playtime_hours: number; last_played: string | null }
 
 // Steam names carry trademark glyphs that manual titles won't have
 function normalizeTitle(t: string): string {
@@ -22,6 +22,11 @@ export async function fetchSteamLibrary(steamId: string): Promise<SteamGame[]> {
 // Pull current Steam playtime into games already tracked. Matches by stored appid
 // first, then by exact title for manually-added games (linking the appid so future
 // syncs are direct). Playtime only ever increases an entry's hours.
+//
+// Steam's own last-played date is stored alongside, and a write that only records
+// bookkeeping (appid, last-played, unchanged playtime) passes `touch: false` so it
+// doesn't read as you having picked the game up. Actually gaining hours does touch
+// the entry — that is real play.
 export async function syncSteamPlaytime(steamId: string): Promise<number> {
   const library = await fetchSteamLibrary(steamId)
   const byAppid = new Map(library.map((g) => [g.appid, g]))
@@ -38,13 +43,19 @@ export async function syncSteamPlaytime(steamId: string): Promise<number> {
     const newlyLinked = storedAppid == null
     const hours = game.playtime_hours
     const increased = hours > (entry.progress_current || 0)
-    if (!newlyLinked && !increased) continue
+    const lastPlayedChanged = game.last_played != null
+      && game.last_played !== (entry.metadata?.steam_last_played as string | undefined)
+    if (!newlyLinked && !increased && !lastPlayedChanged) continue
 
     await updateEntry(entry.id, {
       ...(increased ? { progress_current: hours } : {}),
-      metadata_patch: { steam_appid: game.appid, playtime_hours: hours },
-    })
-    updated++
+      metadata_patch: {
+        steam_appid: game.appid,
+        playtime_hours: hours,
+        ...(game.last_played ? { steam_last_played: game.last_played } : {}),
+      },
+    }, { touch: increased })
+    if (increased) updated++
   }
   return updated
 }
@@ -66,7 +77,7 @@ export async function backfillGameTimeToBeat(onProgress?: (done: number, total: 
         const hit = hits.find((h) => h.title.toLowerCase() === lower) ?? hits[0]
         const ttb = hit?.metadata?.time_to_beat
         const n = typeof ttb === 'number' ? ttb : ttb != null ? Number(ttb) : NaN
-        if (!isNaN(n) && n > 0) { await updateEntry(g.id, { metadata_patch: { time_to_beat: n } }); updated++ }
+        if (!isNaN(n) && n > 0) { await updateEntry(g.id, { metadata_patch: { time_to_beat: n } }, { touch: false }); updated++ }
       } catch { /* skip this one; a later sync retries it */ }
       onProgress?.(++done, targets.length)
     }))
@@ -109,12 +120,19 @@ export async function importSteamLibrary(steamId: string, onProgress?: (done: nu
       cover_url: `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/library_600x900.jpg`,
       external_id: String(g.appid),
       external_source: 'steam',
-      metadata: { steam_appid: g.appid, playtime_hours: g.playtime_hours, added_via: 'steam' },
+      metadata: {
+        steam_appid: g.appid,
+        playtime_hours: g.playtime_hours,
+        ...(g.last_played ? { steam_last_played: g.last_played } : {}),
+        added_via: 'steam',
+      },
       book_subtype: null,
       current_season: null,
       current_episode: null,
       priority: null,
-      date_started: null,
+      // Steam can't say when you *started*, but if it has been played at all then
+      // some start date is truer than none; last-played is the best available.
+      date_started: g.playtime_hours > 0 ? (g.last_played?.slice(0, 10) ?? null) : null,
       date_completed: null,
     })
     onProgress?.(++n, toAdd.length)
