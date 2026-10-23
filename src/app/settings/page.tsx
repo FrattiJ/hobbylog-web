@@ -11,6 +11,7 @@ import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
 import { useHobbies } from '@/components/HobbyContext'
 import ExportPanel from '@/components/ExportPanel'
+import TimeWindowsPanel from '@/components/TimeWindowsPanel'
 
 const ACCENT = '#7c3aed'
 
@@ -163,6 +164,9 @@ export default function SettingsPage() {
         </div>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
       </Link>
+
+      {/* Hobby time windows */}
+      <TimeWindowsPanel />
 
       {/* Export */}
       <ExportPanel />

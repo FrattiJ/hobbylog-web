@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient'
 import { currentUserId } from './currentUser'
 import type { Entry, EntryStatus, HobbyCategory, Profile, Session } from '@/types/database'
+import type { NewTimeWindow, TimeWindow } from './windows'
 
 // Web data layer: mirrors the desktop app's src/lib/db.ts API surface, but backed by
 // Supabase (web_entries) so the desktop UI components port over almost unchanged.
@@ -564,4 +565,56 @@ export async function getNotes(): Promise<string> {
 export async function saveNotes(content: string): Promise<void> {
   const user_id = await currentUserId()
   await supabase.from('web_notes').upsert({ user_id, content, updated_at: new Date().toISOString() })
+}
+
+// ── Hobby time windows (the recurring blocks you have free) ────────────────────
+
+export const WINDOWS_CHANGED_EVENT = 'time-windows-changed'
+
+function notifyWindowsChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(WINDOWS_CHANGED_EVENT))
+}
+
+export async function getTimeWindows(): Promise<TimeWindow[]> {
+  const userId = await currentUserId()
+  const { data, error } = await supabase.from('web_time_windows').select('*')
+    .eq('user_id', userId)
+    .order('day_of_week', { ascending: true })
+    .order('start_min', { ascending: true })
+  if (error) throw error
+  // share arrives from numeric(3,2) as a string on some driver versions.
+  return (data ?? []).map((r) => ({ ...(r as unknown as TimeWindow), share: Number((r as Row).share) }))
+}
+
+export async function insertTimeWindow(w: NewTimeWindow): Promise<TimeWindow> {
+  const user_id = await currentUserId()
+  const { data, error } = await supabase.from('web_time_windows').insert({
+    user_id,
+    label: w.label?.trim() || null,
+    day_of_week: w.day_of_week,
+    start_min: w.start_min,
+    end_min: w.end_min,
+    share: w.share,
+    active: w.active,
+  }).select().single()
+  if (error) throw error
+  notifyWindowsChanged()
+  return { ...(data as unknown as TimeWindow), share: Number((data as Row).share) }
+}
+
+export async function updateTimeWindow(id: string, patch: Partial<NewTimeWindow>): Promise<void> {
+  const row: Row = {}
+  for (const k of ['label', 'day_of_week', 'start_min', 'end_min', 'share', 'active'] as const) {
+    if (k in patch) row[k] = k === 'label' ? ((patch.label ?? '').trim() || null) : (patch as Row)[k]
+  }
+  if (Object.keys(row).length === 0) return
+  const { error } = await supabase.from('web_time_windows').update(row).eq('id', id)
+  if (error) throw error
+  notifyWindowsChanged()
+}
+
+export async function deleteTimeWindow(id: string): Promise<void> {
+  const { error } = await supabase.from('web_time_windows').delete().eq('id', id)
+  if (error) throw error
+  notifyWindowsChanged()
 }
