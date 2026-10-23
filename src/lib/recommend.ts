@@ -342,8 +342,14 @@ export function candidateTags(metadata: Record<string, unknown>): string[] {
 // The briefs go to /api/recommend, which holds the catalog keys; scoring stays
 // here on the client, against the profile.
 
-export async function fetchCandidates(briefs: Array<DiscoveryBrief & { subtype?: string | null }>): Promise<Candidate[]> {
-  if (briefs.length === 0) return []
+export interface CandidateResult {
+  candidates: Candidate[]
+  /** Upstreams that failed. Empty results plus no problems genuinely means "no matches". */
+  problems: string[]
+}
+
+export async function fetchCandidates(briefs: Array<DiscoveryBrief & { subtype?: string | null }>): Promise<CandidateResult> {
+  if (briefs.length === 0) return { candidates: [], problems: [] }
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 25_000)
   try {
@@ -353,11 +359,14 @@ export async function fetchCandidates(briefs: Array<DiscoveryBrief & { subtype?:
       body: JSON.stringify({ briefs }),
       signal: ctrl.signal,
     })
-    if (!res.ok) return []
+    if (!res.ok) return { candidates: [], problems: [`the suggestion service returned ${res.status}`] }
     const data = await res.json()
-    return ((data.candidates ?? []) as Candidate[]).map((c) => ({ ...c, tags: parseTags(c.tags.join(', ')) }))
+    return {
+      candidates: ((data.candidates ?? []) as Candidate[]).map((c) => ({ ...c, tags: parseTags(c.tags.join(', ')) })),
+      problems: (data.problems ?? []) as string[],
+    }
   } catch {
-    return []
+    return { candidates: [], problems: ['could not reach the suggestion service'] }
   } finally {
     clearTimeout(timer)
   }

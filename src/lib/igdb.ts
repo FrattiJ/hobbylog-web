@@ -40,28 +40,33 @@ async function igdbVocab(kind: 'genres' | 'themes'): Promise<Map<string, number>
   const cached = vocab[kind]
   if (cached) return cached
   const m = new Map<string, number>()
-  try {
-    for (const row of await igdbQuery<{ id: number; name: string }>(kind, 'fields id,name; limit 100;')) {
-      m.set(row.name.toLowerCase(), row.id)
-    }
-  } catch { /* without the vocab, discovery just falls back to seeds */ }
+  for (const row of await igdbQuery<{ id: number; name: string }>(kind, 'fields id,name; limit 100;')) {
+    m.set(row.name.toLowerCase(), row.id)
+  }
   if (m.size > 0) vocab[kind] = m
   return m
 }
 
-/** Map tag names onto IGDB genre and theme ids, ignoring anything it doesn't know. */
-export async function igdbTagIds(names: string[]): Promise<{ genres: number[]; themes: number[] }> {
+/**
+ * Map tag names onto IGDB genre and theme ids. Unmatched names come back in
+ * `unknown` rather than vanishing — a caller that gets no ids needs to be able to
+ * tell "IGDB doesn't have a genre by that name" from "the lookup failed", which a
+ * silent empty array can't express. Throws if IGDB itself is unreachable.
+ */
+export async function igdbTagIds(names: string[]): Promise<{ genres: number[]; themes: number[]; unknown: string[] }> {
   const [g, t] = await Promise.all([igdbVocab('genres'), igdbVocab('themes')])
   const genres: number[] = []
   const themes: number[] = []
+  const unknown: string[] = []
   for (const n of names) {
     const key = n.toLowerCase()
     const gi = g.get(key)
-    if (gi != null) genres.push(gi)
     const ti = t.get(key)
+    if (gi != null) genres.push(gi)
     if (ti != null) themes.push(ti)
+    if (gi == null && ti == null) unknown.push(n)
   }
-  return { genres, themes }
+  return { genres, themes, unknown }
 }
 
 /** game id → completion-time tiers in hours, for a batch of games. */

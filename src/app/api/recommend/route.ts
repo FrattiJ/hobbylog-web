@@ -47,7 +47,18 @@ interface CandidateRow {
 
 const CANDIDATES_PER_CATEGORY = 24
 /** Cap the per-title detail lookups that turn a discover row into a real length. */
-const ENRICH_LIMIT = 10
+const ENRICH_LIMIT = 12
+/** How far past the brief's length ceiling a candidate may still go. */
+const LENGTH_CEILING_SLACK = 1.25
+
+// Catalog lookups are all best-effort — one dead upstream shouldn't fail the whole
+// request. But swallowing the reason made a broken query indistinguishable from
+// "no good matches", which hid a bad IGDB filter for a whole release. Failures are
+// collected per request (never module-level: a warm instance serves many) and
+// returned alongside the candidates.
+type Ctx = { problems: string[] }
+const note = (ctx: Ctx, where: string, e: unknown) =>
+  ctx.problems.push(`${where}: ${e instanceof Error ? e.message : String(e)}`)
 
 const uniqBy = <T>(xs: T[], key: (x: T) => string): T[] => {
   const seen = new Set<string>()
@@ -105,7 +116,7 @@ function igdbRow(g: IgdbGame, ttb: { hastily?: number; normally?: number; comple
   }
 }
 
-async function discoverGames(brief: Brief): Promise<CandidateRow[]> {
+async function discoverGames(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   if (!igdbConfigured()) return []
   const found: Array<{ game: IgdbGame; via?: string }> = []
 
@@ -115,23 +126,29 @@ async function discoverGames(brief: Brief): Promise<CandidateRow[]> {
     try {
       const rows = await igdbQuery<IgdbGame>('games', `fields ${SIMILAR_FIELDS}; where id = ${Number(seed.id)}; limit 1;`)
       for (const g of rows[0]?.similar_games ?? []) found.push({ game: g, via: seed.title })
-    } catch { /* seed is best-effort */ }
+    } catch (e) { note(ctx, `igdb similar(${seed.title})`, e) }
   }))
 
-  // Then fill out with a filtered sweep of the genres and themes you reliably finish.
+  // Then fill out with a filtered sweep of the genres and themes you reliably
+  // finish. No `category = 0` clause here: IGDB deprecated that field in favour of
+  // game_type, and including it returned zero rows for every sweep while the
+  // error sat inside a silent catch. A stray DLC entry is a far cheaper problem
+  // than a filter that quietly matches nothing.
   try {
-    const { genres, themes } = await igdbTagIds(brief.includeTags ?? [])
-    if (genres.length > 0 || themes.length > 0) {
+    const { genres, themes, unknown } = await igdbTagIds(brief.includeTags ?? [])
+    if (genres.length === 0 && themes.length === 0) {
+      if ((brief.includeTags ?? []).length > 0) note(ctx, 'igdb genre sweep skipped', `no IGDB genre or theme matches [${unknown.join(', ')}]`)
+    } else {
       const tagClause = [
         genres.length ? `genres = (${genres.join(',')})` : null,
         themes.length ? `themes = (${themes.join(',')})` : null,
       ].filter(Boolean).join(' | ')
       const rows = await igdbQuery<IgdbGame>('games',
-        `fields ${GAME_FIELDS}; where (${tagClause}) & total_rating > 75 & total_rating_count > 30 & category = 0; `
+        `fields ${GAME_FIELDS}; where (${tagClause}) & total_rating > 75 & total_rating_count > 30; `
         + `sort total_rating desc; limit 40;`)
       for (const g of rows) found.push({ game: g })
     }
-  } catch { /* genre sweep is best-effort */ }
+  } catch (e) { note(ctx, 'igdb genre sweep', e) }
 
   const deduped = uniqBy(found, (f) => String(f.game.id))
   const ttb = await igdbTimeToBeat(deduped.map((f) => f.game.id))
@@ -148,7 +165,7 @@ async function tmdbJson(path: string, params: Record<string, string | number> = 
   } catch { return null }
 }
 
-async function discoverTmdb(brief: Brief): Promise<CandidateRow[]> {
+async function discoverTmdb(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   if (!TMDB) return []
   const type = brief.category === 'movies' ? 'movie' : 'tv'
   const genreNames = await tmdbGenreMap(type)
@@ -204,10 +221,15 @@ async function discoverTmdb(brief: Brief): Promise<CandidateRow[]> {
     }
   })
 
-  // Discover rows carry no runtime or episode count, so the best few get a real
-  // detail lookup — without a length, the whole length model has nothing to say.
-  const head = mapped
-    .sort((a, b) => (b.communityRating ?? 0) - (a.communityRating ?? 0))
+  // Discover rows carry no runtime or episode count, so some get a real detail
+  // lookup — without a length, the whole length model has nothing to say.
+  //
+  // Seeded rows go first: "more like something you loved" is the strongest signal
+  // here, so those are the ones that must come back with a usable length. Note the
+  // copy — sort() mutates, and sorting `mapped` in place used to reorder the rows
+  // by catalog rating, which then let the final slice drop the seeds entirely.
+  const head = [...mapped]
+    .sort((a, b) => Number(!!b.via) - Number(!!a.via) || (b.communityRating ?? 0) - (a.communityRating ?? 0))
     .slice(0, ENRICH_LIMIT)
   await Promise.all(head.map(async (c) => {
     const d = await tmdbJson(`${type}/${c.external_id}`)
@@ -233,7 +255,12 @@ async function discoverTmdb(brief: Brief): Promise<CandidateRow[]> {
     }
   }))
 
-  return mapped
+  // TMDB's with_runtime.lte doesn't reliably hold on /discover, and it can't apply
+  // to TV at all, so the brief's ceiling is enforced here on the lengths we now
+  // actually know. Rows whose length is still unknown are kept — the client scores
+  // those as neutral rather than silently preferring them.
+  const ceiling = brief.maxHours ? brief.maxHours * LENGTH_CEILING_SLACK : null
+  return ceiling == null ? mapped : mapped.filter((c) => c.hours == null || c.hours <= ceiling)
 }
 
 // ── Manga (AniList) ──────────────────────────────────────────────────────────
@@ -286,7 +313,7 @@ async function anilist<T>(query: string, variables: Raw): Promise<T | null> {
   } catch { return null }
 }
 
-async function discoverManga(brief: Brief): Promise<CandidateRow[]> {
+async function discoverManga(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   const out: CandidateRow[] = []
 
   // AniList keeps user-voted recommendations per title — the best source here.
@@ -315,7 +342,7 @@ async function discoverManga(brief: Brief): Promise<CandidateRow[]> {
 
 // ── Prose books (OpenLibrary) ────────────────────────────────────────────────
 
-async function discoverBooks(brief: Brief): Promise<CandidateRow[]> {
+async function discoverBooks(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   const subjects = (brief.includeTags ?? []).slice(0, 3)
   if (subjects.length === 0) return []
   const out: CandidateRow[] = []
@@ -353,21 +380,24 @@ async function discoverBooks(brief: Brief): Promise<CandidateRow[]> {
           metadata: { genres: tags.join(', ') || undefined, author, release_year: year ?? undefined },
         })
       }
-    } catch { /* skip this subject */ }
+    } catch (e) { note(ctx, `openlibrary subject(${subject})`, e) }
   }))
   return out
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-async function runBrief(brief: Brief): Promise<CandidateRow[]> {
+async function runBrief(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   let rows: CandidateRow[] = []
-  if (brief.category === 'games') rows = await discoverGames(brief)
-  else if (brief.category === 'movies' || brief.category === 'tv') rows = await discoverTmdb(brief)
+  if (brief.category === 'games') rows = await discoverGames(brief, ctx)
+  else if (brief.category === 'movies' || brief.category === 'tv') rows = await discoverTmdb(brief, ctx)
   else if (brief.category === 'books') {
-    rows = brief.subtype === 'manga' ? await discoverManga(brief) : await discoverBooks(brief)
+    rows = brief.subtype === 'manga' ? await discoverManga(brief, ctx) : await discoverBooks(brief, ctx)
   }
-  return uniqBy(rows, (r) => `${r.external_source}:${r.external_id}`).slice(0, CANDIDATES_PER_CATEGORY)
+  // Seeded rows sort first so the cap can never cut "more like what you loved".
+  const ranked = uniqBy(rows, (r) => `${r.external_source}:${r.external_id}`)
+    .sort((a, b) => Number(!!b.via) - Number(!!a.via))
+  return ranked.slice(0, CANDIDATES_PER_CATEGORY)
 }
 
 export async function POST(req: NextRequest) {
@@ -380,8 +410,12 @@ export async function POST(req: NextRequest) {
   }
   if (briefs.length === 0) return NextResponse.json({ candidates: [] })
 
+  const ctx: Ctx = { problems: [] }
   const results = await Promise.all(briefs.map(async (b) => {
-    try { return await runBrief(b) } catch { return [] as CandidateRow[] }
+    try { return await runBrief(b, ctx) } catch (e) { note(ctx, `brief(${b.category})`, e); return [] as CandidateRow[] }
   }))
-  return NextResponse.json({ candidates: results.flat() })
+  return NextResponse.json({
+    candidates: results.flat(),
+    ...(ctx.problems.length ? { problems: ctx.problems } : {}),
+  })
 }

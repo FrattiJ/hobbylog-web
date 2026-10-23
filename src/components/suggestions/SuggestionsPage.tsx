@@ -55,6 +55,7 @@ export default function SuggestionsPage() {
 
   const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null)
   const [candidates, setCandidates] = useState<Candidate[] | null>(null)
+  const [problems, setProblems] = useState<string[]>([])
   const [finding, setFinding] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -171,10 +172,12 @@ export default function SuggestionsPage() {
       })
       if (briefs.length === 0) {
         setCandidates([])
+        setProblems([])
         return
       }
-      const raw = await fetchCandidates(briefs)
-      setCandidates(excludeOwned(raw, entries))
+      const res = await fetchCandidates(briefs)
+      setCandidates(excludeOwned(res.candidates, entries))
+      setProblems(res.problems)
     } finally {
       setFinding(false)
     }
@@ -342,9 +345,10 @@ export default function SuggestionsPage() {
                 </div>
               ) : discoveries.length === 0 ? (
                 <Empty>
-                  Nothing new to suggest for this filter.<br />
-                  Rate a few finished titles highly — &ldquo;more like this&rdquo; is where the good
-                  suggestions come from.
+                  {problems.length > 0 ? <>A catalog didn&apos;t answer, so this is incomplete rather than empty.</>
+                    : <>Nothing new to suggest for this filter.<br />
+                      Rate a few finished titles highly — &ldquo;more like this&rdquo; is where the good
+                      suggestions come from.</>}
                 </Empty>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -354,6 +358,12 @@ export default function SuggestionsPage() {
                       onAdd={() => addCandidate(d.candidate)} />
                   ))}
                 </div>
+              )}
+              {problems.length > 0 && (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#d97706', margin: '14px 0 0', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                  Some catalogs didn&apos;t answer: {problems.join(' · ')}. Results below are
+                  partial — try Refresh.
+                </p>
               )}
             </Panel>
           )}
