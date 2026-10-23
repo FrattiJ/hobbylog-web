@@ -195,6 +195,13 @@ export interface StalledItem {
 
 export interface TasteProfile {
   byCategory: Partial<Record<HobbyCategory, CategoryTaste>>
+  /**
+   * Genre affinity pooled across every hobby, ignoring which shelf the evidence
+   * came from. Liking sci-fi is a fact about you, not about your games shelf, so
+   * a category you've never finished anything in can still be asked for
+   * intelligently instead of being skipped in silence.
+   */
+  crossGenres: GenreAffinity[]
   stalled: StalledItem[]
   /** Hours of attention you actually have, measured from your own history. */
   pace: { hoursPerWeek: number; basis: 'sessions' | 'completions' | 'none' }
@@ -519,6 +526,7 @@ export function buildTasteProfile(entries: Entry[], activity: SessionActivity): 
 
   return {
     byCategory,
+    crossGenres: buildGenreAffinity(evidence),
     stalled: buildStalled(relevant, activity, byCategory),
     pace,
     backlogHours,

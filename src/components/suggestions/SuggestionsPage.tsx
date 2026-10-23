@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2 } from 'lucide-react'
+import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2, CalendarClock } from 'lucide-react'
 import {
-  getAllEntries, getSessionActivity, insertEntry, updateEntry,
-  normalizeBacklogPriorities, ENTRIES_CHANGED_EVENT, type SessionActivity,
+  getAllEntries, getSessionActivity, getTimeWindows, insertEntry, updateEntry,
+  normalizeBacklogPriorities, ENTRIES_CHANGED_EVENT, WINDOWS_CHANGED_EVENT, type SessionActivity,
 } from '@/lib/db'
 import { backfillTaste, needsTasteEnrichment } from '@/lib/entries'
 import { buildTasteProfile, entryHours, tagsOf, type TasteProfile, type TouchSource } from '@/lib/taste'
@@ -13,22 +14,34 @@ import {
   buildBrief, discoverySlots, excludeOwned, fetchCandidates, pickNextUp, scoreCandidates,
   type Candidate, type DiscoveryPick, type NextUpPick,
 } from '@/lib/recommend'
-import { HOBBY_MAP } from '@/lib/hobbies'
+import {
+  bestWindowFor, fitsIn, fmtHours, hobbyHours, upcomingOccurrences, weeklyHobbyHours,
+  weeksToClear, windowTitle, DAY_SHORT, type FitPick, type TimeWindow, type WindowOccurrence,
+} from '@/lib/windows'
+import { HOBBY_MAP, STATUS_COLORS, STATUS_LABELS } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
 import { useToast } from '@/components/Toast'
 import { CLIP } from '@/components/MechCard'
 import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover } from './ui'
 
-type Mode = 'next' | 'triage' | 'discover'
+type Mode = 'next' | 'time' | 'triage' | 'discover'
 
 const MODES: Array<{ id: Mode; label: string; icon: typeof Sparkles; accent: string }> = [
-  { id: 'next',     label: 'Next Up',       icon: Sparkles,  accent: '#7c3aed' },
-  { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck, accent: '#0891b2' },
-  { id: 'discover', label: 'Discover',      icon: Compass,   accent: '#22c55e' },
+  { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#7c3aed' },
+  { id: 'time',     label: 'Time I Have',   icon: CalendarClock, accent: '#d97706' },
+  { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck,   accent: '#0891b2' },
+  { id: 'discover', label: 'Discover',      icon: Compass,       accent: '#22c55e' },
 ]
 
 const hrs = (h: number) => (h >= 10 ? `${Math.round(h)}h` : `${Math.round(h * 10) / 10}h`)
+
+/** "video games", or "video games and movies", or "video games, movies and TV shows". */
+function listCats(cats: HobbyCategory[]): string {
+  const names = cats.map((c) => HOBBY_MAP[c]?.pluralLabel.toLowerCase() ?? c)
+  if (names.length <= 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -49,6 +62,7 @@ export default function SuggestionsPage() {
 
   const [entries, setEntries] = useState<Entry[]>([])
   const [activity, setActivity] = useState<SessionActivity>({ byEntry: new Map(), log: [] })
+  const [windows, setWindows] = useState<TimeWindow[]>([])
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<Mode>('next')
   const [category, setCategory] = useState<HobbyCategory | 'all'>('all')
@@ -56,12 +70,22 @@ export default function SuggestionsPage() {
   const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null)
   const [candidates, setCandidates] = useState<Candidate[] | null>(null)
   const [problems, setProblems] = useState<string[]>([])
+  // Categories whose genres were pooled from other hobbies, and categories that
+  // could not be asked for at all. Both used to be silent, which made a working
+  // engine look broken.
+  const [borrowed, setBorrowed] = useState<HobbyCategory[]>([])
+  const [skipped, setSkipped] = useState<HobbyCategory[]>([])
   const [finding, setFinding] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    return Promise.all([getAllEntries(), getSessionActivity().catch(() => ({ byEntry: new Map(), log: [] }))])
-      .then(([e, a]) => { setEntries(e); setActivity(a) })
+    return Promise.all([
+      getAllEntries(),
+      getSessionActivity().catch(() => ({ byEntry: new Map(), log: [] })),
+      // Windows are optional: the page has to work for someone who never declares one.
+      getTimeWindows().catch(() => [] as TimeWindow[]),
+    ])
+      .then(([e, a, w]) => { setEntries(e); setActivity(a); setWindows(w) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -69,7 +93,11 @@ export default function SuggestionsPage() {
     load()
     const onChange = () => { load() }
     window.addEventListener(ENTRIES_CHANGED_EVENT, onChange)
-    return () => window.removeEventListener(ENTRIES_CHANGED_EVENT, onChange)
+    window.addEventListener(WINDOWS_CHANGED_EVENT, onChange)
+    return () => {
+      window.removeEventListener(ENTRIES_CHANGED_EVENT, onChange)
+      window.removeEventListener(WINDOWS_CHANGED_EVENT, onChange)
+    }
   }, [load])
 
   const profile: TasteProfile = useMemo(() => buildTasteProfile(entries, activity), [entries, activity])
@@ -88,6 +116,25 @@ export default function SuggestionsPage() {
     () => profile.stalled.filter((s) => inScope(s.entry.hobby_category)),
     [profile, inScope]
   )
+  // ── The time side ────────────────────────────────────────────────────────
+  // `now` is captured once per mount rather than read inside the memo: a Date
+  // read during render would make every re-render produce different windows.
+  const [now] = useState(() => new Date())
+  const occurrences = useMemo(() => upcomingOccurrences(windows, now, 5), [windows, now])
+
+  // Which sitting is being planned for. Null means the manual "I have N hours"
+  // box, which is what someone with no windows declared uses.
+  const [slot, setSlot] = useState<number | null>(0)
+  const [manualHours, setManualHours] = useState(2)
+
+  const chosen: WindowOccurrence | null = slot != null ? occurrences[slot] ?? null : null
+  const availableHours = chosen ? chosen.hoursLeft : manualHours
+
+  const fits = useMemo(
+    () => fitsIn(entries.filter((e) => inScope(e.hobby_category)), availableHours).slice(0, 12),
+    [entries, inScope, availableHours]
+  )
+
   const missingData = useMemo(() => entries.filter(needsTasteEnrichment).length, [entries])
   const ration = useMemo(() => discoverySlots(profile), [profile])
 
@@ -160,9 +207,12 @@ export default function SuggestionsPage() {
     try {
       const cats = (category === 'all' ? entryHobbies.map((h) => h.id) : [category])
         .filter((c) => !HOBBY_MAP[c].manualOnly)
+      const borrowedCats: HobbyCategory[] = []
+      const skippedCats: HobbyCategory[] = []
       const briefs = cats.flatMap((c) => {
         const brief = buildBrief(c, entries, profile)
-        if (!brief) return []
+        if (!brief) { skippedCats.push(c); return [] }
+        if (brief.borrowedFrom?.length) borrowedCats.push(c)
         if (c !== 'books') return [brief]
         // Manga and prose come from different catalogues and read nothing alike,
         // so books get one brief per sub-type you actually track.
@@ -170,6 +220,8 @@ export default function SuggestionsPage() {
         const wanted = subs.includes('manga') ? ['manga', 'book'] : ['book']
         return wanted.map((subtype) => ({ ...brief, subtype }))
       })
+      setBorrowed(borrowedCats)
+      setSkipped(skippedCats)
       if (briefs.length === 0) {
         setCandidates([])
         setProblems([])
@@ -244,7 +296,7 @@ export default function SuggestionsPage() {
       ) : (
         <>
           {/* ── Profile readout ── */}
-          <ProfileStrip profile={profile} />
+          <ProfileStrip profile={profile} windows={windows} />
 
           {/* ── Missing-data nudge ── */}
           {missingData > 0 && (
@@ -265,7 +317,9 @@ export default function SuggestionsPage() {
             {MODES.map((m) => {
               const on = mode === m.id
               const Icon = m.icon
-              const count = m.id === 'next' ? nextUp.length : m.id === 'triage' ? stalled.length : null
+              const count = m.id === 'next' ? nextUp.length
+                : m.id === 'time' ? fits.filter((f) => f.fit === 'finish').length
+                : m.id === 'triage' ? stalled.length : null
               return (
                 <button key={m.id} onClick={() => setMode(m.id)}
                   style={{
@@ -300,8 +354,81 @@ export default function SuggestionsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {nextUp.map((p, i) => (
                     <NextUpRow key={p.entry.id} pick={p} index={i} busy={busy === p.entry.id}
+                      plan={bestWindowFor(p.entry, windows)}
                       onStart={() => setStatus(p.entry, 'in_progress', 'started')}
                       onOpen={() => router.push(`/entry?id=${p.entry.id}`)} />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {mode === 'time' && (
+            <Panel accent={activeMode.accent}
+              title="TIME I HAVE"
+              sub="Ranked by what this sitting can finish, not by taste. Fullest use of the window first.">
+              {/* Pick the sitting. Declared windows first, then a manual box so
+                  this still works for someone who never set a window up. */}
+              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+                {occurrences.map((o, i) => {
+                  const on = slot === i
+                  return (
+                    <button key={`${o.window.id}-${o.start.toISOString()}`} onClick={() => setSlot(i)}
+                      style={{
+                        padding: '7px 12px', textAlign: 'left', cursor: 'pointer',
+                        background: on ? '#d9770622' : 'transparent',
+                        border: `1px solid ${on ? '#d97706' : 'var(--border-dim)'}`,
+                        color: on ? '#d97706' : 'var(--text-dim)',
+                      }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em' }}>
+                        {o.isNow ? 'RIGHT NOW' : whenLabel(o, now)}
+                      </span>
+                      <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.8, marginTop: 2 }}>
+                        {fmtHours(o.hoursLeft)}{o.isNow ? ' left' : ''} · {windowTitle(o.window)}
+                      </span>
+                    </button>
+                  )
+                })}
+                <button onClick={() => setSlot(null)}
+                  style={{
+                    padding: '7px 12px', textAlign: 'left', cursor: 'pointer',
+                    background: chosen == null ? '#d9770622' : 'transparent',
+                    border: `1px solid ${chosen == null ? '#d97706' : 'var(--border-dim)'}`,
+                    color: chosen == null ? '#d97706' : 'var(--text-dim)',
+                  }}>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em' }}>SOME OTHER TIME</span>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.8, marginTop: 2 }}>say how long</span>
+                </button>
+              </div>
+
+              {chosen == null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>I HAVE</span>
+                  <input type="number" min={0.25} max={24} step={0.25} value={manualHours}
+                    onChange={(e) => setManualHours(Math.max(0.25, Math.min(24, Number(e.target.value) || 0.25)))}
+                    style={{ width: 86, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #d9770666', padding: '7px 9px', color: 'var(--text-hi)', fontFamily: 'var(--font-mono)', fontSize: 13, outline: 'none' }} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>HOURS</span>
+                </div>
+              )}
+
+              {windows.length === 0 && (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7, letterSpacing: '0.04em' }}>
+                  No weekly windows declared, so this is a one-off answer. Set them up in{' '}
+                  <Link href="/settings" style={{ color: '#d97706' }}>Settings &rarr; Hobby Time</Link>.
+                </p>
+              )}
+
+              {fits.length === 0 ? (
+                <Empty>
+                  Nothing in your backlog fits {fmtHours(availableHours)}.<br />
+                  Either everything you own runs longer than that, or the lengths aren&apos;t filled in yet.
+                </Empty>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {fits.map((f) => (
+                    <FitRow key={f.entry.id} pick={f} busy={busy === f.entry.id}
+                      onStart={() => setStatus(f.entry, 'in_progress', 'started')}
+                      onOpen={() => router.push(`/entry?id=${f.entry.id}`)} />
                   ))}
                 </div>
               )}
@@ -359,6 +486,18 @@ export default function SuggestionsPage() {
                   ))}
                 </div>
               )}
+              {borrowed.length > 0 && (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#0891b2', margin: '0 0 14px', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                  You haven&apos;t finished anything in {listCats(borrowed)} yet, so those are
+                  matched on the genres you finish everywhere else.
+                </p>
+              )}
+              {skipped.length > 0 && (
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 14px', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                  Nothing asked for {listCats(skipped)} — no finished, rated or genre-tagged
+                  entries anywhere to go on yet.
+                </p>
+              )}
               {problems.length > 0 && (
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#d97706', margin: '14px 0 0', letterSpacing: '0.04em', lineHeight: 1.7 }}>
                   Some catalogs didn&apos;t answer: {problems.join(' · ')}. Results below are
@@ -378,24 +517,39 @@ export default function SuggestionsPage() {
 
 // ── Profile readout ──────────────────────────────────────────────────────────
 
-function ProfileStrip({ profile }: { profile: TasteProfile }) {
+function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: TimeWindow[] }) {
   const topGenre = Object.values(profile.byCategory)
     .flatMap((t) => t?.genres ?? [])
     .filter((g) => g.evidence >= 1)
     .sort((a, b) => b.score - a.score)[0]
 
+  // A declared week and a measured one answer different questions, so when both
+  // exist the tile shows the declared hours (what you can plan against) and names
+  // the measured figure underneath -- the gap between them is the useful part.
+  const declared = weeklyHobbyHours(windows)
+  const declaredWeeks = weeksToClear(profile.backlogHours, windows)
+  const paceSub = declared > 0
+    ? profile.pace.hoursPerWeek > 0
+      ? `declared · you actually log ${profile.pace.hoursPerWeek}h`
+      : 'declared in your windows'
+    : profile.pace.basis === 'none' ? 'no recent activity' : `per week, from your ${profile.pace.basis}`
+
   const cells: Array<{ label: string; value: string; sub: string; accent: string }> = [
     {
-      label: 'Your Pace',
-      value: profile.pace.hoursPerWeek > 0 ? `${profile.pace.hoursPerWeek}h` : '—',
-      sub: profile.pace.basis === 'none' ? 'no recent activity' : `per week, from your ${profile.pace.basis}`,
+      label: declared > 0 ? 'Hobby Time' : 'Your Pace',
+      value: declared > 0 ? `${declared}h` : profile.pace.hoursPerWeek > 0 ? `${profile.pace.hoursPerWeek}h` : '—',
+      sub: paceSub,
       accent: '#0891b2',
     },
     {
       label: 'Backlog',
-      value: profile.backlogMonths != null ? `${profile.backlogMonths}mo` : `${profile.backlogHours}h`,
-      sub: profile.backlogMonths != null ? `${profile.backlogHours}h at your pace` : 'estimated hours',
-      accent: profile.backlogMonths != null && profile.backlogMonths > 12 ? '#ef4444' : '#d97706',
+      value: declaredWeeks != null
+        ? `${Math.round((declaredWeeks / 4.345) * 10) / 10}mo`
+        : profile.backlogMonths != null ? `${profile.backlogMonths}mo` : `${profile.backlogHours}h`,
+      sub: declaredWeeks != null
+        ? `${profile.backlogHours}h at ${declared}h a week`
+        : profile.backlogMonths != null ? `${profile.backlogHours}h at your pace` : 'estimated hours',
+      accent: (declaredWeeks != null ? declaredWeeks / 4.345 : profile.backlogMonths ?? 0) > 12 ? '#ef4444' : '#d97706',
     },
     {
       label: 'Evidence',
@@ -443,8 +597,11 @@ function Row({ accent, children }: { accent: string; children: React.ReactNode }
   )
 }
 
-function NextUpRow({ pick, index, busy, onStart, onOpen }: {
-  pick: NextUpPick; index: number; busy: boolean; onStart: () => void; onOpen: () => void
+function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
+  pick: NextUpPick; index: number; busy: boolean
+  /** Which of the user's declared windows this item is actually for, if any. */
+  plan: ReturnType<typeof bestWindowFor>
+  onStart: () => void; onOpen: () => void
 }) {
   const e = pick.entry
   const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#7c3aed'
@@ -471,12 +628,62 @@ function NextUpRow({ pick, index, busy, onStart, onOpen }: {
           </p>
         )}
         <Reasons items={pick.reasons} accent={accent} />
+        {plan && (
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+            ⌚ {plan.reason}
+          </p>
+        )}
         <div style={{ marginTop: 10, maxWidth: 220 }}>
           <ScoreBar score={pick.score} accent={accent} />
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
         <Btn color={accent} filled onClick={onStart} disabled={busy}>Start</Btn>
+        <Btn onClick={onOpen}>Open</Btn>
+      </div>
+    </Row>
+  )
+}
+
+/** "Tonight", "Tomorrow", "Sun" — how far off a sitting is, in plain words. */
+function whenLabel(o: WindowOccurrence, now: Date): string {
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startDay = new Date(o.start.getFullYear(), o.start.getMonth(), o.start.getDate()).getTime()
+  const days = Math.round((startDay - midnight) / 86400000)
+  if (days === 0) return o.start.getHours() >= 17 ? 'TONIGHT' : 'TODAY'
+  if (days === 1) return 'TOMORROW'
+  // A weekly block comes round again inside the list, so the second Friday has
+  // to say which Friday it is -- otherwise it reads as a duplicate of tonight.
+  return (days >= 7 ? 'NEXT ' : '') + DAY_SHORT[o.start.getDay()].toUpperCase()
+}
+
+function FitRow({ pick, busy, onStart, onOpen }: {
+  pick: FitPick; busy: boolean; onStart: () => void; onOpen: () => void
+}) {
+  const e = pick.entry
+  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#7c3aed'
+  const fitColor = pick.fit === 'finish' ? '#22c55e' : pick.fit === 'dent' ? '#d97706' : 'var(--text-dim)'
+  return (
+    <Row accent={fitColor}>
+      <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.04em' }}>
+          {e.title}
+        </p>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          <Tag color={hobbyAccent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
+          <Tag color={fitColor}>{pick.fit === 'finish' ? 'finishes it' : "won't finish"}</Tag>
+          <Tag>{fmtHours(pick.hoursRemaining)} left</Tag>
+          {e.status === 'in_progress' && (
+            <Tag color={STATUS_COLORS.in_progress}>{STATUS_LABELS.in_progress}</Tag>
+          )}
+        </div>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mid)', margin: '8px 0 0', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+          {pick.reason}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+        {e.status === 'backlog' && <Btn color={fitColor} filled onClick={onStart} disabled={busy}>Start</Btn>}
         <Btn onClick={onOpen}>Open</Btn>
       </div>
     </Row>

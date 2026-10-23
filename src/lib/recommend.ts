@@ -244,6 +244,12 @@ export function discoverySlots(profile: TasteProfile): { slots: number; note: st
   return { slots: 1, note: `${Math.round(m / 12)} years of backlog at your current pace. Finish something first` }
 }
 
+/**
+ * Weeks of your own attention a borrowed brief is allowed to ask for. A quarter:
+ * long enough not to rule out a real game, short enough that the ceiling bites.
+ */
+const BORROWED_WEEKS = 12
+
 /** What to ask the catalog for, derived from the profile. */
 export interface DiscoveryBrief {
   category: HobbyCategory
@@ -252,23 +258,29 @@ export interface DiscoveryBrief {
   /** Soft upper bound on length, from the length model. */
   maxHours: number | null
   seeds: Array<{ source: string; id: string; title: string }>
+  /**
+   * Set when this category had no taste of its own and the genres were pooled
+   * from your other hobbies. Names the shelves that supplied them, so the UI can
+   * say where a suggestion came from rather than presenting a borrowed guess
+   * with the same confidence as a measured one.
+   */
+  borrowedFrom?: HobbyCategory[]
 }
 
 export function buildBrief(category: HobbyCategory, entries: Entry[], profile: TasteProfile): DiscoveryBrief | null {
   const taste = profile.byCategory[category]
-  if (!taste) return null
 
-  const include = taste.genres.filter((g) => g.score > 0.05 && g.evidence >= 1).slice(0, 4).map((g) => g.tag)
-  const avoid = taste.genres.filter((g) => g.score < -0.1 && g.evidence >= 1).slice(-4).map((g) => g.tag)
+  const include = taste ? taste.genres.filter((g) => g.score > 0.05 && g.evidence >= 1).slice(0, 4).map((g) => g.tag) : []
+  const avoid = taste ? taste.genres.filter((g) => g.score < -0.1 && g.evidence >= 1).slice(-4).map((g) => g.tag) : []
 
   // The longest bucket you still finish more than half the time, with a little
   // headroom. Null when there isn't enough evidence to draw a line.
   let maxHours: number | null = null
-  const good = taste.buckets.filter((b) => b.finished + b.abandoned >= 2 && b.raw != null && b.raw >= 0.5)
+  const good = taste ? taste.buckets.filter((b) => b.finished + b.abandoned >= 2 && b.raw != null && b.raw >= 0.5) : []
   if (good.length > 0) {
     const top = good[good.length - 1]
     maxHours = Number.isFinite(top.max) ? Math.round(top.max * 1.25) : null
-  } else if (taste.longestFinishedHours != null && taste.sample >= 4) {
+  } else if (taste && taste.longestFinishedHours != null && taste.sample >= 4) {
     maxHours = Math.round(taste.longestFinishedHours * 1.25)
   }
 
@@ -280,7 +292,38 @@ export function buildBrief(category: HobbyCategory, entries: Entry[], profile: T
     .slice(0, 3)
     .map((e) => ({ source: e.external_source!, id: e.external_id!, title: e.title }))
 
-  if (include.length === 0 && seeds.length === 0) return null
+  // Nothing of this category's own to go on -- which used to end the brief, and
+  // silently dropped the whole shelf out of Discover. Genre taste is not really a
+  // property of a shelf, though: someone who finishes sci-fi novels and bounces
+  // off romance wants the same from games. So pool the genres across every hobby
+  // and ask with those instead.
+  //
+  // Only ever a fallback. A category with any taste of its own uses it, because
+  // measured beats borrowed.
+  //
+  // Length can't be borrowed the way genre can -- a two-hour film says nothing
+  // about how long a game you'll finish. But leaving the ceiling off entirely is
+  // worse: asked with film genres and no bound, the catalog cheerfully offers a
+  // 1000-hour open-world game to someone whose longest finished thing is a
+  // novel. So the bound comes from the one cross-media fact there is, your own
+  // throughput -- about a season's worth of the hours you actually put in.
+  if (include.length === 0 && seeds.length === 0) {
+    const borrowed = profile.crossGenres
+      .filter((g) => g.score > 0.05 && g.evidence >= 1)
+      .slice(0, 4)
+      .map((g) => g.tag)
+    if (borrowed.length === 0) return null
+
+    const borrowedFrom = (Object.keys(profile.byCategory) as HobbyCategory[])
+      .filter((c) => c !== category && (profile.byCategory[c]?.sample ?? 0) > 0)
+    if (borrowedFrom.length === 0) return null
+
+    const seasonOfAttention = profile.pace.hoursPerWeek > 0
+      ? Math.round(profile.pace.hoursPerWeek * BORROWED_WEEKS)
+      : null
+    return { category, includeTags: borrowed, avoidTags: avoid, maxHours: seasonOfAttention, seeds, borrowedFrom }
+  }
+
   return { category, includeTags: include, avoidTags: avoid, maxHours, seeds }
 }
 
