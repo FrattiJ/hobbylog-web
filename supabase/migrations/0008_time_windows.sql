@@ -48,8 +48,14 @@ alter table public.web_time_windows enable row level security;
 
 -- Private, like fitness: when you're free is nobody else's business, and there
 -- is no friends-read policy here even though web_entries has one.
+--
+-- auth.uid() is wrapped in a scalar sub-select so the planner evaluates it once
+-- per statement rather than once per row -- the auth_rls_initplan fix that
+-- 20260810152345 applied to the tables existing at the time. The fitness tables
+-- added afterwards still use the bare call; this one is written correctly from
+-- the start rather than waiting for a second sweep.
 drop policy if exists web_time_windows_own on public.web_time_windows;
 create policy web_time_windows_own on public.web_time_windows
   for all to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
