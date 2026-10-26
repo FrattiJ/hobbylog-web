@@ -17,13 +17,20 @@ export function searchTypeFor(hobby: string): string | null {
   return null // gundams, fitness, art — manual only
 }
 
+// Every upstream here treats case and run-together spacing as noise, but a CDN
+// keys on the exact URL -- so "Hollow Knight", "hollow knight" and "hollow
+// knight " would be three separate cached answers to one question. Normalising
+// here is what turns a room full of people searching the same title into one
+// upstream call.
+const cacheKey = (q: string) => q.trim().toLowerCase().replace(/\s+/g, ' ')
+
 export async function searchCatalog(type: string, q: string): Promise<CatalogHit[]> {
   // Cap each lookup so a slow/unreachable upstream (e.g. a Cloudflare 522) can't
   // stall callers that loop over many titles, like the cover backfill.
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 9000)
   try {
-    const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+    const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&q=${encodeURIComponent(cacheKey(q))}`, { signal: ctrl.signal })
     if (!res.ok) return []
     const data = await res.json()
     return (data.results ?? []) as CatalogHit[]

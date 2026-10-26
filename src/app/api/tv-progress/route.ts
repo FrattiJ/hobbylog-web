@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { catalogCacheHeaders, noCacheHeaders, UPSTREAM_CACHE } from '@/lib/catalogCache'
 
 // Converts "I'm on Season S, Episode E" into a total-episodes-watched count by
 // summing the episode counts of seasons 1..S-1 (from TMDB) plus E. Mirrors the
@@ -11,19 +12,19 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id') ?? ''
   const season = parseInt(req.nextUrl.searchParams.get('season') ?? '', 10)
   const episode = parseInt(req.nextUrl.searchParams.get('episode') ?? '', 10)
-  if (!id || !TMDB || !season || !episode) return NextResponse.json({ episodes: null })
+  if (!id || !TMDB || !season || !episode) return NextResponse.json({ episodes: null }, { headers: noCacheHeaders })
 
   try {
     let total = 0
     for (let s = 1; s < season; s++) {
-      const r = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB}`)
+      const r = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB}`, UPSTREAM_CACHE)
       if (!r.ok) continue
       const d = await r.json()
       total += Array.isArray(d.episodes) ? d.episodes.length : 0
     }
     total += episode
-    return NextResponse.json({ episodes: total })
+    return NextResponse.json({ episodes: total }, { headers: catalogCacheHeaders })
   } catch {
-    return NextResponse.json({ episodes: null })
+    return NextResponse.json({ episodes: null }, { headers: noCacheHeaders })
   }
 }

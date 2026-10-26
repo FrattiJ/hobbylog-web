@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tvEpisodeRuntime } from '@/lib/tmdb'
+import { catalogCacheHeaders, noCacheHeaders, UPSTREAM_CACHE } from '@/lib/catalogCache'
 
 // Fetches per-title details for ONE picked result (too heavy to run for every
 // search row): movie runtime, TV episode count + per-episode runtime. Server-side
@@ -27,12 +28,12 @@ export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get('type') ?? ''
   const id = req.nextUrl.searchParams.get('id') ?? ''
   const empty = { progress_total: null as number | null, metadata: {} as Record<string, unknown> }
-  if (!id || !TMDB || (type !== 'movie' && type !== 'tv')) return NextResponse.json(empty)
+  if (!id || !TMDB || (type !== 'movie' && type !== 'tv')) return NextResponse.json(empty, { headers: noCacheHeaders })
 
   try {
     if (type === 'movie') {
-      const r = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=credits,watch/providers`)
-      if (!r.ok) return NextResponse.json(empty)
+      const r = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=credits,watch/providers`, UPSTREAM_CACHE)
+      if (!r.ok) return NextResponse.json(empty, { headers: noCacheHeaders })
       const d = await r.json()
       const crew = (d.credits?.crew as Raw[] | undefined) ?? []
       const director = crew.find((c) => c.job === 'Director')?.name as string | undefined
@@ -48,11 +49,11 @@ export async function GET(req: NextRequest) {
           streaming: watchProviders(d['watch/providers']),
           rating: (d.vote_average as number) || undefined,
         },
-      })
+      }, { headers: catalogCacheHeaders })
     }
     // tv
-    const r = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB}&append_to_response=watch/providers`)
-    if (!r.ok) return NextResponse.json(empty)
+    const r = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB}&append_to_response=watch/providers`, UPSTREAM_CACHE)
+    if (!r.ok) return NextResponse.json(empty, { headers: noCacheHeaders })
     const d = await r.json()
     const episodeRuntime = await tvEpisodeRuntime(id, d)
     const creator = Array.isArray(d.created_by) && d.created_by.length > 0 ? ((d.created_by as Raw[])[0].name as string) : undefined
@@ -73,8 +74,8 @@ export async function GET(req: NextRequest) {
         streaming: watchProviders(d['watch/providers']),
         rating: (d.vote_average as number) || undefined,
       },
-    })
+    }, { headers: catalogCacheHeaders })
   } catch {
-    return NextResponse.json(empty)
+    return NextResponse.json(empty, { headers: noCacheHeaders })
   }
 }

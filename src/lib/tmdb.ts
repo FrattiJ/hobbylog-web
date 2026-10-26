@@ -1,5 +1,7 @@
 // Server-only TMDB helpers (used by /api/search, /api/details, /api/recommend and
 // the daily TV refresh cron).
+import { UPSTREAM_CACHE, UPSTREAM_CACHE_WEEK } from '@/lib/catalogCache'
+
 const TMDB = process.env.TMDB_API_KEY
 
 type Raw = Record<string, unknown>
@@ -13,7 +15,7 @@ export async function tmdbGenreMap(type: 'movie' | 'tv'): Promise<Map<number, st
   if (cached) return cached
   const m = new Map<number, string>()
   try {
-    const r = await fetch(`https://api.themoviedb.org/3/genre/${type}/list?api_key=${TMDB}`)
+    const r = await fetch(`https://api.themoviedb.org/3/genre/${type}/list?api_key=${TMDB}`, UPSTREAM_CACHE_WEEK)
     if (r.ok) for (const g of (((await r.json()).genres as Raw[]) ?? [])) m.set(g.id as number, g.name as string)
   } catch { /* genres are best-effort — a hit without them still works */ }
   if (m.size > 0) genreCache[type] = m
@@ -45,7 +47,7 @@ export async function tvEpisodeRuntime(id: string, detail: Record<string, unknow
   const runtimes: number[] = []
   await Promise.all(seasonNums.map(async (s) => {
     try {
-      const r = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB}`)
+      const r = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${s}?api_key=${TMDB}`, UPSTREAM_CACHE)
       if (!r.ok) return
       const d = await r.json()
       for (const ep of (d.episodes as Array<{ runtime?: number }>) ?? []) {

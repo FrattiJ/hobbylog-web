@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tmdbGenreMap } from '@/lib/tmdb'
 import { igdbHeaders } from '@/lib/igdb'
+import { catalogCacheHeaders, noCacheHeaders, UPSTREAM_CACHE } from '@/lib/catalogCache'
 
 // Runs server-side on Vercel. API keys come from environment variables and never
 // reach the browser — this is what lets friends use the app with zero setup.
@@ -77,7 +78,7 @@ async function searchGamesIGDB(q: string): Promise<CatalogHit[]> {
 
 async function searchGamesRAWG(q: string): Promise<CatalogHit[]> {
   if (!RAWG) throw new Error('RAWG_API_KEY not configured')
-  const r = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(q)}&key=${RAWG}&page_size=12`)
+  const r = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(q)}&key=${RAWG}&page_size=12`, UPSTREAM_CACHE)
   if (!r.ok) throw new Error(`RAWG ${r.status}`)
   const d = await r.json()
   return ((d.results as Raw[]) ?? []).map((g) => {
@@ -117,7 +118,7 @@ async function searchGames(q: string): Promise<{ results: CatalogHit[]; igdb_err
 
 async function searchTMDB(q: string, type: 'movie' | 'tv'): Promise<CatalogHit[]> {
   if (!TMDB) throw new Error('TMDB_API_KEY not configured')
-  const r = await fetch(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(q)}&api_key=${TMDB}`)
+  const r = await fetch(`https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(q)}&api_key=${TMDB}`, UPSTREAM_CACHE)
   if (!r.ok) throw new Error(`TMDB ${r.status}`)
   const d = await r.json()
   const genreNames = await tmdbGenreMap(type)
@@ -179,7 +180,7 @@ async function searchMangaAniList(q: string): Promise<CatalogHit[]> {
 
 // Jikan/MyAnimeList fallback (whole series). Frequently 504s when MAL is down.
 async function searchMangaJikan(q: string): Promise<CatalogHit[]> {
-  const r = await fetch(`https://api.jikan.moe/v4/manga?q=${encodeURIComponent(q)}&limit=12&sfw=true`)
+  const r = await fetch(`https://api.jikan.moe/v4/manga?q=${encodeURIComponent(q)}&limit=12&sfw=true`, UPSTREAM_CACHE)
   if (!r.ok) throw new Error(`Jikan ${r.status}`)
   const d = await r.json()
   return ((d.data as Raw[]) ?? []).map((m) => {
@@ -247,7 +248,7 @@ function olSubjects(raw: unknown): string | undefined {
 }
 
 async function searchBooks(q: string): Promise<CatalogHit[]> {
-  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=key,title,author_name,cover_i,first_publish_year,number_of_pages_median,subject&limit=12`)
+  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=key,title,author_name,cover_i,first_publish_year,number_of_pages_median,subject&limit=12`, UPSTREAM_CACHE)
   if (!r.ok) throw new Error(`OpenLibrary ${r.status}`)
   const d = await r.json()
   return ((d.docs as Raw[]) ?? []).map((b) => ({
@@ -289,7 +290,7 @@ async function searchAudible(q: string): Promise<CatalogHit[]> {
   const url = `https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(q)}`
     + '&num_results=12&products_sort_by=Relevance'
     + '&response_groups=contributors,product_desc,product_attrs,media,category_ladders&image_sizes=500'
-  const r = await fetch(url)
+  const r = await fetch(url, UPSTREAM_CACHE)
   if (!r.ok) throw new Error(`Audible ${r.status}`)
   const d = await r.json()
   const names = (arr: unknown): string | undefined =>
@@ -316,11 +317,16 @@ async function searchAudible(q: string): Promise<CatalogHit[]> {
 export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get('type') ?? ''
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
-  if (!q) return NextResponse.json({ results: [] })
+  if (!q) return NextResponse.json({ results: [] }, { headers: noCacheHeaders })
   try {
     if (type === 'games') {
       const { results, igdb_error } = await searchGames(q)
-      return NextResponse.json({ results, ...(igdb_error ? { igdb_error } : {}) })
+      // A RAWG answer standing in for a failed IGDB lookup is the wrong one to
+      // pin in front of the real one for a day.
+      return NextResponse.json(
+        { results, ...(igdb_error ? { igdb_error } : {}) },
+        { headers: !igdb_error && results.length > 0 ? catalogCacheHeaders : noCacheHeaders },
+      )
     }
     let results: CatalogHit[] = []
     if (type === 'movie' || type === 'tv') results = await searchTMDB(q, type)
@@ -332,9 +338,9 @@ export async function GET(req: NextRequest) {
       if (results.length === 0) results = await searchBooks(q)
     }
     else if (type === 'books') results = await searchBooks(q)
-    return NextResponse.json({ results })
+    return NextResponse.json({ results }, { headers: results.length > 0 ? catalogCacheHeaders : noCacheHeaders })
   } catch (e) {
     // Degrade gracefully so the UI never breaks (e.g. before keys are set)
-    return NextResponse.json({ results: [], error: (e as Error).message })
+    return NextResponse.json({ results: [], error: (e as Error).message }, { headers: noCacheHeaders })
   }
 }
