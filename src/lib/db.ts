@@ -208,10 +208,34 @@ export async function setSteamPrefs(prefs: { sync_playtime?: boolean; auto_impor
 }
 
 
-export async function setAvatar(dataUrl: string | null): Promise<void> {
+const AVATAR_BUCKET = 'avatars'
+
+// Avatars go in a PUBLIC bucket, unlike photos: discover_users and search_users
+// already hand your avatar to every signed-in user by design, so there is no
+// privacy left for signing to protect -- only latency to lose. It also means
+// avatar_url can hold the CDN URL itself, so every <img src={avatar_url}> in the
+// app keeps working untouched, legacy data URLs included.
+export async function setAvatar(image: Blob | null): Promise<string | null> {
   const userId = await currentUserId()
-  await supabase.from('web_profile').upsert({ user_id: userId, avatar_url: dataUrl })
+  const path = `${userId}/avatar.jpg`
+  if (!image) {
+    await supabase.storage.from(AVATAR_BUCKET).remove([path])
+    await supabase.from('web_profile').upsert({ user_id: userId, avatar_url: null })
+    notifyProfileChanged()
+    return null
+  }
+  const { error: upErr } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, image, { contentType: 'image/jpeg', upsert: true })
+  if (upErr) throw upErr
+  const { data: pub } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+  // One fixed path per user keeps the bucket from collecting every face someone
+  // has ever had -- but it also means the CDN would happily go on serving the
+  // old one. The version string is what makes a change visible.
+  const url = `${pub.publicUrl}?v=${Date.now()}`
+  await supabase.from('web_profile').upsert({ user_id: userId, avatar_url: url })
   notifyProfileChanged()
+  return url
 }
 
 export async function linkSteam(steamId: string, persona: string | null): Promise<void> {
@@ -530,29 +554,83 @@ export async function deleteSession(id: string): Promise<void> {
 
 // ── Photos ──────────────────────────────────────────────────────────────────
 
+const PHOTO_BUCKET = 'photos'
+
+// An hour. A signed URL only has to outlive the gallery view that asked for it,
+// and a short window is the point of signing rather than making the bucket
+// public.
+const PHOTO_URL_TTL = 60 * 60
+
 export interface Photo {
   id: string
   entry_id: string
-  data_url: string
+  /** Ready to put in an <img src>: a signed Storage URL for photos saved since
+   *  they moved into the bucket, or the inline data URL for the handful saved
+   *  before. Callers should not care which. */
+  url: string
+  storage_path: string | null
   caption: string | null
   photo_type: string
   created_at: string
 }
 
-export async function getPhotosByEntry(entryId: string): Promise<Photo[]> {
-  const { data } = await supabase.from('web_photos').select('*').eq('entry_id', entryId).order('created_at', { ascending: true })
-  return (data ?? []) as Photo[]
+type PhotoRow = Omit<Photo, 'url'> & { data_url: string | null }
+
+// The photos bucket is private, so a storage_path is not yet something a browser
+// can load. Sign the whole batch in one call: a gallery of twelve photos should
+// cost one round trip, not twelve. A photo whose URL could not be produced is
+// dropped rather than rendered as a broken tile.
+async function withUrls(rows: PhotoRow[]): Promise<Photo[]> {
+  const paths = rows.map((r) => r.storage_path).filter((p): p is string => !!p)
+  const signed = new Map<string, string>()
+  if (paths.length > 0) {
+    const { data } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, PHOTO_URL_TTL)
+    for (const s of data ?? []) if (s.path && s.signedUrl) signed.set(s.path, s.signedUrl)
+  }
+  const out: Photo[] = []
+  for (const r of rows) {
+    const url = r.storage_path ? signed.get(r.storage_path) : r.data_url
+    if (url) out.push({ ...r, url })
+  }
+  return out
 }
 
-export async function insertPhoto(data: { entry_id: string; data_url: string; caption: string | null; photo_type: string }): Promise<Photo> {
+export async function getPhotosByEntry(entryId: string): Promise<Photo[]> {
+  const { data } = await supabase.from('web_photos').select('*').eq('entry_id', entryId).order('created_at', { ascending: true })
+  return withUrls((data ?? []) as PhotoRow[])
+}
+
+export async function insertPhoto(input: { entry_id: string; image: Blob; caption: string | null; photo_type: string }): Promise<Photo> {
   const user_id = await currentUserId()
-  const { data: row, error } = await supabase.from('web_photos').insert({ user_id, ...data }).select().single()
-  if (error) throw error
-  return row as Photo
+  // The shape of this path is load-bearing, not cosmetic: both storage policies
+  // read the owner out of the first segment and the entry out of the second.
+  const path = `${user_id}/${input.entry_id}/${crypto.randomUUID()}.jpg`
+  const { error: upErr } = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .upload(path, input.image, { contentType: 'image/jpeg', upsert: false })
+  if (upErr) throw upErr
+  const { data: row, error } = await supabase.from('web_photos').insert({
+    user_id,
+    entry_id: input.entry_id,
+    storage_path: path,
+    caption: input.caption,
+    photo_type: input.photo_type,
+  }).select().single()
+  if (error) {
+    // Otherwise the object sits in the bucket forever, billed, with no row
+    // pointing at it and nothing left that knows it exists.
+    await supabase.storage.from(PHOTO_BUCKET).remove([path])
+    throw error
+  }
+  const [photo] = await withUrls([row as PhotoRow])
+  return photo
 }
 
 export async function deletePhoto(id: string): Promise<void> {
+  const { data } = await supabase.from('web_photos').select('storage_path').eq('id', id).single()
+  const path = (data as { storage_path: string | null } | null)?.storage_path
   await supabase.from('web_photos').delete().eq('id', id)
+  if (path) await supabase.storage.from(PHOTO_BUCKET).remove([path])
 }
 
 // ── App notes (per-user, cloud-synced) ─────────────────────────────────────────

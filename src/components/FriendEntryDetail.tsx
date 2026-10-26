@@ -51,7 +51,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
             <button key={p.id} onClick={() => setLightbox(p)}
               style={{ position: 'relative', aspectRatio: '4/3', padding: 0, background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', cursor: 'pointer' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.data_url} alt={p.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={p.url} alt={p.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               {p.caption && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '3px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 11, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>{p.caption}</div>
               )}
@@ -177,7 +177,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
           <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} /></button>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800, width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox.data_url} alt={lightbox.caption ?? ''} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: '1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)' }} />
+            <img src={lightbox.url} alt={lightbox.caption ?? ''} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: '1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)' }} />
             {lightbox.caption && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center', margin: 0 }}>{lightbox.caption}</p>}
           </div>
         </div>

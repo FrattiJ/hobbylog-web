@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { Upload, Trash2, ImagePlus, X } from 'lucide-react'
 import { insertPhoto, deletePhoto, type Photo } from '@/lib/db'
-import { compressImage } from '@/lib/image'
+import { compressImageBlob } from '@/lib/image'
 import { mechInput } from './mechStyles'
 import { useToast } from './Toast'
 
@@ -45,7 +45,7 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${accent}44`; e.currentTarget.style.filter = 'none' }}
               onClick={() => onOpen(photo)}
             >
-              <img src={photo.data_url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={photo.url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               {photo.caption && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
                   {photo.caption}
@@ -69,7 +69,10 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
 
 export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }: PhotoGalleryProps) {
   const [busy, setBusy] = useState(false)
-  const [pending, setPending] = useState<string | null>(null) // compressed photo awaiting upload
+  // The compressed photo awaiting upload, plus a local object URL to preview it.
+  // The preview is not the thing that gets stored any more -- the Blob is -- so
+  // the URL has to be handed back when we're done with it.
+  const [pending, setPending] = useState<{ image: Blob; preview: string } | null>(null)
   const [caption, setCaption] = useState('')
   const [uploadType, setUploadType] = useState<PhotoType>('progress')
   const [lightbox, setLightbox] = useState<Photo | null>(null)
@@ -85,7 +88,8 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
     if (!file) return
     setBusy(true)
     try {
-      setPending(await compressImage(file))
+      const image = await compressImageBlob(file)
+      setPending({ image, preview: URL.createObjectURL(image) })
     } catch (err) {
       console.error('Photo processing failed:', err)
       toastError('Could not process that image — try another')
@@ -95,14 +99,19 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
     }
   }
 
+  function discard() {
+    if (pending) URL.revokeObjectURL(pending.preview)
+    setPending(null); setCaption('')
+  }
+
   // Step 2: after adding a caption, upload it.
   async function upload() {
     if (!pending) return
     setBusy(true)
     try {
-      const photo = await insertPhoto({ entry_id: entryId, data_url: pending, caption: caption.trim() || null, photo_type: uploadType })
+      const photo = await insertPhoto({ entry_id: entryId, image: pending.image, caption: caption.trim() || null, photo_type: uploadType })
       onPhotosChange([...photos, photo])
-      setPending(null); setCaption('')
+      discard()
     } catch (err) {
       console.error('Photo upload failed:', err)
       toastError('Upload failed — your photo was not saved')
@@ -174,7 +183,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
         {pending ? (
           <>
             {/* Preview */}
-            <img src={pending} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} />
+            <img src={pending.preview} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} />
             {/* Caption written after the photo is taken */}
             <input
               type="text"
@@ -190,7 +199,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '8px 12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
                 <Upload size={11} /> {busy ? 'UPLOADING…' : 'UPLOAD'}
               </button>
-              <button onClick={() => { setPending(null); setCaption('') }} disabled={busy}
+              <button onClick={discard} disabled={busy}
                 style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: busy ? 'wait' : 'pointer' }}>
                 DISCARD
               </button>
@@ -224,7 +233,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
           </button>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800, width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <img
-              src={lightbox.data_url}
+              src={lightbox.url}
               alt={lightbox.caption ?? ''}
               style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: `1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)` }}
             />

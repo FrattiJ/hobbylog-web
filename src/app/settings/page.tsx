@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount, isAdminUser, getFeedbackInbox, type FeedbackItem } from '@/lib/db'
-import { cropSquareAvatar } from '@/lib/image'
+import { cropSquareAvatarBlob } from '@/lib/image'
 import { getTheme, setTheme, getDisplaySize, setDisplaySize, type Theme, type DisplaySize } from '@/lib/theme'
 import { HOBBIES } from '@/lib/hobbies'
 import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
@@ -63,9 +63,7 @@ export default function SettingsPage() {
 
   async function pickAvatar(file: File) {
     try {
-      const dataUrl = await cropSquareAvatar(file)
-      await setAvatar(dataUrl)
-      setAvatarState(dataUrl)
+      setAvatarState(await setAvatar(await cropSquareAvatarBlob(file)))
     } catch { /* ignore bad image */ }
     if (avatarRef.current) avatarRef.current.value = ''
   }
