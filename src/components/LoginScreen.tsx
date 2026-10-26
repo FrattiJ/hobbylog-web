@@ -3,6 +3,20 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
+// Which providers to offer, e.g. NEXT_PUBLIC_OAUTH_PROVIDERS="google,discord".
+//
+// A provider button cannot be trusted to fail politely: signInWithOAuth
+// navigates straight to Supabase's authorize endpoint, so a provider that has
+// not had its client id and secret pasted into the Supabase dashboard yet does
+// not surface an error in the app at all -- it dumps the visitor on an
+// "Unsupported provider" page on another domain. Enabling the provider and
+// showing its button are therefore two halves of one change, and this is the
+// switch that keeps them together.
+const OAUTH_PROVIDERS = (process.env.NEXT_PUBLIC_OAUTH_PROVIDERS ?? '')
+  .split(',')
+  .map((p) => p.trim().toLowerCase())
+  .filter((p): p is 'google' | 'discord' => p === 'google' || p === 'discord')
+
 const CLIP = 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)'
 const ACCENT = '#7c3aed'
 
@@ -25,6 +39,21 @@ export default function LoginScreen() {
     if (error) setMessage({ kind: 'error', text: error.message })
     setBusy(false)
   }
+  // Signing in through a provider sends no email at all, which is the whole
+  // point of offering it: the built-in auth mailer is rate-limited to a couple
+  // of messages an hour across the entire project, so email + password is the
+  // narrow door. This one also skips the round trip through an inbox.
+  async function oauth(provider: 'google' | 'discord') {
+    setBusy(true); setMessage(null)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    })
+    // On success the browser is already leaving, so there is no state worth
+    // restoring -- an error is the only outcome that stays on this page.
+    if (error) { setMessage({ kind: 'error', text: error.message }); setBusy(false) }
+  }
+
   async function signUp() {
     setBusy(true); setMessage(null)
     // Send the email-confirmation link back to wherever they signed up (the live
@@ -43,6 +72,12 @@ export default function LoginScreen() {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
     borderLeft: `2px solid ${ACCENT}66`, padding: '11px 13px', color: 'var(--text-hi)',
     fontSize: 15, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em', outline: 'none',
+  }
+  const oauthBtn: React.CSSProperties = {
+    width: '100%', padding: '11px 13px', fontFamily: 'var(--font-display)', fontSize: 13,
+    fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-hi)', background: 'var(--bg-base)',
+    border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`,
+    cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.5 : 1,
   }
   const label: React.CSSProperties = {
     fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)',
@@ -67,6 +102,21 @@ export default function LoginScreen() {
         <div style={{ padding: '1px', clipPath: CLIP, background: `${ACCENT}55` }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 24, position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: ACCENT, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
+            {OAUTH_PROVIDERS.length > 0 && (
+              <>
+                {OAUTH_PROVIDERS.map((p) => (
+                  <button key={p} onClick={() => oauth(p)} disabled={busy} style={{ ...oauthBtn, marginBottom: 10 }}>
+                    CONTINUE WITH {p.toUpperCase()}
+                  </button>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 20px' }}>
+                  <span style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.2em' }}>OR</span>
+                  <span style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
+                </div>
+              </>
+            )}
+
             <p style={label}>EMAIL</p>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" style={{ ...inp, marginBottom: 16 }} />
             <p style={label}>PASSWORD</p>
