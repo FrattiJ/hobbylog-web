@@ -177,6 +177,70 @@ export function parseGoodreads(text: string): PreviewEntry[] {
 // ── MAL cover enrichment (Jikan / MyAnimeList) ───────────────────────────────
 
 // Fetch cover art (and missing totals) from Jikan for MAL entries, keyed by MAL id.
+// ── Jikan (MyAnimeList) ──────────────────────────────────────────────────────
+
+interface JikanNamed { name?: string }
+
+/**
+ * The taste-relevant fields of a Jikan record.
+ *
+ * Genres are the reason this exists. The suggestion engine scores on
+ * metadata.genres + metadata.themes (see lib/taste.ts tagsOf), so a MAL import
+ * that doesn't capture them produces a library the engine cannot read at all —
+ * which is exactly what happened to every anime imported before this: the record
+ * below was already being fetched for the cover, and everything but the cover and
+ * the episode count was being dropped on the floor.
+ *
+ * Jikan's vocabulary is also a better fit than TMDB's here. TMDB files anime
+ * under "Animation, Action & Adventure, Sci-Fi & Fantasy", which is true of
+ * almost every show in an anime-heavy library and so separates nothing; Jikan
+ * carries themes (Isekai, Military, Mecha) and demographics (Shounen, Seinen)
+ * that actually discriminate. Themes and demographics both land in
+ * metadata.themes, which tagsOf already reads.
+ */
+export function jikanMetadata(item: Record<string, unknown>): Record<string, unknown> {
+  const names = (v: unknown) =>
+    Array.isArray(v) ? (v as JikanNamed[]).map((x) => x.name).filter(Boolean).join(', ') : ''
+  const genres = names(item.genres)
+  // Themes and demographics are the fine-grained half of the signal; keep them
+  // under one key so tagsOf picks them up without needing to know the difference.
+  const themes = [names(item.themes), names(item.demographics)].filter(Boolean).join(', ')
+  // Jikan says "Finished Airing" / "Currently Airing"; taste.ts isOngoingSeries
+  // compares against TMDB's wording, so map onto that rather than inventing a
+  // third spelling of the same fact.
+  // Anime say "Currently Airing", manga say "Publishing"; both mean still going.
+  const status = String(item.status ?? '')
+  const airing = item.airing === true || status === 'Currently Airing' || status === 'Publishing'
+  // `year` is only set for seasonal shows; fall back to the start of the air date.
+  const airedFrom = (item.aired as { from?: string } | undefined)?.from
+  const year = Number(item.year) || Number(String(airedFrom ?? '').slice(0, 4)) || undefined
+  return {
+    genres: genres || undefined,
+    themes: themes || undefined,
+    show_status: airing ? 'Returning Series' : item.status ? 'Ended' : undefined,
+    in_production: item.status ? airing : undefined,
+    release_year: year,
+    // Community score, matching what the TMDB/IGDB paths put here. The user's own
+    // score is a column (Entry.rating), not metadata, so the two never collide.
+    rating: Number(item.score) || undefined,
+  }
+}
+
+/** Fetch one Jikan record's taste metadata by MAL id. `{}` if unavailable. */
+export async function fetchJikanMetadata(
+  type: 'anime' | 'manga',
+  malId: string | number,
+): Promise<Record<string, unknown>> {
+  try {
+    const res = await fetch(`https://api.jikan.moe/v4/${type}/${malId}`)
+    if (!res.ok) return {}
+    const item = (await res.json())?.data as Record<string, unknown>
+    return item ? jikanMetadata(item) : {}
+  } catch {
+    return {}
+  }
+}
+
 // Jikan allows 60 req/min, so requests are spaced ~1.1s apart. Failures (incl. MAL
 // outages) leave the entry untouched — the import still completes.
 export async function enrichMALWithJikan(
@@ -196,10 +260,14 @@ export async function enrichMALWithJikan(
       const item = (await res.json())?.data as Record<string, unknown>
       const images = item?.images as { jpg?: { large_image_url?: string; image_url?: string } } | undefined
       const cover = images?.jpg?.large_image_url ?? images?.jpg?.image_url ?? null
+      const meta = jikanMetadata(item ?? {})
       enriched.push({
         ...e,
         cover_url: cover ?? e.cover_url,
         progress_total: e.progress_total ?? ((type === 'anime' ? item?.episodes : item?.chapters) as number | null),
+        // Whatever the XML already established (mal_id) wins; the catalog only
+        // fills what the export didn't carry.
+        metadata: { ...meta, ...e.metadata },
       })
     } catch {
       enriched.push(e)
