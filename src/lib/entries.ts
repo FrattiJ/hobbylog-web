@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient'
 import { currentUserId } from './currentUser'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails } from './search'
+import { fetchJikanMetadata } from './importParsers'
 
 export interface WebEntry {
   id: string
@@ -183,6 +184,39 @@ function fillMissing(existing: Record<string, unknown>, fresh: Record<string, un
   return out
 }
 
+/**
+ * Enrich one entry that is ALREADY linked to a catalog row, by id.
+ *
+ * Worth having as its own path because a title search is both riskier and dearer
+ * than it looks. Riskier: an exact title match can still be the wrong work —
+ * OpenLibrary lists an astrophysics textbook called "The Three-Body Problem" —
+ * and a wrong match writes wrong genres, which is worse for the taste profile
+ * than no genres at all. Dearer: it spends a search call plus a details call per
+ * entry against catalog quotas that have to stay inside the free tiers.
+ *
+ * Returns null when the row's source has no by-id lookup, so the caller falls
+ * back to searching.
+ */
+async function enrichByExternalId(
+  e: WebEntry,
+): Promise<{ progress_total: number | null; metadata: Record<string, unknown> } | null> {
+  if (!e.external_id) return null
+  if (e.external_source === 'tmdb' && (e.hobby_category === 'tv' || e.hobby_category === 'movies')) {
+    const type = e.hobby_category === 'tv' ? 'tv' : 'movie'
+    const d = await fetchCatalogDetails(type, e.external_id)
+    return Object.keys(d.metadata).length ? d : null
+  }
+  // MAL ids come from the anime/manga importer. Jikan's genres, themes and
+  // demographics are finer-grained than TMDB's anime buckets, so for these rows
+  // going back to the original source beats re-searching a different one.
+  if (e.external_source === 'myanimelist') {
+    const malId = (e.metadata?.mal_id as string | undefined) ?? e.external_id
+    const meta = await fetchJikanMetadata(e.hobby_category === 'tv' ? 'anime' : 'manga', malId)
+    return Object.keys(meta).length ? { progress_total: null, metadata: meta } : null
+  }
+  return null
+}
+
 export async function backfillTaste(onProgress?: (done: number, total: number) => void): Promise<number> {
   const entries = await listEntries()
   const targets = entries.filter(needsTasteEnrichment)
@@ -191,6 +225,18 @@ export async function backfillTaste(onProgress?: (done: number, total: number) =
   for (let i = 0; i < targets.length; i++) {
     const e = targets[i]
     try {
+      // Use the link the row already has before falling back to a title search.
+      const byId = await enrichByExternalId(e)
+      if (byId) {
+        await updateEntry(e.id, {
+          metadata: fillMissing(e.metadata ?? {}, byId.metadata),
+          progress_total: e.progress_total ?? byId.progress_total,
+        }, { touch: false })
+        updated++
+        onProgress?.(i + 1, targets.length)
+        continue
+      }
+
       const type = searchTypeForEntry(e)!
       const results = await searchCatalog(type, e.title)
       const lower = e.title.toLowerCase()
