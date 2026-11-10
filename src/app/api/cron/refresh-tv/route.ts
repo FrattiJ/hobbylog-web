@@ -18,7 +18,8 @@ const SUPABASE_URL = 'https://zicyhxiquhxprhfgekdp.supabase.co'
 interface TvRow { id: string; external_id: string | null; status: string; progress_total: number | null; metadata: Record<string, unknown> | null }
 
 export async function GET(req: NextRequest) {
-  if (CRON_SECRET && req.headers.get('authorization') !== `Bearer ${CRON_SECRET}`) {
+  // Fail closed: without a configured secret nobody may trigger the job.
+  if (!CRON_SECRET || req.headers.get('authorization') !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
   if (!TMDB || !SERVICE) return NextResponse.json({ error: 'not_configured' }, { status: 503 })
