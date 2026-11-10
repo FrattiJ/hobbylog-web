@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/serverAuth'
 import { tvEpisodeRuntime } from '@/lib/tmdb'
 import { catalogCacheHeaders, noCacheHeaders, UPSTREAM_CACHE } from '@/lib/catalogCache'
 
@@ -25,10 +26,13 @@ function watchProviders(data: Raw | undefined): string | undefined {
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await requireUser(req)
+  if (denied) return denied
   const type = req.nextUrl.searchParams.get('type') ?? ''
   const id = req.nextUrl.searchParams.get('id') ?? ''
   const empty = { progress_total: null as number | null, metadata: {} as Record<string, unknown> }
-  if (!id || !TMDB || (type !== 'movie' && type !== 'tv')) return NextResponse.json(empty, { headers: noCacheHeaders })
+  // TMDB ids are numeric; anything else would be spliced into the upstream URL.
+  if (!/^\d{1,10}$/.test(id) || !TMDB || (type !== 'movie' && type !== 'tv')) return NextResponse.json(empty, { headers: noCacheHeaders })
 
   try {
     if (type === 'movie') {

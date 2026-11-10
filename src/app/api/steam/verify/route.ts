@@ -31,7 +31,16 @@ export async function GET(req: NextRequest) {
   }
   if (!valid) return NextResponse.redirect(`${base}/import?steam_error=verify`)
 
-  const steamId = (params.get('openid.claimed_id') ?? '').match(/(\d{17})\/?$/)?.[1]
+  // Steam vouched for the signature; also insist the assertion is Steam's own,
+  // was made for this app, and names a Steam account in the exact form Steam
+  // issues. A loose "ends in 17 digits" match would accept any URL.
+  const fromSteam = params.get('openid.op_endpoint') === 'https://steamcommunity.com/openid/login'
+  const forUs = (params.get('openid.return_to') ?? '').startsWith(`${base}/api/steam/verify`)
+  const signed = (params.get('openid.signed') ?? '').split(',')
+  const coversId = signed.includes('claimed_id') && signed.includes('identity') && signed.includes('return_to')
+  if (!fromSteam || !forUs || !coversId) return NextResponse.redirect(`${base}/import?steam_error=verify`)
+
+  const steamId = (params.get('openid.claimed_id') ?? '').match(/^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/)?.[1]
   if (!steamId) return NextResponse.redirect(`${base}/import?steam_error=noid`)
 
   // Best-effort persona name for a friendly "Connected as …" label.

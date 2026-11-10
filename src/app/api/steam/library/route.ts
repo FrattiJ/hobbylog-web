@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/serverAuth'
 
 // Reads a user's owned games + playtime using the app's single shared Steam Web API
 // key (server-side env var, never exposed to the browser). The caller passes only a
@@ -16,6 +17,8 @@ export interface SteamLibGame {
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await requireUser(req)
+  if (denied) return denied
   const steamid = req.nextUrl.searchParams.get('steamid') ?? ''
   if (!/^\d{17}$/.test(steamid)) return NextResponse.json({ error: 'bad_steamid' }, { status: 400 })
   if (!STEAM) return NextResponse.json({ error: 'not_configured' }, { status: 503 })

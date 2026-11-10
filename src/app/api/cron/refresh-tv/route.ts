@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { tvEpisodeRuntime } from '@/lib/tmdb'
+import { SUPABASE_URL } from '@/lib/supabaseConfig'
 
 // Daily job (see vercel.json): refresh every TMDB-linked TV show's episode count
 // and per-episode runtime, and flip a completed show back to In Progress when it
@@ -13,7 +14,6 @@ export const dynamic = 'force-dynamic'
 const TMDB = process.env.TMDB_API_KEY
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY
 const CRON_SECRET = process.env.CRON_SECRET
-const SUPABASE_URL = 'https://zicyhxiquhxprhfgekdp.supabase.co'
 
 interface TvRow { id: string; external_id: string | null; status: string; progress_total: number | null; metadata: Record<string, unknown> | null }
 

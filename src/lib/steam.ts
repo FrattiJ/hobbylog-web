@@ -1,5 +1,6 @@
 import { getEntriesByHobby, updateEntry, insertEntry } from '@/lib/db'
 import { searchCatalog } from '@/lib/search'
+import { apiAuthHeaders } from '@/lib/apiAuth'
 
 export interface SteamGame { appid: number; name: string; playtime_hours: number; last_played: string | null }
 
@@ -10,7 +11,7 @@ function normalizeTitle(t: string): string {
 
 // Fetch the linked account's library via our server route (which holds the API key).
 export async function fetchSteamLibrary(steamId: string): Promise<SteamGame[]> {
-  const r = await fetch(`/api/steam/library?steamid=${encodeURIComponent(steamId)}`)
+  const r = await fetch(`/api/steam/library?steamid=${encodeURIComponent(steamId)}`, { headers: await apiAuthHeaders() })
   const d = await r.json().catch(() => ({}))
   if (d.error === 'not_configured') throw new Error("Steam isn't set up on the server yet — the STEAM_API_KEY env var is missing.")
   if (d.error === 'bad_key') throw new Error('The server\'s Steam API key was rejected. Double-check STEAM_API_KEY in Vercel.')

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/serverAuth'
 import { tmdbGenreMap } from '@/lib/tmdb'
 import { igdbHeaders } from '@/lib/igdb'
 import { catalogCacheHeaders, noCacheHeaders, UPSTREAM_CACHE } from '@/lib/catalogCache'
@@ -315,8 +316,10 @@ async function searchAudible(q: string): Promise<CatalogHit[]> {
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await requireUser(req)
+  if (denied) return denied
   const type = req.nextUrl.searchParams.get('type') ?? ''
-  const q = (req.nextUrl.searchParams.get('q') ?? '').trim()
+  const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 200)
   if (!q) return NextResponse.json({ results: [] }, { headers: noCacheHeaders })
   try {
     if (type === 'games') {

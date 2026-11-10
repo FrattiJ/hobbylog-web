@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/serverAuth'
 import { tmdbGenreMap, tmdbGenreIds, tvEpisodeRuntime } from '@/lib/tmdb'
 import { igdbConfigured, igdbQuery, igdbTagIds, igdbTimeToBeat } from '@/lib/igdb'
 import { catalogHours } from '@/lib/hours'
@@ -409,11 +410,27 @@ async function runBrief(brief: Brief, ctx: Ctx): Promise<CandidateRow[]> {
   return ranked.slice(0, CANDIDATES_PER_CATEGORY)
 }
 
+// Each seed and tag turns into upstream calls, so a request only gets so many.
+const MAX_SEEDS = 10
+const MAX_TAGS = 12
+
+function boundBrief(b: Brief): Brief {
+  const strings = (xs: unknown) => (Array.isArray(xs) ? xs.filter((x): x is string => typeof x === 'string').slice(0, MAX_TAGS) : [])
+  return {
+    ...b,
+    includeTags: strings(b.includeTags),
+    avoidTags: strings(b.avoidTags),
+    seeds: Array.isArray(b.seeds) ? b.seeds.slice(0, MAX_SEEDS) : [],
+  }
+}
+
 export async function POST(req: NextRequest) {
+  const denied = await requireUser(req)
+  if (denied) return denied
   let briefs: Brief[] = []
   try {
     const body = await req.json()
-    briefs = Array.isArray(body?.briefs) ? (body.briefs as Brief[]).slice(0, 6) : []
+    briefs = Array.isArray(body?.briefs) ? (body.briefs as Brief[]).slice(0, 6).map(boundBrief) : []
   } catch {
     return NextResponse.json({ candidates: [], error: 'bad_request' }, { status: 400 })
   }

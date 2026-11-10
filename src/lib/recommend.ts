@@ -1,5 +1,6 @@
 import type { Entry, HobbyCategory } from '@/types/database'
 import { HOBBY_MAP } from './hobbies'
+import { apiAuthHeaders } from './apiAuth'
 import {
   bucketFor, entryHours, isOngoingSeries, parseTags, tagsOf,
   type CategoryTaste, type TasteProfile,
@@ -398,7 +399,7 @@ export async function fetchCandidates(briefs: Array<DiscoveryBrief & { subtype?:
   try {
     const res = await fetch('/api/recommend', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await apiAuthHeaders()) },
       body: JSON.stringify({ briefs }),
       signal: ctrl.signal,
     })
