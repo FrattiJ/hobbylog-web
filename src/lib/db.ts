@@ -491,10 +491,6 @@ export async function submitFeedback(kind: 'bug' | 'feature', message: string): 
   if (error) throw error
 }
 
-// The one account that can read the feedback inbox. Supabase stores emails
-// lower-cased, so compare that way rather than trusting the literal casing.
-const ADMIN_EMAIL = 'admin@example.com'
-
 export async function currentUserEmail(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
   return data.session?.user?.email ?? null
@@ -510,7 +506,7 @@ export interface FeedbackItem {
   email: string | null
 }
 
-// Admin-only. The RPC re-checks the admin email server-side from the JWT, so a
+// Admin-only. The RPC re-checks admin status server-side from the JWT, so a
 // non-admin who calls this just gets a "not authorized" error, never data.
 export async function getFeedbackInbox(): Promise<FeedbackItem[]> {
   const { data, error } = await supabase.rpc('admin_feedback')
@@ -518,8 +514,13 @@ export async function getFeedbackInbox(): Promise<FeedbackItem[]> {
   return (data ?? []) as FeedbackItem[]
 }
 
+// Whether to show the inbox card. Admins are listed by user id in the
+// app_admins table (see migration 0011); this is only a UI hint, the RPC above
+// is the real check.
 export async function isAdminUser(): Promise<boolean> {
-  return (await currentUserEmail())?.toLowerCase() === ADMIN_EMAIL
+  const { data, error } = await supabase.rpc('is_admin')
+  if (error) return false
+  return data === true
 }
 
 // Permanently delete the current user's account and all their data.
