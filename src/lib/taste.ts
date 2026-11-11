@@ -92,9 +92,6 @@ export function progressFraction(e: Entry): number | null {
     const full = entryHours(e)
     return full > 0 ? Math.min(1, cur / full) : null
   }
-  if (e.hobby_category === 'movies' || (e.hobby_category === 'books' && e.book_subtype === 'audiobook')) {
-    return Math.min(1, cur / 100) // tracked as a percentage
-  }
   if (total > 0) return Math.min(1, cur / total)
   return null
 }

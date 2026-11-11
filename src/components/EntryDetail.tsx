@@ -65,8 +65,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   }, [entry.id])
   useEffect(() => { loadExtras() }, [loadExtras])
 
+  // Movies and audiobooks measure both sides in minutes, books in pages, TV in
+  // episodes — current and total are always the same unit, so the bar is just
+  // their ratio. A missing total leaves the bar off rather than inventing 100.
   const effectiveTotal = (progressTotal ? parseFloat(progressTotal) : null)
-    || (entry.hobby_category === 'movies' ? 100 : null)
     || (entry.hobby_category === 'games' && entry.metadata?.time_to_beat ? Number(entry.metadata.time_to_beat) : null)
   const progressPct = effectiveTotal ? Math.round(((parseFloat(progressCurrent) || 0) / effectiveTotal) * 100) : null
   const isCompleted = status === 'completed'
@@ -232,6 +234,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     // progress rather than asking for the same number twice.
     let prog = sProgress ? parseFloat(sProgress) : null
     if (isGameEntry && dur > 0) prog = Math.round((dur / 60) * 10) / 10
+    // Movies and audiobooks count minutes, so a sitting's length is its progress.
+    else if (prog == null && dur > 0 && (entry.hobby_category === 'movies' || (entry.hobby_category === 'books' && entry.book_subtype === 'audiobook'))) prog = dur
     if (!dur && prog == null && !sNotes.trim()) return
     setBusy(true)
     try {

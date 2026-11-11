@@ -36,7 +36,11 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
       const update: Record<string, unknown> = {}
       if (selected.status === 'backlog') { update.status = 'in_progress'; update.date_started = date }
       let inc = prog
+      // Where the session's length IS the progress, don't ask for the same
+      // number twice: games count hours, movies and audiobooks count minutes.
+      const isAudiobook = selected.hobby_category === 'books' && selected.book_subtype === 'audiobook'
       if (selected.hobby_category === 'games' && prog == null && dur) inc = Math.round((dur / 60) * 10) / 10
+      else if ((selected.hobby_category === 'movies' || isAudiobook) && prog == null && dur) inc = dur
       if (inc && inc > 0) {
         const total = selected.progress_total || (selected.hobby_category === 'games' && selected.metadata?.time_to_beat ? Number(selected.metadata.time_to_beat) : null) || Number.MAX_SAFE_INTEGER
         update.progress_current = Math.round(Math.min((selected.progress_current || 0) + inc, total) * 10) / 10

@@ -104,8 +104,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     }
 
     if (total != null) {
-      // Audiobooks track listening runtime — estimate minutes from page count (~26 pg/hr)
-      const shown = hobbyId === 'books' && bookSubtype === 'audiobook'
+      // Audiobooks are measured in minutes of listening. Audible answers in
+      // minutes already; only a page count (OpenLibrary) needs the ~26 pg/hr
+      // estimate to become one.
+      const shown = hobbyId === 'books' && bookSubtype === 'audiobook' && hit.external_source !== 'audible'
         ? Math.round((total / 26) * 60)
         : total
       setProgressTotal(String(shown))

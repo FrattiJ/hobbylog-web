@@ -26,7 +26,6 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
     : hobby?.progressUnit
 
   const effectiveProgressTotal = entry.progress_total
-    || (entry.hobby_category === 'movies' ? 100 : null)
     || (entry.hobby_category === 'games' && entry.metadata?.time_to_beat ? Number(entry.metadata.time_to_beat) : null)
   const progress = effectiveProgressTotal
     ? Math.min(100, Math.round((entry.progress_current / effectiveProgressTotal) * 100))
@@ -154,14 +153,7 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)' }}>
-                  {(() => {
-                    const isAudiobook = entry.hobby_category === 'books' && entry.book_subtype === 'audiobook'
-                    const isMovie = entry.hobby_category === 'movies'
-                    if (isAudiobook || isMovie) {
-                      return ''
-                    }
-                    return `${entry.progress_current}/${effectiveProgressTotal} ${progressUnit}`
-                  })()}
+                  {`${entry.progress_current}/${effectiveProgressTotal} ${progressUnit}`}
                 </span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: accent }}>
                   {progress}%

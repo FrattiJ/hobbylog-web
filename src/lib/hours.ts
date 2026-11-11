@@ -67,7 +67,10 @@ export function calcHours(items: Entry[], basis: 'full' | 'spent'): number {
       const ttb = Number(e.metadata?.time_to_beat) || 0
       total += basis === 'spent' ? played : (played > 0 ? played : ttb)
     } else if (e.hobby_category === 'movies' && e.progress_total) {
-      total += e.progress_total / 60 // runtime, stored in minutes
+      // Runtime and minutes watched are both in minutes.
+      total += basis === 'full'
+        ? e.progress_total / 60
+        : Math.min(e.progress_total, Number(e.progress_current) || 0) / 60
     } else if (e.hobby_category === 'tv') {
       const episodes = basis === 'full' ? e.progress_total : e.progress_current
       if (episodes) {
@@ -76,12 +79,13 @@ export function calcHours(items: Entry[], basis: 'full' | 'spent'): number {
       }
     } else if (e.hobby_category === 'books') {
       if (e.book_subtype === 'audiobook') {
-        // Prefer the real Audible listening length (minutes); fall back to a
-        // page-based estimate for older OpenLibrary-sourced audiobooks. Progress
-        // is tracked as a %, so scale the full length by it for 'spent'.
-        const realMin = Number(e.metadata?.audio_runtime_min) || 0
+        // Audiobooks are minutes on both sides: progress_total is the listening
+        // length, progress_current the minutes listened. Prefer Audible's real
+        // runtime over the stored total, and fall back to a page-based estimate
+        // for the older OpenLibrary rows that have neither.
+        const realMin = Number(e.metadata?.audio_runtime_min) || Number(e.progress_total) || 0
         const fullH = realMin > 0 ? realMin / 60 : bookHours(e, Number(e.progress_total) || 0)
-        total += basis === 'full' ? fullH : fullH * Math.min(1, (Number(e.progress_current) || 0) / 100)
+        total += basis === 'full' ? fullH : Math.min(fullH, (Number(e.progress_current) || 0) / 60)
       } else {
         // Reading/manga/comics: estimate from page/chapter counts.
         const count = basis === 'full' ? Number(e.progress_total) || 0 : Number(e.progress_current) || 0

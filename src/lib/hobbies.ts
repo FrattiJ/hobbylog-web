@@ -39,8 +39,8 @@ export const HOBBIES: HobbyConfig[] = [
     pluralLabel: 'Movies',
     accent: '#dc2626',
     icon: 'Film',
-    progressLabel: 'Watch Progress',
-    progressUnit: '%',
+    progressLabel: 'Minutes Watched',
+    progressUnit: 'min',
     manualOnly: false,
     apiSource: 'tmdb',
   },
@@ -129,7 +129,7 @@ export interface BookSubtypeConfig {
 
 export const BOOK_SUBTYPES: BookSubtypeConfig[] = [
   { id: 'book',         label: 'Book',         progressLabel: 'Page',    progressUnit: 'pg',  api: 'openlibrary' },
-  { id: 'audiobook',    label: 'Audiobook',     progressLabel: 'Progress', progressUnit: '%',  api: 'openlibrary' },
+  { id: 'audiobook',    label: 'Audiobook',     progressLabel: 'Minutes', progressUnit: 'min', api: 'openlibrary' },
   { id: 'manga',        label: 'Manga',         progressLabel: 'Chapter', progressUnit: 'ch',  api: 'jikan', hasVolume: true },
   { id: 'comic',        label: 'Comic',         progressLabel: 'Issue',   progressUnit: 'issue',   api: 'openlibrary' },
   { id: 'webtoon',      label: 'Webtoon',       progressLabel: 'Episode', progressUnit: 'ep',  api: null },
