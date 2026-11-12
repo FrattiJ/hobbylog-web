@@ -1,10 +1,18 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.10.0'
+export const APP_VERSION = '0.10.1'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.10.1',
+    date: 'Nov 2026',
+    items: [
+      'Forgot your password? The sign-in screen can now email you a link to choose a new one',
+      'Change your password any time from Settings, under Account',
+    ],
+  },
   {
     version: '0.10.0',
     date: 'Oct 2026',

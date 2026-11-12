@@ -12,6 +12,7 @@ import { HOBBY_ICON_MAP } from '@/components/hobbyIcons'
 import { useHobbies } from '@/components/HobbyContext'
 import ExportPanel from '@/components/ExportPanel'
 import TimeWindowsPanel from '@/components/TimeWindowsPanel'
+import NewPasswordForm from '@/components/NewPasswordForm'
 
 const ACCENT = '#7c3aed'
 
@@ -39,6 +40,8 @@ export default function SettingsPage() {
   const [savingName, setSavingName] = useState(false)
   const [avatar, setAvatarState] = useState<string | null>(null)
   const avatarRef = useRef<HTMLInputElement>(null)
+  const [pwOpen, setPwOpen] = useState(false)
+  const [pwMsg, setPwMsg] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? ''))
@@ -149,8 +152,19 @@ export default function SettingsPage() {
         </div>
         {usernameMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{usernameMsg}</p>}
 
-        <button onClick={() => supabase.auth.signOut()}
-          style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>SIGN OUT</button>
+        {pwOpen && (
+          <div style={{ maxWidth: 360, margin: '0 0 16px' }}>
+            <NewPasswordForm submitLabel="UPDATE PASSWORD" onDone={() => { setPwOpen(false); setPwMsg('Password updated.') }} />
+          </div>
+        )}
+        {pwMsg && <p role="status" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{pwMsg}</p>}
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => { setPwOpen((o) => !o); setPwMsg(null) }}
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>{pwOpen ? 'CANCEL' : 'CHANGE PASSWORD'}</button>
+          <button onClick={() => supabase.auth.signOut()}
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>SIGN OUT</button>
+        </div>
       </div>
 
       {/* Import & sync */}

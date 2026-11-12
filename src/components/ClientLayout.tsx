@@ -4,10 +4,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, arrivedViaRecoveryLink } from '@/lib/supabaseClient'
 import { useIsMobile } from '@/lib/useIsMobile'
 import Sidebar from './Sidebar'
 import LoginScreen from './LoginScreen'
+import ResetPasswordScreen from './ResetPasswordScreen'
 import OnboardingSelector from './OnboardingSelector'
 import WhatsNew from './WhatsNew'
 import { HobbyContext } from './HobbyContext'
@@ -24,6 +25,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
+  // Set while a password-reset link's session is waiting on a new password.
+  // Seeded from the URL the page opened with, because the client's own
+  // PASSWORD_RECOVERY event can fire before the subscription below exists.
+  const [recovering, setRecovering] = useState(arrivedViaRecoveryLink)
   const [profile, setProfile] = useState<WebProfile | null>(null)
   const [profileReady, setProfileReady] = useState(false)
   const [enabledIds, setEnabledIds] = useState<HobbyCategory[]>(HOBBIES.map((h) => h.id))
@@ -33,7 +38,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     applyTheme(getTheme())
     applyDisplaySize(getDisplaySize())
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true) })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+      // Backing out of the reset must not leave the next sign-in stuck on it.
+      if (event === 'SIGNED_OUT') setRecovering(false)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -78,6 +88,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   if (!ready) return loading
   if (!session) return <LoginScreen />
+  if (recovering) return <ResetPasswordScreen onDone={() => setRecovering(false)} />
   if (!profileReady) return loading
   if (profile && !profile.onboarded) return <OnboardingSelector onComplete={handleOnboardingComplete} />
 
