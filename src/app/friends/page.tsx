@@ -12,6 +12,7 @@ import {
 import { HOBBY_MAP, statusLabelFor } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
 import FriendLibrary from '@/components/FriendLibrary'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const GREEN = '#22c55e'
 
@@ -48,6 +49,7 @@ function Avatar({ url, name, size = 30 }: { url: string | null; name: string; si
 }
 
 export default function FriendsPage() {
+  const confirm = useConfirm()
   const [selected, setSelected] = useState<{ id: string; username: string; avatar_url: string | null; entryId?: string } | null>(null)
   const [myHandle, setMyHandle] = useState('')
 
@@ -104,7 +106,15 @@ export default function FriendsPage() {
   }
 
   async function respond(id: string, accept: boolean) { await respondToRequest(id, accept); load() }
-  async function unfriend(id: string) { await removeFriend(id); load() }
+  async function unfriend(id: string, name: string) {
+    if (!(await confirm({
+      title: `Remove ${name} as a friend?`,
+      body: 'You will stop seeing each other\u2019s libraries. You can send a new request later.',
+      confirmLabel: 'Remove Friend',
+      danger: true,
+    }))) return
+    await removeFriend(id); load()
+  }
 
   async function unsend(r: FriendView) {
     setMsg(null)
@@ -227,7 +237,7 @@ export default function FriendsPage() {
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#099bbe')}>View Logs</button>
-                <button onClick={() => unfriend(f.id)} style={smallBtn('#f15959')}>Remove</button>
+                <button onClick={() => unfriend(f.id, f.username)} style={smallBtn('#f15959')}>Remove</button>
               </div>
             </div>
           ))}

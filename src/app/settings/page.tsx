@@ -13,6 +13,7 @@ import { useHobbies } from '@/components/HobbyContext'
 import ExportPanel from '@/components/ExportPanel'
 import TimeWindowsPanel from '@/components/TimeWindowsPanel'
 import NewPasswordForm from '@/components/NewPasswordForm'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const ACCENT = '#a577f2'
 
@@ -21,8 +22,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('')
   const [theme, setThemeState] = useState<Theme>(() => getTheme())
   const [displaySize, setDisplaySizeState] = useState<DisplaySize>(() => getDisplaySize())
-  const [clearConfirm, setClearConfirm] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const confirm = useConfirm()
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -96,18 +96,28 @@ export default function SettingsPage() {
 
 
   async function clearData() {
-    if (!clearConfirm) { setClearConfirm(true); return }
+    if (!(await confirm({
+      title: 'Clear every entry?',
+      body: 'This removes your whole library: every entry, with its sessions, photos and notes. Your account, friends and settings stay. It cannot be undone, so export first if you might want it back.',
+      confirmLabel: 'Clear All Data',
+      danger: true,
+    }))) return
     await clearAllData()
-    setClearConfirm(false); setMsg('All entries cleared.')
+    setMsg('All entries cleared.')
   }
 
   async function deleteAccount() {
-    if (!deleteConfirm) { setDeleteConfirm(true); return }
+    if (!(await confirm({
+      title: 'Delete your account?',
+      body: 'This permanently deletes your profile, your library, your workouts and your friendships, and signs you out. It cannot be undone.',
+      confirmLabel: 'Delete Account',
+      danger: true,
+    }))) return
     setDeleteBusy(true)
     try {
       await deleteMyAccount()
       await supabase.auth.signOut()
-    } catch { setMsg('Could not delete account — please try again.'); setDeleteBusy(false); setDeleteConfirm(false) }
+    } catch { setMsg('Could not delete account — please try again.'); setDeleteBusy(false) }
   }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: 20, marginBottom: 16 }
@@ -297,11 +307,11 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={clearData}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'transparent', border: '1px solid #f1595955', cursor: 'pointer' }}>
-            <Trash2 size={13} /> {clearConfirm ? 'Click Again to Confirm' : 'Clear All Data'}
+            <Trash2 size={13} /> Clear All Data
           </button>
           <button onClick={deleteAccount} disabled={deleteBusy}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#fff', background: '#c62828', border: '1px solid #c62828', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
-            <Trash2 size={13} /> {deleteBusy ? 'Deleting…' : deleteConfirm ? 'Click Again to Confirm' : 'Delete Account'}
+            <Trash2 size={13} /> {deleteBusy ? 'Deleting…' : 'Delete Account'}
           </button>
         </div>
         {msg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', marginTop: 12 }}>{msg}</p>}

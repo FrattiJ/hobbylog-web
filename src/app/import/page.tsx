@@ -213,7 +213,7 @@ export default function ImportPage() {
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>
                 Link your Steam account to pull in your library and keep game playtime in sync — one click, no setup.
               </p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7, opacity: 0.85 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7 }}>
                 Your Steam <span style={{ color: 'var(--text-mid)' }}>Game Details</span> privacy must be set to Public (Profile → Edit Profile → Privacy Settings) for playtime to be readable.
               </p>
               <button onClick={connectSteam}

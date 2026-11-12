@@ -6,6 +6,7 @@ import { deleteBodyweight, evaluateGoals, listBodyweight, setBodyweight, type Bo
 import { isoDay } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import { Button, Input, Label, Modal, ACCENT } from './ui'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const BLUE = '#099bbe'
 
@@ -139,6 +140,7 @@ export function WeighInModal({ existing, onClose, onSaved }: {
   onSaved: () => void
 }) {
   const { success, error: toastError } = useToast()
+  const confirm = useConfirm()
   const [date, setDate] = useState(isoDay(new Date()))
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
@@ -164,6 +166,7 @@ export function WeighInModal({ existing, onClose, onSaved }: {
   }
 
   async function remove() {
+    if (!(await confirm({ title: 'Remove this weigh-in?', body: 'The reading for that day will be deleted.', confirmLabel: 'Remove Weigh-In', danger: true }))) return
     setSaving(true)
     try {
       await deleteBodyweight(date)

@@ -6,6 +6,7 @@ import { insertPhoto, deletePhoto, type Photo } from '@/lib/db'
 import { compressImageBlob } from '@/lib/image'
 import { mechInput } from './mechStyles'
 import { useToast } from './Toast'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface PhotoGalleryProps {
   entryId: string
@@ -78,6 +79,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   const [lightbox, setLightbox] = useState<Photo | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { error: toastError } = useToast()
+  const confirm = useConfirm()
 
   const progressPhotos = photos.filter((p) => p.photo_type === 'progress')
   const completedPhotos = photos.filter((p) => p.photo_type === 'completed')
@@ -121,6 +123,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   }
 
   async function handleDelete(id: string) {
+    if (!(await confirm({ title: 'Delete this photo?', body: 'This cannot be undone.', confirmLabel: 'Delete Photo', danger: true }))) return
     try {
       await deletePhoto(id)
       onPhotosChange(photos.filter((p) => p.id !== id))

@@ -8,6 +8,7 @@ import { PR_KINDS, bodyweightGoalPct, fmtPrValue, parseDuration, type PrKind } f
 import { useToast } from '../Toast'
 import { Button, Input, Select, Label, Empty, Modal, ACCENT } from './ui'
 import ExercisePicker from './ExercisePicker'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 // Goal metrics are the PR kinds you'd actually chase, plus a whole-practice count.
 // 'volume' is a PR kind but a poor goal, so it isn't offered.
@@ -38,6 +39,7 @@ function isTimeMetric(m: GoalMetric): boolean {
 
 export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
   const { success, error: toastError } = useToast()
+  const confirm = useConfirm()
   const [goals, setGoals] = useState<GoalProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -48,6 +50,7 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
   const byId = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises])
 
   async function remove(id: string) {
+    if (!(await confirm({ title: 'Delete this goal?', body: 'This cannot be undone.', confirmLabel: 'Delete Goal', danger: true }))) return
     try { await deleteGoal(id); reload() } catch { toastError('Could not delete that goal') }
   }
 

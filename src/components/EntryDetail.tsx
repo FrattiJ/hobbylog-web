@@ -16,6 +16,7 @@ import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 import { formatDay } from '@/lib/format'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 const ACCENT = '#a577f2'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
@@ -29,6 +30,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const accent = hobby?.accent ?? ACCENT
   const isMobile = useIsMobile()
   const { error: toastError } = useToast()
+  const confirm = useConfirm()
 
   const [status, setStatus] = useState(entry.status)
   const [isPrivate, setIsPrivate] = useState(!!entry.is_private)
@@ -254,7 +256,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   }
 
   async function remove() {
-    if (!confirm(`Delete "${entry.title}"?`)) return
+    if (!(await confirm({
+      title: `Delete “${entry.title}”?`,
+      body: 'Its sessions, photos and notes go with it. This cannot be undone.',
+      confirmLabel: 'Delete Entry',
+      danger: true,
+    }))) return
     try {
       await deleteEntry(entry.id)
       if (entry.status === 'backlog') await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
@@ -262,6 +269,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     } catch {
       toastError(`Could not delete “${entry.title}” — try again`)
     }
+  }
+
+  // Removing a log leaves the entry's progress where it is: the session is a
+  // record of a sitting, and the total may have been corrected by hand since.
+  async function removeSession(s: Session) {
+    if (!(await confirm({
+      title: 'Delete this session?',
+      body: `The log from ${formatDay(s.date)} will be removed. Your progress total stays as it is.`,
+      confirmLabel: 'Delete Session',
+      danger: true,
+    }))) return
+    try { await deleteSession(s.id); loadExtras() }
+    catch { toastError('Could not delete that session. Try again.') }
   }
 
   async function addSession() {
@@ -566,7 +586,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged && !isRecipe ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
                 </span>
-                <button onClick={async () => { await deleteSession(s.id); loadExtras() }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
+                <button onClick={() => removeSession(s)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
               </div>
             ))}
           </div>

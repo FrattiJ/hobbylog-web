@@ -114,8 +114,8 @@ export function Button({
     <button
       type={type} onClick={onClick} disabled={disabled} title={title}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ ...base, ...variants[variant], ...style }}
- aria-label={title}>
+      aria-label={title}
+      style={{ ...base, ...variants[variant], ...style }}>
       {children}
     </button>
   )

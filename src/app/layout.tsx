@@ -3,6 +3,7 @@ import { Orbitron, Share_Tech_Mono, Barlow } from 'next/font/google'
 import './globals.css'
 import ClientLayout from '@/components/ClientLayout'
 import ToastProvider from '@/components/Toast'
+import ConfirmProvider from '@/components/ConfirmDialog'
 
 const orbitron = Orbitron({
   variable: '--font-display',
@@ -68,7 +69,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <script dangerouslySetInnerHTML={{ __html: noFlash }} />
         <ToastProvider>
-          <ClientLayout>{children}</ClientLayout>
+          <ConfirmProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </ConfirmProvider>
         </ToastProvider>
       </body>
     </html>

@@ -12,6 +12,7 @@ import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/dat
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
 import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
 import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
@@ -92,6 +93,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const { error: toastError, success: toastSuccess } = useToast()
+  const confirm = useConfirm()
 
   const loadEntries = useCallback(() => {
     getEntriesByHobby(hobbyId).then(setEntries).finally(() => setLoading(false))
@@ -119,7 +121,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   function exitSelect() { setSelectMode(false); setSelectedIds(new Set()) }
   async function bulkDelete(ids: string[]) {
     if (ids.length === 0 || bulkBusy) return
-    if (!confirm(`Delete ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}? This can't be undone.`)) return
+    const what = ids.length === 1 ? 'this entry' : `these ${ids.length} entries`
+    if (!(await confirm({
+      title: `Delete ${what}?`,
+      body: 'Their sessions, photos and notes go with them. This cannot be undone.',
+      confirmLabel: ids.length === 1 ? 'Delete Entry' : `Delete ${ids.length} Entries`,
+      danger: true,
+    }))) return
     setBulkBusy(true)
     try { await bulkDeleteEntries(ids); toastSuccess(`Deleted ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`); exitSelect(); loadEntries() }
     catch { toastError('Could not delete — try again') }
