@@ -34,7 +34,9 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
     try {
       await insertSession({ entry_id: selected.id, date, duration_minutes: dur || null, progress_logged: prog, notes: notes.trim() || null })
       const update: Record<string, unknown> = {}
-      if (selected.status === 'backlog') { update.status = 'in_progress'; update.date_started = date }
+      // A session on something still waiting (backlog or wishlist) means it has started.
+      const waiting = selected.status === 'backlog' || selected.status === 'wishlist'
+      if (waiting) { update.status = 'in_progress'; update.date_started = date }
       let inc = prog
       // Where the session's length IS the progress, don't ask for the same
       // number twice: games count hours, movies and audiobooks count minutes.

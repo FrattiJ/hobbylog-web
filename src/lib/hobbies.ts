@@ -19,6 +19,10 @@ export interface HobbyConfig {
   // it's skipped anywhere the UI assumes "a list of entries with a status". e.g.
   // fitness, which tracks routines, sets and PRs rather than things to finish.
   customSection?: boolean
+  // Things you have to get hold of before you can start them. These hobbies
+  // offer a Wishlist status, kept apart from the backlog so that ranking,
+  // backlog hours and What Next only ever count what you actually have.
+  wishlist?: boolean
   // Entries are recipes: ingredients, steps, meal tags, difficulty and cook time
   // in place of a progress bar, and progress_current counts the times it was made.
   recipe?: boolean
@@ -39,6 +43,7 @@ export const HOBBIES: HobbyConfig[] = [
     progressUnit: 'hrs',
     manualOnly: false,
     apiSource: 'igdb',
+    wishlist: true,
   },
   {
     id: 'movies',
@@ -72,6 +77,7 @@ export const HOBBIES: HobbyConfig[] = [
     progressUnit: 'pg',
     manualOnly: false,
     apiSource: 'openlibrary',
+    wishlist: true,
   },
   {
     id: 'gundams',
@@ -84,6 +90,7 @@ export const HOBBIES: HobbyConfig[] = [
     manualOnly: true,
     percentBased: true,
     hideRating: true,
+    wishlist: true,
   },
   {
     id: 'fitness',
@@ -165,6 +172,7 @@ export const BOOK_SUBTYPE_MAP: Record<BookSubtype, BookSubtypeConfig> = Object.f
 // ── Shared display helpers ────────────────────────────────────────────────────
 
 export const STATUS_LABELS: Record<string, string> = {
+  wishlist:    'Wishlist',
   backlog:     'Backlog',
   in_progress: 'In Progress',
   completed:   'Completed',
@@ -175,7 +183,7 @@ const ALL_STATUSES: EntryStatus[] = ['backlog', 'in_progress', 'completed', 'dro
 
 /** The statuses to offer for a hobby, in display order. */
 export function statusesFor(hobby: HobbyConfig | undefined): EntryStatus[] {
-  return hobby?.statuses ?? ALL_STATUSES
+  return hobby?.statuses ?? (hobby?.wishlist ? ['wishlist', ...ALL_STATUSES] : ALL_STATUSES)
 }
 
 /** A status's label as this hobby words it ("Made" for a recipe, "Completed" otherwise). */
@@ -184,6 +192,7 @@ export function statusLabelFor(hobby: HobbyConfig | undefined, status: string): 
 }
 
 export const STATUS_COLORS: Record<string, string> = {
+  wishlist:    '#ec4899',
   backlog:     '#8590a0',
   in_progress: '#3b82f6',
   completed:   '#22c55e',

@@ -19,6 +19,7 @@ function activityVerb(e: Entry): string {
   if (e.status === 'completed') return 'finished'
   if (e.status === 'dropped') return 'dropped'
   if (e.status === 'backlog') return 'added to backlog'
+  if (e.status === 'wishlist') return 'wishlisted'
   if (e.hobby_category === 'games') return 'is playing'
   if (e.hobby_category === 'movies' || e.hobby_category === 'tv') return 'is watching'
   if (e.hobby_category === 'books') return 'is reading'

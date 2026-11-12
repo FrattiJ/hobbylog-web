@@ -8,7 +8,7 @@ import { STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 
-const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'backlog', 'in_progress', 'completed', 'dropped']
+const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'wishlist', 'backlog', 'in_progress', 'completed', 'dropped']
 
 type SortKey = 'recent' | 'name' | 'rating' | 'added'
 

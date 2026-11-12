@@ -133,7 +133,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
         <button onClick={() => setHobbyF('all')} style={chip(hobbyF === 'all', GREEN)}>All</button>
         {hobbiesPresent.map((h) => <button key={h.id} onClick={() => setHobbyF(h.id)} style={chip(hobbyF === h.id, h.accent)}>{h.pluralLabel}</button>)}
         <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 2px' }} />
-        {(['all', 'in_progress', 'completed', 'backlog'] as const).map((s) => (
+        {(['all', 'in_progress', 'completed', 'backlog', 'wishlist'] as const).map((s) => (
           <button key={s} onClick={() => setStatusF(s)} style={chip(statusF === s, s === 'all' ? GREEN : STATUS_COLORS[s])}>{s === 'all' ? 'Any' : STATUS_LABELS[s]}</button>
         ))}
         <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 2px' }} />

@@ -79,6 +79,7 @@ export default function StatsPage() {
   })).filter((d) => d.count > 0)
 
   const statusDist = [
+    { name: 'Wishlist',    value: entries.filter((e) => e.status === 'wishlist').length,    color: '#ec4899' },
     { name: 'Backlog',     value: entries.filter((e) => e.status === 'backlog').length,     color: '#955ff0' },
     { name: 'In Progress', value: entries.filter((e) => e.status === 'in_progress').length, color: '#0891b2' },
     { name: 'Completed',   value: entries.filter((e) => e.status === 'completed').length,   color: '#22c55e' },

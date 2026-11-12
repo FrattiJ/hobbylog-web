@@ -157,6 +157,21 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     setCoverSearching(false)
   }
 
+  // The one-tap path off the wishlist: you have it now, so it joins the backlog
+  // at the bottom of the ranking.
+  async function moveToBacklog() {
+    setBusy(true)
+    try {
+      await updateEntry(entry.id, { status: 'backlog' })
+      setStatus('backlog')
+      await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
+      onChanged()
+    } catch {
+      toastError('Could not move it to your backlog. Try again.')
+    }
+    setBusy(false)
+  }
+
   async function save() {
     setBusy(true); setNote(null)
     const today = new Date().toISOString().split('T')[0]
@@ -372,6 +387,21 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   ? <RecipeFields value={recipeDraft} onChange={setRecipeDraft} accent={accent} />
                   : <RecipeView recipe={recipe} accent={accent} />}
               </div>
+            </div>
+          )}
+
+          {status === 'wishlist' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', background: `${STATUS_COLORS.wishlist}12`, border: `1px solid ${STATUS_COLORS.wishlist}55`, borderLeft: `3px solid ${STATUS_COLORS.wishlist}` }}>
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--text-hi)', margin: 0 }}>On your wishlist</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.5 }}>
+                  Wishlist items stay out of your backlog ranking and What Next until you have them.
+                </p>
+              </div>
+              <button onClick={moveToBacklog} disabled={busy}
+                style={{ padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: STATUS_COLORS.wishlist, background: `${STATUS_COLORS.wishlist}22`, border: `1px solid ${STATUS_COLORS.wishlist}`, cursor: busy ? 'wait' : 'pointer' }}>
+                I Have It: Move to Backlog
+              </button>
             </div>
           )}
 

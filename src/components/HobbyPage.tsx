@@ -596,7 +596,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 </button>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
                 <span style={{ flex: 1 }} />
-                {(['in_progress', 'completed', 'backlog'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
+                {(['in_progress', 'completed', 'backlog', 'wishlist'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
                   <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
                 ))}
                 <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> Delete</button>
