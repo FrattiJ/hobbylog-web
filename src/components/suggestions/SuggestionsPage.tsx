@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2, CalendarClock } from 'lucide-react'
+import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2, CalendarClock, AlertTriangle } from 'lucide-react'
 import {
   getAllEntries, getSessionActivity, getTimeWindows, insertEntry, updateEntry,
   normalizeBacklogPriorities, ENTRIES_CHANGED_EVENT, WINDOWS_CHANGED_EVENT, type SessionActivity,
@@ -23,7 +23,7 @@ import type { Entry, HobbyCategory } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
 import { useToast } from '@/components/Toast'
 import { CLIP } from '@/components/MechCard'
-import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover } from './ui'
+import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover, Suggestion } from './ui'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 type Mode = 'next' | 'time' | 'triage' | 'discover'
@@ -301,7 +301,7 @@ export default function SuggestionsPage() {
           {/* ── Missing-data nudge ── */}
           {missingData > 0 && (
             <div style={{ marginBottom: 20, background: 'var(--bg-card)', border: '1px solid #d9770644', borderLeft: '2px solid #d97706', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.02em', lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0, lineHeight: 1.5, flex: '1 1 260px' }}>
                 {enriching
                   ? `Looking up genres — ${enriching.done} of ${enriching.total}…`
                   : `${missingData} ${missingData === 1 ? 'entry has' : 'entries have'} no genre data, so the engine is working blind on ${missingData === 1 ? 'it' : 'them'}.`}
@@ -313,32 +313,32 @@ export default function SuggestionsPage() {
           )}
 
           {/* ── Mode + category selector ── */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-            {MODES.map((m) => {
-              const on = mode === m.id
-              const Icon = m.icon
-              const count = m.id === 'next' ? nextUp.length
-                : m.id === 'time' ? fits.filter((f) => f.fit === 'finish').length
-                : m.id === 'triage' ? stalled.length : null
-              return (
-                <button key={m.id} onClick={() => setMode(m.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px',
-                    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: on ? 700 : 400,
-                    letterSpacing: '0.05em',
-                    background: on ? `${m.accent}22` : 'transparent',
-                    border: `1px solid ${on ? m.accent : 'var(--border-dim)'}`,
-                    color: on ? m.accent : 'var(--text-dim)', cursor: 'pointer', transition: 'var(--t-fast)',
-                  }}>
-                  <Icon size={13} /> {m.label}
-                  {count ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, opacity: 0.7 }}>{count}</span> : null}
-                </button>
-              )
-            })}
-            <span style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="tab-row" role="tablist" aria-label="What to suggest" style={{ flex: '1 1 auto', minWidth: 0 }}>
+              {MODES.map((m) => {
+                const on = mode === m.id
+                const Icon = m.icon
+                const count = m.id === 'next' ? nextUp.length
+                  : m.id === 'time' ? fits.filter((f) => f.fit === 'finish').length
+                  : m.id === 'triage' ? stalled.length : null
+                return (
+                  <button key={m.id} role="tab" aria-selected={on} onClick={() => setMode(m.id)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '0 14px',
+                      fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: on ? 600 : 500,
+                      background: on ? `${m.accent}22` : 'transparent',
+                      border: `1px solid ${on ? m.accent : 'var(--border-dim)'}`,
+                      color: on ? m.accent : 'var(--text-mid)', cursor: 'pointer', transition: 'var(--t-fast)',
+                    }}>
+                    <Icon size={15} aria-hidden="true" /> {m.label}
+                    {count ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>{count}</span> : null}
+                  </button>
+                )
+              })}
+            </div>
             <select aria-label="Filter by hobby" value={category} onChange={(e) => { setCategory(e.target.value as HobbyCategory | 'all'); setCandidates(null) }}
-              style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '6px 9px', cursor: 'pointer', outline: 'none' }}>
-              <option value="all">All Categories</option>
+              style={{ height: 40, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14, padding: '0 10px', cursor: 'pointer' }}>
+              <option value="all">All hobbies</option>
               {entryHobbies.map((h) => <option key={h.id} value={h.id}>{h.pluralLabel}</option>)}
             </select>
           </div>
@@ -351,7 +351,7 @@ export default function SuggestionsPage() {
               {nextUp.length === 0 ? (
                 <Empty>Nothing in your backlog for this filter.<br />Your backlog being empty is the point — go find something in Discover.</Empty>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="sg-list">
                   {nextUp.map((p, i) => (
                     <NextUpRow key={p.entry.id} pick={p} index={i} busy={busy === p.entry.id}
                       plan={bestWindowFor(p.entry, windows)}
@@ -424,7 +424,7 @@ export default function SuggestionsPage() {
                   Either everything you own runs longer than that, or the lengths aren&apos;t filled in yet.
                 </Empty>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="sg-list">
                   {fits.map((f) => (
                     <FitRow key={f.entry.id} pick={f} busy={busy === f.entry.id}
                       onStart={() => setStatus(f.entry, 'in_progress', 'started')}
@@ -442,7 +442,7 @@ export default function SuggestionsPage() {
               {stalled.length === 0 ? (
                 <Empty>Nothing is stalled. Everything you&apos;ve started is still moving.</Empty>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="sg-list">
                   {stalled.map((s) => (
                     <TriageRow key={s.entry.id} item={s} busy={busy === s.entry.id}
                       onDone={() => setStatus(s.entry, 'completed', 'marked finished')}
@@ -478,7 +478,7 @@ export default function SuggestionsPage() {
                       suggestions come from.</>}
                 </Empty>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="sg-list">
                   {discoveries.map((d, i) => (
                     <DiscoverRow key={`${d.candidate.external_source}:${d.candidate.external_id}`}
                       pick={d} index={i} busy={busy === d.candidate.external_id}
@@ -566,18 +566,18 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
       {cells.map((c) => (
         <div key={c.label} style={{ padding: '1px', clipPath: CLIP, background: `${c.accent}44` }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: '14px 16px', position: 'relative', height: '100%' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 12, height: 12, background: c.accent, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', margin: '0 0 8px' }}>
               {c.label}
             </p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 22, color: 'var(--text-hi)', lineHeight: 1, margin: '0 0 5px', textTransform: 'capitalize' }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 26, color: 'var(--text-hi)', lineHeight: 1, margin: '0 0 6px', textTransform: 'capitalize' }}>
               {c.value}
             </p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>
               {c.sub}
             </p>
           </div>
@@ -589,11 +589,12 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
 
 // ── Rows ─────────────────────────────────────────────────────────────────────
 
-function Row({ accent, children }: { accent: string; children: React.ReactNode }) {
+function Note({ icon: Icon, children }: { icon: typeof Sparkles; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', gap: 14, padding: 14, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${accent}` }}>
-      {children}
-    </div>
+    <p style={{ display: 'flex', gap: 7, fontFamily: 'var(--font-body)', fontSize: 14, color: '#d97706', margin: 0, lineHeight: 1.45 }}>
+      <Icon size={15} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+      <span>{children}</span>
+    </p>
   )
 }
 
@@ -607,41 +608,24 @@ function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
   const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
   const h = entryHours(e)
   return (
-    <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', width: 20, flexShrink: 0, paddingTop: 2 }}>
-        {index + 1}
-      </span>
-      <Cover url={e.cover_url} title={e.title} accent={accent} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
-          {e.title}
-        </p>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 2 }}>
-          <Tag color={accent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
-          {h > 0 && <Tag>{hrs(h)}</Tag>}
-          {pick.priorityRank != null && <Tag color="#d97706">your #{pick.priorityRank}</Tag>}
-          {tagsOf(e).slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
-        </div>
-        {pick.override && (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
-            ⚠ {pick.override}
-          </p>
-        )}
-        <Reasons items={pick.reasons} accent={accent} />
-        {plan && (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
-            ⌚ {plan.reason}
-          </p>
-        )}
-        <div style={{ marginTop: 10, maxWidth: 220 }}>
-          <ScoreBar score={pick.score} accent={accent} />
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+    <Suggestion accent={accent}
+      cover={<Cover url={e.cover_url} title={e.title} accent={accent} rank={index + 1} />}
+      title={e.title}
+      tags={<>
+        <Tag color={accent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
+        {h > 0 && <Tag>{hrs(h)}</Tag>}
+        {pick.priorityRank != null && <Tag color="#d97706">Your #{pick.priorityRank}</Tag>}
+        {tagsOf(e).slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
+      </>}
+      actions={<>
         <Btn color={accent} filled onClick={onStart} disabled={busy}>Start</Btn>
         <Btn onClick={onOpen}>Open</Btn>
-      </div>
-    </Row>
+      </>}>
+      {pick.override && <Note icon={AlertTriangle}>{pick.override}</Note>}
+      <Reasons items={pick.reasons} accent={accent} />
+      {plan && <Note icon={CalendarClock}>{plan.reason}</Note>}
+      <ScoreBar score={pick.score} accent={accent} />
+    </Suggestion>
   )
 }
 
@@ -664,31 +648,27 @@ function FitRow({ pick, busy, onStart, onOpen }: {
   const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
   const fitColor = pick.fit === 'finish' ? '#22c55e' : pick.fit === 'dent' ? '#d97706' : 'var(--text-dim)'
   return (
-    <Row accent={fitColor}>
-      <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
-          {e.title}
-        </p>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          <Tag color={hobbyAccent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
-          <Tag color={fitColor}>{pick.fit === 'finish' ? 'finishes it' : "won't finish"}</Tag>
-          <Tag>{fmtHours(pick.hoursRemaining)} left</Tag>
-          {e.status === 'in_progress' && (
-            <Tag color={STATUS_COLORS.in_progress}>{STATUS_LABELS.in_progress}</Tag>
-          )}
-        </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
-          {pick.reason}
-        </p>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+    <Suggestion accent={fitColor}
+      cover={<Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />}
+      title={e.title}
+      tags={<>
+        <Tag color={hobbyAccent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
+        <Tag color={fitColor}>{pick.fit === 'finish' ? 'Finishes it' : 'Will not finish'}</Tag>
+        <Tag>{fmtHours(pick.hoursRemaining)} left</Tag>
+        {e.status === 'in_progress' && <Tag color={STATUS_COLORS.in_progress}>{STATUS_LABELS.in_progress}</Tag>}
+      </>}
+      actions={<>
         {e.status === 'backlog' && <Btn color={fitColor} filled onClick={onStart} disabled={busy}>Start</Btn>}
         <Btn onClick={onOpen}>Open</Btn>
-      </div>
-    </Row>
+      </>}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 0, lineHeight: 1.45 }}>
+        {pick.reason}
+      </p>
+    </Suggestion>
   )
 }
+
+const VERDICT_LABEL = { finish: 'Finish it', drop: 'Drop it', unclear: 'Your call' } as const
 
 function TriageRow({ item, busy, onDone, onDrop, onOpen }: {
   item: TasteProfile['stalled'][number]; busy: boolean
@@ -698,29 +678,25 @@ function TriageRow({ item, busy, onDone, onDrop, onOpen }: {
   const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
   const verdictColor = item.verdict === 'finish' ? '#22c55e' : item.verdict === 'drop' ? '#f15959' : 'var(--text-dim)'
   return (
-    <Row accent={verdictColor}>
-      <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
-          {e.title}
-        </p>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          <Tag color={verdictColor}>{item.verdict === 'unclear' ? 'your call' : item.verdict}</Tag>
-          <Tag color={hobbyAccent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
-          <Tag color={item.touchSource === 'updated' ? 'var(--text-mute)' : undefined}>
-            {item.daysSinceTouch}d idle{item.touchSource === 'updated' ? '?' : ''}
-          </Tag>
-          {item.progressPct != null && <Tag>{item.progressPct}%</Tag>}
-          {item.hoursRemaining != null && item.hoursRemaining > 0 && <Tag>{hrs(item.hoursRemaining)} left</Tag>}
-        </div>
-        <Reasons items={[item.reason, touchLine(item.touchSource, item.touchedAt)]} accent={verdictColor} />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-        <Btn color="#22c55e" filled={item.verdict === 'finish'} onClick={onDone} disabled={busy}>Finished</Btn>
+    <Suggestion accent={verdictColor}
+      cover={<Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />}
+      title={e.title}
+      tags={<>
+        <Tag color={verdictColor}>{VERDICT_LABEL[item.verdict]}</Tag>
+        <Tag color={hobbyAccent}>{HOBBY_MAP[e.hobby_category]?.label}</Tag>
+        <Tag>
+          {item.daysSinceTouch} days idle{item.touchSource === 'updated' ? ' (approx.)' : ''}
+        </Tag>
+        {item.progressPct != null && <Tag>{item.progressPct}% done</Tag>}
+        {item.hoursRemaining != null && item.hoursRemaining > 0 && <Tag>{hrs(item.hoursRemaining)} left</Tag>}
+      </>}
+      actions={<>
+        <Btn color="#22c55e" filled={item.verdict === 'finish'} onClick={onDone} disabled={busy}>Mark Finished</Btn>
         <Btn color="#f15959" filled={item.verdict === 'drop'} onClick={onDrop} disabled={busy}>Drop</Btn>
         <Btn onClick={onOpen}>Open</Btn>
-      </div>
-    </Row>
+      </>}>
+      <Reasons items={[item.reason, touchLine(item.touchSource, item.touchedAt)]} accent={verdictColor} />
+    </Suggestion>
   )
 }
 
@@ -730,30 +706,19 @@ function DiscoverRow({ pick, index, busy, onAdd }: {
   const c = pick.candidate
   const accent = HOBBY_MAP[c.category]?.accent ?? '#22c55e'
   return (
-    <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', width: 20, flexShrink: 0, paddingTop: 2 }}>
-        {index + 1}
-      </span>
-      <Cover url={c.cover_url} title={c.title} accent={accent} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
-          {c.title} {c.year ? <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({c.year})</span> : null}
-        </p>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          <Tag color={accent}>{HOBBY_MAP[c.category]?.label}</Tag>
-          {c.hours != null && c.hours > 0 && <Tag>{hrs(c.hours)}</Tag>}
-          {c.ongoing && <Tag color="#d97706">still airing</Tag>}
-          {c.tags.slice(0, 3).map((t) => <Tag key={t}>{t}</Tag>)}
-        </div>
-        <Reasons items={pick.reasons} accent={accent} />
-        <div style={{ marginTop: 10, maxWidth: 220 }}>
-          <ScoreBar score={pick.score} accent={accent} />
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-        <Btn color={accent} filled onClick={onAdd} disabled={busy}>+ Backlog</Btn>
-      </div>
-    </Row>
+    <Suggestion accent={accent}
+      cover={<Cover url={c.cover_url} title={c.title} accent={accent} rank={index + 1} />}
+      title={<>{c.title} {c.year ? <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({c.year})</span> : null}</>}
+      tags={<>
+        <Tag color={accent}>{HOBBY_MAP[c.category]?.label}</Tag>
+        {c.hours != null && c.hours > 0 && <Tag>{hrs(c.hours)}</Tag>}
+        {c.ongoing && <Tag color="#d97706">Still airing</Tag>}
+        {c.tags.slice(0, 3).map((t) => <Tag key={t}>{t}</Tag>)}
+      </>}
+      actions={<Btn color={accent} filled onClick={onAdd} disabled={busy}>Add to Backlog</Btn>}>
+      <Reasons items={pick.reasons} accent={accent} />
+      <ScoreBar score={pick.score} accent={accent} />
+    </Suggestion>
   )
 }
 

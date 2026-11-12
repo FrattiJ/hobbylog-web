@@ -242,6 +242,25 @@ p { text-wrap: pretty; }
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
+/* ── Suggestion cards (What Next) ───────────────────────────────────────────── */
+/* Two across where there is room, so a list of eight is not eight screens. */
+.sg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(430px, 100%), 1fr)); gap: 12px; }
+.sg-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 14px; align-content: start;
+  padding: 14px; background: var(--bg-base); border: 1px solid var(--border-dim); border-left-width: 3px;
+}
+.sg-cover { grid-column: 1; grid-row: 1 / span 3; }
+.sg-head, .sg-detail, .sg-actions { grid-column: 2; }
+.sg-detail { display: flex; flex-direction: column; gap: 8px; }
+.sg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-self: end; }
+@media (max-width: 560px) {
+  /* The reasoning needs the full width on a phone; beside the cover it wraps
+     to a word or two per line. */
+  .sg-cover { grid-row: 1; }
+  .sg-detail, .sg-actions { grid-column: 1 / -1; }
+  .sg-actions > * { flex: 1 1 0; }
+}
+
 /* ── Scroll without a scrollbar ─────────────────────────────────────────────── */
 /* For strips that are meant to be swiped rather than scrolled deliberately: the
    fitness tab bar and the consistency heatmap. The bar is pure noise there on a
