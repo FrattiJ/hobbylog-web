@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Star, Plus, Check } from 'lucide-react'
 import { getFriendEntries, getAllEntries, addToMyBacklog } from '@/lib/db'
-import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS, statusLabelFor } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 import FriendEntryDetail from './FriendEntryDetail'
 import { useToast } from './Toast'
@@ -172,7 +172,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
                     : <button onClick={(ev) => { ev.stopPropagation(); add(e) }} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }}><Plus size={9} /> ADD</button>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: STATUS_COLORS[e.status], letterSpacing: '0.06em' }}>{STATUS_LABELS[e.status]}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: STATUS_COLORS[e.status], letterSpacing: '0.06em' }}>{statusLabelFor(HOBBY_MAP[e.hobby_category], e.status)}</span>
                   {e.rating != null && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: hobby.accent, display: 'flex', alignItems: 'center', gap: 3 }}><Star size={10} fill={hobby.accent} /> {e.rating}</span>}
                   {mineRating != null && e.rating != null && (
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.05em', border: '1px solid var(--border-dim)', padding: '1px 5px' }}>YOU {mineRating} · THEM {e.rating}</span>
