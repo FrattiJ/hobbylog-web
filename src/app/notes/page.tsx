@@ -7,10 +7,10 @@ import { getNotes, saveNotes } from '@/lib/db'
 const ACCENT = '#d97706'
 
 const FONT_SIZES = [
-  { label: 'SMALL',  value: '2' },
-  { label: 'NORMAL', value: '3' },
-  { label: 'LARGE',  value: '5' },
-  { label: 'HUGE',   value: '6' },
+  { label: 'Small',  value: '2' },
+  { label: 'Normal', value: '3' },
+  { label: 'Large',  value: '5' },
+  { label: 'Huge',   value: '6' },
 ]
 
 function ToolButton({ onExec, title, children }: { onExec: () => void; title: string; children: React.ReactNode }) {
@@ -26,7 +26,7 @@ function ToolButton({ onExec, title, children }: { onExec: () => void; title: st
         border: '1px solid var(--border-dim)',
         color: 'var(--text-dim)',
         cursor: 'pointer',
-        transition: 'all 0.12s ease',
+        transition: 'var(--t-fast)',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; e.currentTarget.style.borderColor = ACCENT }}
       onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border-dim)' }}
@@ -84,16 +84,13 @@ export default function NotesPage() {
     <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>
-          SYSTEM / FIELD NOTES
-        </p>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
             NOTES
           </h1>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11, color: dirty ? ACCENT : '#22c55e', letterSpacing: '0.14em' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 12, color: dirty ? ACCENT : '#22c55e', letterSpacing: '0.08em' }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: dirty ? ACCENT : '#22c55e' }} />
-            {dirty ? 'WRITING…' : 'SAVED'}
+            {dirty ? 'Writing…' : 'Saved'}
           </span>
         </div>
       </div>
@@ -120,8 +117,8 @@ export default function NotesPage() {
           style={{
             height: 30, padding: '0 8px',
             background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
-            color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 11,
-            letterSpacing: '0.1em', cursor: 'pointer', outline: 'none',
+            color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 12,
+            letterSpacing: '0.05em', cursor: 'pointer', outline: 'none',
           }}
         >
           {FONT_SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -143,7 +140,7 @@ export default function NotesPage() {
           border: '1px solid var(--border-dim)',
           borderTop: 'none',
           color: 'var(--text-hi)',
-          fontFamily: 'var(--font-mono)',
+          fontFamily: 'var(--font-body)',
           fontSize: 14,
           lineHeight: 1.8,
           letterSpacing: '0.02em',

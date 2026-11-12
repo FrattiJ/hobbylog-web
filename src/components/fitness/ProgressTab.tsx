@@ -41,43 +41,43 @@ export default function ProgressTab() {
   // Under an hour of logging, hours would just read "0" -- show the minutes
   // instead until there are enough of them to be worth rounding.
   const timeTrained = totals.minutes < 60
-    ? { value: totals.minutes, unit: 'MINUTES' }
-    : { value: Math.round(totals.minutes / 60), unit: 'HOURS' }
+    ? { value: totals.minutes, unit: 'Minutes' }
+    : { value: Math.round(totals.minutes / 60), unit: 'Hours' }
 
   const charted = useMemo(() => exercises.filter((e) => trained.has(e.id)), [exercises, trained])
 
-  if (loading) return <Label>LOADING…</Label>
+  if (loading) return <Label>Loading…</Label>
 
   const reloadWeights = () => listBodyweight().then(setBodyweight).catch(() => {})
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-        <StatCard label="WORKOUTS" value={dates.length} accent={ACCENT} index={0} />
-        <StatCard label="CURRENT STREAK" value={streak.current} sub="DAYS" accent="#eab308" index={1} />
+        <StatCard label="Workouts" value={dates.length} accent={ACCENT} index={0} />
+        <StatCard label="Current Streak" value={streak.current} sub="Days" accent="#eab308" index={1} />
         {/* Longest streak and this-week were both restating what the heatmap
             directly below already shows. Volume and time trained are the two
             totals nothing else on the page adds up. */}
-        <StatCard label="VOLUME LIFTED" value={Math.round(totals.volume)} sub="LBS" accent="#22c55e" index={2} />
-        <StatCard label="TIME TRAINED" value={timeTrained.value} sub={timeTrained.unit} accent="#0891b2" index={3} />
+        <StatCard label="Volume Lifted" value={Math.round(totals.volume)} sub="lbs" accent="#22c55e" index={2} />
+        <StatCard label="Time Trained" value={timeTrained.value} sub={timeTrained.unit} accent="#0891b2" index={3} />
       </div>
 
-      <Rule>CONSISTENCY</Rule>
+      <Rule>Consistency</Rule>
       {dates.length === 0
-        ? <Empty title="NOTHING LOGGED YET" hint="The heatmap fills in as you log workouts." />
+        ? <Empty title="Nothing logged yet" hint="The heatmap fills in as you log workouts." />
         : <Heatmap dates={dates} />}
 
-      <Rule>BODYWEIGHT</Rule>
+      <Rule>Bodyweight</Rule>
       <Bodyweight points={bodyweight} onLog={() => setLoggingWeight(true)} />
 
-      <Rule>EXERCISE PROGRESS</Rule>
+      <Rule>Exercise Progress</Rule>
       {charted.length === 0
-        ? <Empty title="NO EXERCISES LOGGED YET" hint="Log a workout and your lifts show up here with charts and records." />
+        ? <Empty title="No exercises logged yet" hint="Log a workout and your lifts show up here with charts and records." />
         : <ExerciseProgress exercises={charted} />}
 
       {/* Goals get the full list: you should be able to aim at a lift you haven't
           done yet, which is the whole point of setting a target. */}
-      <Rule>TARGETS</Rule>
+      <Rule>Targets</Rule>
       <GoalsPanel exercises={exercises} />
 
       {loggingWeight && (
@@ -147,7 +147,7 @@ function Heatmap({ dates }: { dates: string[] }) {
           ))}
         </div>
       </div>
-      <Label style={{ marginTop: 8 }}>LAST 26 WEEKS · SWIPE BACK IN TIME</Label>
+      <Label style={{ marginTop: 8 }}>Last 26 weeks. Swipe to go back in time.</Label>
     </div>
   )
 }
@@ -168,9 +168,9 @@ function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () =>
   if (series.length === 0) {
     return (
       <Empty
-        title="NO BODYWEIGHT LOGGED"
+        title="No bodyweight logged"
         hint="Weigh in whenever suits you — first thing in the morning, on a rest day, whenever. It charts here."
-        action={<Button variant="ghost" onClick={onLog}><Scale size={13} /> LOG A WEIGH-IN</Button>}
+        action={<Button variant="ghost" onClick={onLog}><Scale size={13} /> Log a Weigh-In</Button>}
       />
     )
   }
@@ -182,22 +182,22 @@ function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () =>
   return (
     <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <Stat label="CURRENT" value={`${latest} lbs`} />
-        <Stat label="READINGS" value={String(series.length)} />
+        <Stat label="Current" value={`${latest} lbs`} />
+        <Stat label="Readings" value={String(series.length)} />
         {series.length > 1 && (
           <Stat
-            label="CHANGE"
+            label="Change"
             value={`${change > 0 ? '+' : ''}${change} lbs`}
             color={change === 0 ? undefined : change > 0 ? '#eab308' : '#22c55e'}
           />
         )}
         <Button variant="ghost" onClick={onLog} style={{ marginLeft: 'auto' }}>
-          <Scale size={13} /> LOG A WEIGH-IN
+          <Scale size={13} /> Log a Weigh-In
         </Button>
       </div>
 
       {series.length < 2 ? (
-        <Label>LOG IT ON ONE MORE SESSION AND THE TREND LINE APPEARS.</Label>
+        <Label>Log it on one more session and the trend line appears.</Label>
       ) : (
         <div style={{ height: 200, border: '1px solid var(--border-dim)', background: 'var(--bg-card)', padding: '16px 8px 8px 0' }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -208,7 +208,7 @@ function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () =>
               <Tooltip
                 contentStyle={{ background: 'var(--bg-panel)', border: '1px solid var(--border-dim)', fontSize: 12 }}
                 labelStyle={{ color: 'var(--text-dim)' }}
-                formatter={(v) => [`${v} lbs`, 'BODYWEIGHT']}
+                formatter={(v) => [`${v} lbs`, 'Bodyweight']}
               />
               <Line type="monotone" dataKey="value" stroke="#0891b2" strokeWidth={2} dot={{ r: 3, fill: '#0891b2' }} />
             </LineChart>
@@ -226,7 +226,7 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
       background: 'var(--bg-card)', padding: '8px 12px', minWidth: 110,
     }}>
       <Label>{label}</Label>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 17, color: color ?? 'var(--text-hi)', marginTop: 4 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, color: color ?? 'var(--text-hi)', marginTop: 4 }}>
         {value}
       </div>
     </div>
@@ -299,20 +299,20 @@ function ExerciseProgress({ exercises }: { exercises: Exercise[] }) {
               <Label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Trophy size={10} style={{ color: '#eab308' }} /> {PR_LABELS[r.kind]}
               </Label>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 17, color: 'var(--text-hi)', marginTop: 4 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, color: 'var(--text-hi)', marginTop: 4 }}>
                 {fmtPrValue(r.kind, r.value)}
               </div>
-              {r.date && <Label style={{ marginTop: 2, fontSize: 10 }}>{r.date}</Label>}
+              {r.date && <Label style={{ marginTop: 2, fontSize: 12 }}>{r.date}</Label>}
             </div>
           ))}
         </div>
       )}
 
       {loading ? (
-        <Label>LOADING…</Label>
+        <Label>Loading…</Label>
       ) : series.length < 2 ? (
         <Empty
-          title="NOT ENOUGH DATA"
+          title="Not enough data"
           hint="Log this exercise on at least two different days and the trend line appears here."
         />
       ) : (

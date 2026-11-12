@@ -84,21 +84,21 @@ export default function LoginScreen() {
   }
 
   const oauthBtn: React.CSSProperties = {
-    width: '100%', padding: '11px 13px', fontFamily: 'var(--font-display)', fontSize: 13,
-    fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-hi)', background: 'var(--bg-base)',
+    width: '100%', padding: '11px 13px', fontFamily: 'var(--font-body)', fontSize: 13,
+    fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-hi)', background: 'var(--bg-base)',
     border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`,
     cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.5 : 1,
   }
   if (mode === 'forgot') {
     return (
       <AuthShell tagline="Enter your email and we will send you a link to choose a new password.">
-        <p style={label}>EMAIL</p>
+        <p style={label}>Email</p>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" autoFocus
           onKeyDown={(e) => { if (e.key === 'Enter' && email && !busy) sendReset() }} style={{ ...inp, marginBottom: 20 }} />
         <AuthMessage message={message} />
         <div style={{ display: 'flex' }}>
           <button onClick={sendReset} disabled={busy || !email} style={authPrimaryButton(busy, busy || !email)}>
-            {busy ? '…' : 'SEND RESET LINK'}
+            {busy ? '…' : 'Send Reset Link'}
           </button>
         </div>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
@@ -114,33 +114,33 @@ export default function LoginScreen() {
         <>
           {OAUTH_PROVIDERS.map((p) => (
             <button key={p} onClick={() => oauth(p)} disabled={busy} style={{ ...oauthBtn, marginBottom: 10 }}>
-              CONTINUE WITH {p.toUpperCase()}
+              Continue With {p}
             </button>
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 20px' }}>
             <span style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.2em' }}>OR</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em' }}>OR</span>
             <span style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
           </div>
         </>
       )}
 
-      <p style={label}>EMAIL</p>
+      <p style={label}>Email</p>
       <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" style={{ ...inp, marginBottom: 16 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <p style={label}>PASSWORD</p>
-        <button onClick={() => switchMode('forgot')} style={{ ...authLink, fontSize: 11 }}>Forgot password?</button>
+        <p style={label}>Password</p>
+        <button onClick={() => switchMode('forgot')} style={{ ...authLink, fontSize: 12 }}>Forgot password?</button>
       </div>
       <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"
         onKeyDown={(e) => { if (e.key === 'Enter' && email && password) signIn() }} style={{ ...inp, marginBottom: 20 }} />
       <AuthMessage message={message} />
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={signIn} disabled={busy || !email || !password} style={authPrimaryButton(busy, busy || !email || !password)}>
-          {busy ? '…' : 'SIGN IN'}
+          {busy ? '…' : 'Sign In'}
         </button>
         <button onClick={signUp} disabled={busy || !email || !password}
-          style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
-          CREATE ACCOUNT
+          style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer', opacity: busy || !email || !password ? 0.5 : 1 }}>
+          Create Account
         </button>
       </div>
     </AuthShell>

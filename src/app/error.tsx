@@ -13,19 +13,19 @@ export default function Error({ error, unstable_retry }: {
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
       <div style={{ maxWidth: 460, width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #ef4444', padding: 28 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#ef4444', letterSpacing: '0.2em', margin: '0 0 8px' }}>SYSTEM FAULT /</p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: '0 0 10px' }}>Something broke</h1>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 20px' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#ef4444', letterSpacing: '0.08em', margin: '0 0 8px' }}>Something went wrong</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: '0 0 10px' }}>Something broke</h1>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 20px' }}>
           That view hit an unexpected error. Your data is safe — try again, and if it keeps happening, send a note from Settings → Feedback.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={() => unstable_retry()}
-            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#7c3aed', background: '#7c3aed22', border: '1px solid #7c3aed', borderLeft: '3px solid #7c3aed', cursor: 'pointer' }}>
-            TRY AGAIN
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#955ff0', background: '#955ff022', border: '1px solid #955ff0', borderLeft: '3px solid #955ff0', cursor: 'pointer' }}>
+            Try Again
           </button>
           <button onClick={() => { window.location.href = '/' }}
-            style={{ padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
-            GO TO DASHBOARD
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
+            Go to Dashboard
           </button>
         </div>
       </div>

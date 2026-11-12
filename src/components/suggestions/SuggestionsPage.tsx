@@ -28,7 +28,7 @@ import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover } from './ui'
 type Mode = 'next' | 'time' | 'triage' | 'discover'
 
 const MODES: Array<{ id: Mode; label: string; icon: typeof Sparkles; accent: string }> = [
-  { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#7c3aed' },
+  { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#955ff0' },
   { id: 'time',     label: 'Time I Have',   icon: CalendarClock, accent: '#d97706' },
   { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck,   accent: '#0891b2' },
   { id: 'discover', label: 'Discover',      icon: Compass,       accent: '#22c55e' },
@@ -277,16 +277,13 @@ export default function SuggestionsPage() {
   return (
     <div style={{ padding: 32, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>
-          SYSTEM / ADVISORY
-        </p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
           WHAT NEXT
         </h1>
       </div>
 
       {entries.length < 5 ? (
-        <Panel accent="#7c3aed" title="NOT ENOUGH HISTORY YET">
+        <Panel accent="#955ff0" title="Not enough history yet">
           <Empty>
             Suggestions are built entirely from your own library — what you finish, what you
             drop, how long things take you.<br />
@@ -301,7 +298,7 @@ export default function SuggestionsPage() {
           {/* ── Missing-data nudge ── */}
           {missingData > 0 && (
             <div style={{ marginBottom: 20, background: 'var(--bg-card)', border: '1px solid #d9770644', borderLeft: '2px solid #d97706', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.06em', lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.02em', lineHeight: 1.6 }}>
                 {enriching
                   ? `Looking up genres — ${enriching.done} of ${enriching.total}…`
                   : `${missingData} ${missingData === 1 ? 'entry has' : 'entries have'} no genre data, so the engine is working blind on ${missingData === 1 ? 'it' : 'them'}.`}
@@ -324,29 +321,29 @@ export default function SuggestionsPage() {
                 <button key={m.id} onClick={() => setMode(m.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px',
-                    fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: on ? 700 : 400,
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: on ? 700 : 400,
+                    letterSpacing: '0.05em',
                     background: on ? `${m.accent}22` : 'transparent',
                     border: `1px solid ${on ? m.accent : 'var(--border-dim)'}`,
-                    color: on ? m.accent : 'var(--text-dim)', cursor: 'pointer', transition: 'all 0.12s ease',
+                    color: on ? m.accent : 'var(--text-dim)', cursor: 'pointer', transition: 'var(--t-fast)',
                   }}>
                   <Icon size={13} /> {m.label}
-                  {count ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.7 }}>{count}</span> : null}
+                  {count ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, opacity: 0.7 }}>{count}</span> : null}
                 </button>
               )
             })}
             <span style={{ flex: 1 }} />
             <select value={category} onChange={(e) => { setCategory(e.target.value as HobbyCategory | 'all'); setCandidates(null) }}
-              style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em', padding: '6px 9px', cursor: 'pointer', outline: 'none' }}>
-              <option value="all">ALL CATEGORIES</option>
-              {entryHobbies.map((h) => <option key={h.id} value={h.id}>{h.pluralLabel.toUpperCase()}</option>)}
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '6px 9px', cursor: 'pointer', outline: 'none' }}>
+              <option value="all">All Categories</option>
+              {entryHobbies.map((h) => <option key={h.id} value={h.id}>{h.pluralLabel}</option>)}
             </select>
           </div>
 
           {/* ── Mode bodies ── */}
           {mode === 'next' && (
             <Panel accent={activeMode.accent}
-              title="NEXT UP"
+              title="Next Up"
               sub="Picked from what you already own. Weighted by your own ranking, then corrected for what your history says you actually finish.">
               {nextUp.length === 0 ? (
                 <Empty>Nothing in your backlog for this filter.<br />Your backlog being empty is the point — go find something in Discover.</Empty>
@@ -365,7 +362,7 @@ export default function SuggestionsPage() {
 
           {mode === 'time' && (
             <Panel accent={activeMode.accent}
-              title="TIME I HAVE"
+              title="Time I Have"
               sub="Ranked by what this sitting can finish, not by taste. Fullest use of the window first.">
               {/* Pick the sitting. Declared windows first, then a manual box so
                   this still works for someone who never set a window up. */}
@@ -380,10 +377,10 @@ export default function SuggestionsPage() {
                         border: `1px solid ${on ? '#d97706' : 'var(--border-dim)'}`,
                         color: on ? '#d97706' : 'var(--text-dim)',
                       }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em' }}>
-                        {o.isNow ? 'RIGHT NOW' : whenLabel(o, now)}
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.02em' }}>
+                        {o.isNow ? 'Right Now' : whenLabel(o, now)}
                       </span>
-                      <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.8, marginTop: 2 }}>
+                      <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 12, opacity: 0.8, marginTop: 2 }}>
                         {fmtHours(o.hoursLeft)}{o.isNow ? ' left' : ''} · {windowTitle(o.window)}
                       </span>
                     </button>
@@ -396,23 +393,23 @@ export default function SuggestionsPage() {
                     border: `1px solid ${chosen == null ? '#d97706' : 'var(--border-dim)'}`,
                     color: chosen == null ? '#d97706' : 'var(--text-dim)',
                   }}>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em' }}>SOME OTHER TIME</span>
-                  <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.8, marginTop: 2 }}>say how long</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.02em' }}>Some Other Time</span>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 12, opacity: 0.8, marginTop: 2 }}>say how long</span>
                 </button>
               </div>
 
               {chosen == null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>I HAVE</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>I Have</span>
                   <input type="number" min={0.25} max={24} step={0.25} value={manualHours}
                     onChange={(e) => setManualHours(Math.max(0.25, Math.min(24, Number(e.target.value) || 0.25)))}
-                    style={{ width: 86, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #d9770666', padding: '7px 9px', color: 'var(--text-hi)', fontFamily: 'var(--font-mono)', fontSize: 13, outline: 'none' }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>HOURS</span>
+                    style={{ width: 86, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #d9770666', padding: '7px 9px', color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }} />
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>Hours</span>
                 </div>
               )}
 
               {windows.length === 0 && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7, letterSpacing: '0.04em' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 16px', lineHeight: 1.7, letterSpacing: '0.02em' }}>
                   No weekly windows declared, so this is a one-off answer. Set them up in{' '}
                   <Link href="/settings" style={{ color: '#d97706' }}>Settings &rarr; Hobby Time</Link>.
                 </p>
@@ -437,7 +434,7 @@ export default function SuggestionsPage() {
 
           {mode === 'triage' && (
             <Panel accent={activeMode.accent}
-              title="FINISH OR DROP"
+              title="Finish or Drop"
               sub={`Things you started and haven't touched in a month or more. This is the mode that makes your backlog smaller.`}>
               {stalled.length === 0 ? (
                 <Empty>Nothing is stalled. Everything you&apos;ve started is still moving.</Empty>
@@ -456,7 +453,7 @@ export default function SuggestionsPage() {
 
           {mode === 'discover' && (
             <Panel accent={activeMode.accent}
-              title="DISCOVER"
+              title="Discover"
               sub={ration.note}
               right={
                 <Btn color="#22c55e" onClick={findCandidates} disabled={finding}>
@@ -466,8 +463,8 @@ export default function SuggestionsPage() {
               {finding ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '32px 0' }}>
                   <Loader2 size={15} style={{ color: '#22c55e', animation: 'spin 1s linear infinite' }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.14em' }}>
-                    SEARCHING THE CATALOGS
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>
+                    Searching the Catalogs
                   </span>
                 </div>
               ) : discoveries.length === 0 ? (
@@ -487,19 +484,19 @@ export default function SuggestionsPage() {
                 </div>
               )}
               {borrowed.length > 0 && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#0891b2', margin: '0 0 14px', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#0891b2', margin: '0 0 14px', letterSpacing: '0.02em', lineHeight: 1.7 }}>
                   You haven&apos;t finished anything in {listCats(borrowed)} yet, so those are
                   matched on the genres you finish everywhere else.
                 </p>
               )}
               {skipped.length > 0 && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 14px', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', letterSpacing: '0.02em', lineHeight: 1.7 }}>
                   Nothing asked for {listCats(skipped)} — no finished, rated or genre-tagged
                   entries anywhere to go on yet.
                 </p>
               )}
               {problems.length > 0 && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#d97706', margin: '14px 0 0', letterSpacing: '0.04em', lineHeight: 1.7 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: '14px 0 0', letterSpacing: '0.02em', lineHeight: 1.7 }}>
                   Some catalogs didn&apos;t answer: {problems.join(' · ')}. Results below are
                   partial — try Refresh.
                 </p>
@@ -555,7 +552,7 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
       label: 'Evidence',
       value: String(profile.totalEvidence),
       sub: 'finished or abandoned',
-      accent: '#7c3aed',
+      accent: '#955ff0',
     },
     {
       label: 'Strongest Taste',
@@ -571,13 +568,13 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
         <div key={c.label} style={{ padding: '1px', clipPath: CLIP, background: `${c.accent}44` }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: '14px 16px', position: 'relative', height: '100%' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 12, height: 12, background: c.accent, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase', margin: '0 0 8px' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 8px' }}>
               {c.label}
             </p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--text-hi)', lineHeight: 1, margin: '0 0 5px', textTransform: 'capitalize' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 22, color: 'var(--text-hi)', lineHeight: 1, margin: '0 0 5px', textTransform: 'capitalize' }}>
               {c.value}
             </p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.08em', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', margin: 0 }}>
               {c.sub}
             </p>
           </div>
@@ -604,16 +601,16 @@ function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
   onStart: () => void; onOpen: () => void
 }) {
   const e = pick.entry
-  const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#7c3aed'
+  const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
   const h = entryHours(e)
   return (
     <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
         {index + 1}
       </span>
       <Cover url={e.cover_url} title={e.title} accent={accent} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.04em' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
           {e.title}
         </p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 2 }}>
@@ -623,13 +620,13 @@ function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
           {tagsOf(e).slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
         </div>
         {pick.override && (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
             ⚠ {pick.override}
           </p>
         )}
         <Reasons items={pick.reasons} accent={accent} />
         {plan && (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
             ⌚ {plan.reason}
           </p>
         )}
@@ -650,24 +647,24 @@ function whenLabel(o: WindowOccurrence, now: Date): string {
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const startDay = new Date(o.start.getFullYear(), o.start.getMonth(), o.start.getDate()).getTime()
   const days = Math.round((startDay - midnight) / 86400000)
-  if (days === 0) return o.start.getHours() >= 17 ? 'TONIGHT' : 'TODAY'
-  if (days === 1) return 'TOMORROW'
+  if (days === 0) return o.start.getHours() >= 17 ? 'Tonight' : 'Today'
+  if (days === 1) return 'Tomorrow'
   // A weekly block comes round again inside the list, so the second Friday has
   // to say which Friday it is -- otherwise it reads as a duplicate of tonight.
-  return (days >= 7 ? 'NEXT ' : '') + DAY_SHORT[o.start.getDay()].toUpperCase()
+  return (days >= 7 ? 'Next ' : '') + DAY_SHORT[o.start.getDay()]
 }
 
 function FitRow({ pick, busy, onStart, onOpen }: {
   pick: FitPick; busy: boolean; onStart: () => void; onOpen: () => void
 }) {
   const e = pick.entry
-  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#7c3aed'
+  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
   const fitColor = pick.fit === 'finish' ? '#22c55e' : pick.fit === 'dent' ? '#d97706' : 'var(--text-dim)'
   return (
     <Row accent={fitColor}>
       <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.04em' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
           {e.title}
         </p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -678,7 +675,7 @@ function FitRow({ pick, busy, onStart, onOpen }: {
             <Tag color={STATUS_COLORS.in_progress}>{STATUS_LABELS.in_progress}</Tag>
           )}
         </div>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mid)', margin: '8px 0 0', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '8px 0 0', letterSpacing: '0.02em', lineHeight: 1.5 }}>
           {pick.reason}
         </p>
       </div>
@@ -695,13 +692,13 @@ function TriageRow({ item, busy, onDone, onDrop, onOpen }: {
   onDone: () => void; onDrop: () => void; onOpen: () => void
 }) {
   const e = item.entry
-  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#7c3aed'
+  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
   const verdictColor = item.verdict === 'finish' ? '#22c55e' : item.verdict === 'drop' ? '#ef4444' : 'var(--text-dim)'
   return (
     <Row accent={verdictColor}>
       <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.04em' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
           {e.title}
         </p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -731,12 +728,12 @@ function DiscoverRow({ pick, index, busy, onAdd }: {
   const accent = HOBBY_MAP[c.category]?.accent ?? '#22c55e'
   return (
     <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
         {index + 1}
       </span>
       <Cover url={c.cover_url} title={c.title} accent={accent} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.04em' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
           {c.title} {c.year ? <span style={{ color: 'var(--text-mute)', fontWeight: 400 }}>({c.year})</span> : null}
         </p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -768,14 +765,14 @@ function WhyPanel({ profile, category, entryHobbies }: {
   return (
     <div style={{ marginTop: 24 }}>
       <button onClick={() => setOpen((o) => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em', cursor: 'pointer' }}>
         <RefreshCw size={12} /> {open ? 'Hide' : 'Show'} what the engine thinks it knows
       </button>
 
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {profile.lengthSensitivity > 0.05 && (
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#d97706', margin: 0, letterSpacing: '0.04em', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', margin: 0, letterSpacing: '0.02em', lineHeight: 1.6 }}>
               Your reviews complain about things running long more often than they praise tight
               pacing, so long titles are marked down a little beyond what your finish rate alone
               would say.
@@ -789,22 +786,22 @@ function WhyPanel({ profile, category, entryHobbies }: {
             const buckets = t.buckets.filter((b) => b.finished + b.abandoned > 0)
             return (
               <Panel key={cat} accent={accent}
-                title={HOBBY_MAP[cat].pluralLabel.toUpperCase()}
+                title={HOBBY_MAP[cat].pluralLabel}
                 sub={t.confident
                   ? `${t.sample} decided items · you finish ${Math.round(t.overallFinishRate * 100)}% of what you start`
                   : `Only ${t.sample} decided ${t.sample === 1 ? 'item' : 'items'} — not enough to be confident yet`}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 22 }}>
                   <div>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.18em', margin: '0 0 10px' }}>
-                      GENRE AFFINITY
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                      Genre Affinity
                     </p>
                     {top.length === 0 ? (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', margin: 0 }}>No genre data yet.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0 }}>No genre data yet.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[...top, ...bottom.filter((b) => !top.includes(b))].map((g) => (
                           <div key={g.tag} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
                               {g.tag}
                             </span>
                             {/* Centre-anchored bar: right of centre is a yes, left is a no. */}
@@ -817,7 +814,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
                                 background: g.score >= 0 ? accent : '#ef4444',
                               }} />
                             </div>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', width: 44, textAlign: 'right', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 44, textAlign: 'right', flexShrink: 0 }}>
                               {g.finished}✓ {g.abandoned}✕
                             </span>
                           </div>
@@ -827,11 +824,11 @@ function WhyPanel({ profile, category, entryHobbies }: {
                   </div>
 
                   <div>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.18em', margin: '0 0 10px' }}>
-                      FINISH RATE BY LENGTH
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                      Finish Rate by Length
                     </p>
                     {buckets.length === 0 ? (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', margin: 0 }}>No length data yet.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0 }}>No length data yet.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {buckets.map((b) => {
@@ -839,25 +836,25 @@ function WhyPanel({ profile, category, entryHobbies }: {
                           const rate = b.raw ?? 0
                           return (
                             <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', width: 62, flexShrink: 0 }}>{b.label}</span>
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 62, flexShrink: 0 }}>{b.label}</span>
                               <div style={{ flex: 1, height: 5, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                                 <div style={{ height: '100%', width: `${Math.round(rate * 100)}%`, background: rate >= 0.5 ? accent : '#ef4444' }} />
                               </div>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', width: 56, textAlign: 'right', flexShrink: 0 }}>
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 56, textAlign: 'right', flexShrink: 0 }}>
                                 {Math.round(rate * 100)}% of {n}
                               </span>
                             </div>
                           )
                         })}
                         {t.medianFinishedHours != null && (
-                          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', margin: '4px 0 0', letterSpacing: '0.06em', lineHeight: 1.6 }}>
+                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: '4px 0 0', letterSpacing: '0.02em', lineHeight: 1.6 }}>
                             Median finished: {hrs(t.medianFinishedHours)}
                             {t.longestFinishedHours != null && ` · longest: ${hrs(t.longestFinishedHours)}`}
                             {t.abandonedMedianHours != null && ` · median abandoned: ${hrs(t.abandonedMedianHours)}`}
                           </p>
                         )}
                         {t.ongoing && t.ongoing.finished + t.ongoing.abandoned > 0 && (
-                          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.06em' }}>
+                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.02em' }}>
                             Still-airing shows: finished {t.ongoing.finished} of {t.ongoing.finished + t.ongoing.abandoned}
                           </p>
                         )}
@@ -869,7 +866,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
             )
           })}
           {profile.ratingBaseline && profile.ratingBaseline.count >= 5 && (
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.06em', lineHeight: 1.7 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.02em', lineHeight: 1.7 }}>
               Your ratings average {Math.round(profile.ratingBaseline.mean * 10) / 10}/10 across{' '}
               {profile.ratingBaseline.count} items (spread ±{Math.round(profile.ratingBaseline.sd * 10) / 10}).
               Scores are read against your own scale, not against 10 — an 8 from someone who rates

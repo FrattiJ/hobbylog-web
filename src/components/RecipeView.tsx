@@ -15,8 +15,8 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
 
   const difficulty = DIFFICULTIES.find((d) => d.id === recipe.difficulty)
   const time = formatCookTime(recipe.cook_minutes)
-  const heading: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 8px' }
-  const chip = (c: string): React.CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', padding: '3px 8px', background: `${c}18`, color: c, border: `1px solid ${c}44`, textTransform: 'uppercase' })
+  const heading: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 8px' }
+  const chip = (c: string): React.CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '3px 8px', background: `${c}18`, color: c, border: `1px solid ${c}44` })
   const empty = recipe.ingredients.length === 0 && recipe.steps.length === 0
 
   return (
@@ -30,14 +30,14 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
       )}
 
       {empty && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', margin: 0, lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0, lineHeight: 1.6 }}>
           No ingredients or steps yet. Use EDIT to add them.
         </p>
       )}
 
       {recipe.ingredients.length > 0 && (
         <div>
-          <p style={heading}>INGREDIENTS · {recipe.ingredients.length}</p>
+          <p style={heading}>Ingredients · {recipe.ingredients.length}</p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {recipe.ingredients.map((ing, i) => {
               const on = have.has(i)
@@ -48,7 +48,7 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
                     <span style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${on ? accent : 'var(--border-dim)'}`, background: on ? accent : 'transparent', color: '#fff' }}>
                       {on && <Check size={11} />}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, lineHeight: 1.5, color: on ? 'var(--text-dim)' : 'var(--text-hi)', textDecoration: on ? 'line-through' : 'none' }}>{ing}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.5, color: on ? 'var(--text-dim)' : 'var(--text-hi)', textDecoration: on ? 'line-through' : 'none' }}>{ing}</span>
                   </button>
                 </li>
               )
@@ -59,7 +59,7 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
 
       {recipe.steps.length > 0 && (
         <div>
-          <p style={heading}>STEPS · {recipe.steps.length}</p>
+          <p style={heading}>Steps · {recipe.steps.length}</p>
           <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
             {recipe.steps.map((step, i) => {
               const on = doneSteps.has(i)
@@ -67,10 +67,10 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
                 <li key={i}>
                   <button type="button" aria-pressed={on} onClick={() => setDoneSteps((s) => toggle(s, i))}
                     style={{ display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%', padding: '8px 4px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                    <span style={{ minWidth: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, border: `1px solid ${accent}`, background: on ? accent : `${accent}18`, color: on ? '#fff' : accent }}>
+                    <span style={{ minWidth: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, border: `1px solid ${accent}`, background: on ? accent : `${accent}18`, color: on ? '#fff' : accent }}>
                       {on ? <Check size={12} /> : i + 1}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, lineHeight: 1.65, color: on ? 'var(--text-dim)' : 'var(--text-hi)' }}>{step}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.65, color: on ? 'var(--text-dim)' : 'var(--text-hi)' }}>{step}</span>
                   </button>
                 </li>
               )

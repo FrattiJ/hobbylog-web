@@ -14,7 +14,7 @@ import ExportPanel from '@/components/ExportPanel'
 import TimeWindowsPanel from '@/components/TimeWindowsPanel'
 import NewPasswordForm from '@/components/NewPasswordForm'
 
-const ACCENT = '#7c3aed'
+const ACCENT = '#955ff0'
 
 export default function SettingsPage() {
   const { enabledIds, setEnabledIds } = useHobbies()
@@ -111,13 +111,12 @@ export default function SettingsPage() {
   }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: 20, marginBottom: 16 }
-  const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 12px' }
+  const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: '0 0 12px' }
 
   return (
     <div style={{ padding: 32, maxWidth: 720, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>SYSTEM / SETTINGS</p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>SETTINGS</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>SETTINGS</h1>
       </div>
 
       {/* Account */}
@@ -125,45 +124,45 @@ export default function SettingsPage() {
         <h2 style={h2}>ACCOUNT</h2>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {avatar
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: '#fff' }}>{(username || email || 'O')[0]?.toUpperCase()}</span>}
+              : <span style={{ fontFamily: 'var(--font-body)', fontSize: 26, fontWeight: 700, color: '#fff' }}>{(username || email || 'O')[0]?.toUpperCase()}</span>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <input ref={avatarRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) pickAvatar(f) }} />
             <button onClick={() => avatarRef.current?.click()}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: 'pointer' }}>
-              <Camera size={13} /> {avatar ? 'CHANGE PHOTO' : 'UPLOAD PHOTO'}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: 'pointer' }}>
+              <Camera size={13} /> {avatar ? 'Change Photo' : 'Upload Photo'}
             </button>
-            {avatar && <button onClick={removeAvatar} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', letterSpacing: '0.06em' }}>Remove</button>}
+            {avatar && <button onClick={removeAvatar} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', letterSpacing: '0.02em' }}>Remove</button>}
           </div>
         </div>
 
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>{email}</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 16px' }}>{email}</p>
 
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>USERNAME</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }}>Username</p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: usernameMsg ? 8 : 16, flexWrap: 'wrap' }}>
           <input value={username} onChange={(e) => setUsernameState(e.target.value)} placeholder="pick_a_handle" spellCheck={false}
-            style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none' }} />
+            style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
           <button onClick={saveUsername} disabled={savingName}
-            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: savingName ? 'wait' : 'pointer', opacity: savingName ? 0.6 : 1 }}>SAVE</button>
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: savingName ? 'wait' : 'pointer', opacity: savingName ? 0.6 : 1 }}>Save</button>
         </div>
-        {usernameMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{usernameMsg}</p>}
+        {usernameMsg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{usernameMsg}</p>}
 
         {pwOpen && (
           <div style={{ maxWidth: 360, margin: '0 0 16px' }}>
-            <NewPasswordForm submitLabel="UPDATE PASSWORD" onDone={() => { setPwOpen(false); setPwMsg('Password updated.') }} />
+            <NewPasswordForm submitLabel="Update Password" onDone={() => { setPwOpen(false); setPwMsg('Password updated.') }} />
           </div>
         )}
-        {pwMsg && <p role="status" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{pwMsg}</p>}
+        {pwMsg && <p role="status" style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{pwMsg}</p>}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => { setPwOpen((o) => !o); setPwMsg(null) }}
-            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>{pwOpen ? 'CANCEL' : 'CHANGE PASSWORD'}</button>
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>{pwOpen ? 'Cancel' : 'Change Password'}</button>
           <button onClick={() => supabase.auth.signOut()}
-            style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>SIGN OUT</button>
+            style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>Sign Out</button>
         </div>
       </div>
 
@@ -172,9 +171,9 @@ export default function SettingsPage() {
         <Download size={20} style={{ color: '#0891b2', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <h2 style={{ ...h2, margin: 0 }}>IMPORT &amp; SYNC</h2>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0', lineHeight: 1.5 }}>Connect Steam, or import from MyAnimeList, Goodreads &amp; Letterboxd.</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0', lineHeight: 1.5 }}>Connect Steam, or import from MyAnimeList, Goodreads &amp; Letterboxd.</p>
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#0891b2' }}>→</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: '#0891b2' }}>→</span>
       </Link>
 
       {/* Hobby time windows */}
@@ -185,24 +184,24 @@ export default function SettingsPage() {
 
       {/* Feedback */}
       <div style={{ ...card, borderLeftColor: '#0891b2' }}>
-        <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#0891b2' }} /> FEEDBACK</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Found a bug or have an idea? Send it straight to the developer.</p>
+        <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#0891b2' }} /> Feedback</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Found a bug or have an idea? Send it straight to the developer.</p>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           {(['bug', 'feature'] as const).map((k) => (
             <button key={k} onClick={() => setFbKind(k)}
-              style={{ padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
+              style={{ padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
               {k === 'bug' ? '🐛 Bug' : '✦ Idea'}
             </button>
           ))}
         </div>
         <textarea value={fbText} onChange={(e) => setFbText(e.target.value)} rows={3}
           placeholder={fbKind === 'bug' ? 'What happened, and what did you expect?' : 'What would you like to see?'}
-          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #0891b266', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-mono)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #0891b266', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
         <button onClick={sendFeedback} disabled={fbBusy || !fbText.trim()}
-          style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: fbBusy ? 'wait' : 'pointer', opacity: fbBusy || !fbText.trim() ? 0.5 : 1 }}>
-          {fbBusy ? 'SENDING…' : 'SEND'}
+          style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: fbBusy ? 'wait' : 'pointer', opacity: fbBusy || !fbText.trim() ? 0.5 : 1 }}>
+          {fbBusy ? 'Sending…' : 'Send'}
         </button>
-        {fbMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
+        {fbMsg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
       </div>
 
       {/* Admin: feedback inbox — only rendered for the admin account. */}
@@ -210,27 +209,27 @@ export default function SettingsPage() {
         <div style={{ ...card, borderLeftColor: '#d97706' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
             <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-              <Inbox size={15} style={{ color: '#d97706' }} /> FEEDBACK INBOX
-              {inbox && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>· {inbox.length}</span>}
+              <Inbox size={15} style={{ color: '#d97706' }} /> Feedback Inbox
+              {inbox && <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>· {inbox.length}</span>}
             </h2>
             <button onClick={loadInbox} disabled={inboxBusy} title="Refresh"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em', color: '#d97706', background: 'transparent', border: '1px solid #d9770666', cursor: inboxBusy ? 'wait' : 'pointer' }}>
-              <RefreshCw size={12} /> {inboxBusy ? '…' : 'REFRESH'}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: '#d97706', background: 'transparent', border: '1px solid #d9770666', cursor: inboxBusy ? 'wait' : 'pointer' }}>
+              <RefreshCw size={12} /> {inboxBusy ? '…' : 'Refresh'}
             </button>
           </div>
           {inbox && inbox.length === 0 && (
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>No feedback yet.</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>No feedback yet.</p>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(inbox ?? []).map((f) => (
               <div key={f.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${f.kind === 'bug' ? '#ef4444' : '#0891b2'}`, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? '🐛 Bug' : '✦ Idea'}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-hi)' }}>{f.username || f.email || 'unknown'}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(f.created_at).toLocaleString()}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? '🐛 Bug' : '✦ Idea'}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-hi)' }}>{f.username || f.email || 'unknown'}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(f.created_at).toLocaleString()}</span>
                 </div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{f.message}</p>
-                {f.page && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', margin: '6px 0 0' }}>on {f.page}</p>}
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{f.message}</p>
+                {f.page && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: '6px 0 0' }}>on {f.page}</p>}
               </div>
             ))}
           </div>
@@ -246,7 +245,7 @@ export default function SettingsPage() {
             const active = enabledIds.includes(h.id)
             return (
               <button key={h.id} onClick={() => toggleHobby(h.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: active ? `${h.accent}18` : 'transparent', border: `1px solid ${active ? h.accent : 'var(--border-dim)'}`, borderLeft: active ? `3px solid ${h.accent}` : '1px solid var(--border-dim)', color: active ? h.accent : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: active ? `${h.accent}18` : 'transparent', border: `1px solid ${active ? h.accent : 'var(--border-dim)'}`, borderLeft: active ? `3px solid ${h.accent}` : '1px solid var(--border-dim)', color: active ? h.accent : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em' }}>
                 {Icon && <Icon size={14} />}
                 <span style={{ flex: 1, textAlign: 'left' }}>{h.pluralLabel}</span>
                 {active && <Check size={12} />}
@@ -260,27 +259,27 @@ export default function SettingsPage() {
       <div style={card}>
         <h2 style={h2}>APPEARANCE</h2>
 
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 8px' }}>THEME</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 8px' }}>Theme</p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {([['dark', Moon], ['light', Sun]] as const).map(([t, Icon]) => {
             const active = theme === t
             return (
               <button key={t} onClick={() => changeTheme(t)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.05em', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
                 <Icon size={14} /> {t}
               </button>
             )
           })}
         </div>
 
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>DISPLAY SIZE</p>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px', lineHeight: 1.5 }}>Scales the whole interface — compact to fit more, or larger for readability.</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }}>Display Size</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 10px', lineHeight: 1.5 }}>Scales the whole interface — compact to fit more, or larger for readability.</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {(['compact', 'normal', 'large', 'xl'] as DisplaySize[]).map((s) => {
             const active = displaySize === s
             return (
               <button key={s} onClick={() => changeDisplaySize(s)}
-                style={{ padding: '9px 18px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.05em', background: active ? `${ACCENT}22` : 'transparent', border: `1px solid ${active ? ACCENT : 'var(--border-dim)'}`, color: active ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
                 {s === 'xl' ? 'X-Large' : s}
               </button>
             )
@@ -291,20 +290,20 @@ export default function SettingsPage() {
       {/* Delete account */}
       <div style={{ ...card, borderLeftColor: '#ef4444' }}>
         <h2 style={h2}>DELETE ACCOUNT</h2>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>
           Clear just your entries, or permanently delete your entire account — profile, logs, friends, everything. Neither can be undone.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={clearData}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#f87171', background: 'transparent', border: '1px solid #ef444455', cursor: 'pointer' }}>
-            <Trash2 size={13} /> {clearConfirm ? 'CLICK AGAIN TO CONFIRM' : 'CLEAR ALL DATA'}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'transparent', border: '1px solid #ef444455', cursor: 'pointer' }}>
+            <Trash2 size={13} /> {clearConfirm ? 'Click Again to Confirm' : 'Clear All Data'}
           </button>
           <button onClick={deleteAccount} disabled={deleteBusy}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#fff', background: '#ef4444', border: '1px solid #ef4444', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
-            <Trash2 size={13} /> {deleteBusy ? 'DELETING…' : deleteConfirm ? 'CLICK AGAIN TO CONFIRM' : 'DELETE ACCOUNT'}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#fff', background: '#ef4444', border: '1px solid #ef4444', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
+            <Trash2 size={13} /> {deleteBusy ? 'Deleting…' : deleteConfirm ? 'Click Again to Confirm' : 'Delete Account'}
           </button>
         </div>
-        {msg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', marginTop: 12 }}>{msg}</p>}
+        {msg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', marginTop: 12 }}>{msg}</p>}
       </div>
     </div>
   )

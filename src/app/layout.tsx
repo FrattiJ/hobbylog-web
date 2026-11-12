@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Orbitron, Share_Tech_Mono } from 'next/font/google'
+import { Orbitron, Share_Tech_Mono, Barlow } from 'next/font/google'
 import './globals.css'
 import ClientLayout from '@/components/ClientLayout'
 import ToastProvider from '@/components/Toast'
@@ -15,6 +15,15 @@ const shareTechMono = Share_Tech_Mono({
   variable: '--font-mono',
   subsets: ['latin'],
   weight: ['400'],
+  display: 'swap',
+})
+
+// Everything that is read or pressed. A signage face: plain, slightly narrow,
+// legible small, and at home next to Orbitron without competing with it.
+const barlow = Barlow({
+  variable: '--font-body',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 })
 
@@ -37,12 +46,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#080a0e',
-  // Lock zoom on mobile so tapping inputs/cards doesn't trigger iOS's auto zoom-in.
-  // (The in-app Display Size setting covers users who need larger text.)
+  // Pinch-zoom stays on: people who need it should not have to find a setting
+  // first. The iOS zoom-on-focus this used to guard against is handled in
+  // globals.css by keeping inputs at 16px on touch screens.
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 }
 
@@ -53,7 +61,7 @@ const noFlash = `try{var t=localStorage.getItem('hobbylog-theme');if(t==='light'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable}`}>
+    <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable} ${barlow.variable}`}>
       <body>
         <script dangerouslySetInnerHTML={{ __html: noFlash }} />
         <ToastProvider>

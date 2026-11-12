@@ -64,18 +64,18 @@ export default function SteamSync({ accent, onSynced }: { accent: string; onSync
   }
 
   if (!steamId) return null
-  const label = prefs.sync && prefs.import ? 'SYNC + IMPORT'
-    : prefs.import ? 'IMPORT NEW'
-    : prefs.sync ? 'SYNC PLAYTIME'
-    : 'STEAM OPTIONS'
+  const label = prefs.sync && prefs.import ? 'Sync + Import'
+    : prefs.import ? 'Import New'
+    : prefs.sync ? 'Sync Playtime'
+    : 'Steam Options'
   const title = prefs.sync && prefs.import ? 'Update playtimes and import newly purchased games'
     : prefs.import ? 'Import newly purchased Steam games'
     : prefs.sync ? 'Update playtimes on games you already track'
     : 'Choose your Steam sync options'
   return (
     <button onClick={() => run(steamId, prefs, false)} disabled={busy} title={title}
-      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', background: 'transparent', border: `1px solid ${accent}66`, borderLeft: `3px solid ${accent}`, color: accent, fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', cursor: busy ? 'wait' : 'pointer' }}>
-      <RefreshCw size={13} style={busy ? { animation: 'spin 0.9s linear infinite' } : undefined} /> {busy ? 'SYNCING…' : label}
+      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', background: 'transparent', border: `1px solid ${accent}66`, borderLeft: `3px solid ${accent}`, color: accent, fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', cursor: busy ? 'wait' : 'pointer' }}>
+      <RefreshCw size={13} style={busy ? { animation: 'spin 0.9s linear infinite' } : undefined} /> {busy ? 'Syncing…' : label}
     </button>
   )
 }

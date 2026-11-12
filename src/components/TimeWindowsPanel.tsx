@@ -86,9 +86,9 @@ export default function TimeWindowsPanel() {
   }
 
   const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: 20, marginBottom: 16 }
-  const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }
-  const note: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.55, margin: 0 }
-  const field: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '6px 8px', outline: 'none' }
+  const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }
+  const note: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.55, margin: 0 }
+  const field: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', outline: 'none' }
 
   const list = rows ?? []
   const weekly = weeklyHobbyHours(list)
@@ -100,7 +100,7 @@ export default function TimeWindowsPanel() {
         <CalendarClock size={15} style={{ color: ACCENT }} />
         <h2 style={h2}>HOBBY TIME</h2>
         {weekly > 0 && (
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.02em' }}>
             · {weekly}h/week · longest sitting {longest}h
           </span>
         )}
@@ -138,7 +138,7 @@ export default function TimeWindowsPanel() {
                       patch(w.id, { start_min: start, end_min: resolveEnd(start, w.end_min % 1440) })
                     }}
                     style={{ ...field, width: 108 }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mute)' }}>to</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)' }}>to</span>
                   <input type="time" value={toTimeValue(w.end_min)} step={900}
                     onChange={(e) => {
                       const end = fromTimeValue(e.target.value)
@@ -148,7 +148,7 @@ export default function TimeWindowsPanel() {
                     style={{ ...field, width: 108 }} />
                   {crosses && (
                     <span title="Runs past midnight into the next day"
-                      style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: ACCENT, letterSpacing: '0.08em' }}>+1 DAY</span>
+                      style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: ACCENT, letterSpacing: '0.05em' }}>+1 Day</span>
                   )}
 
                   <input value={w.label ?? ''} placeholder="label (optional)" maxLength={40}
@@ -169,17 +169,17 @@ export default function TimeWindowsPanel() {
 
                 {/* The share factor, with the number it produces spelled out. */}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 9 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.14em' }}>HOBBY SHARE</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Hobby Share</span>
                   {SHARES.map((s) => {
                     const on = Math.abs(w.share - s.value) < 0.02
                     return (
                       <button key={s.value} onClick={() => patch(w.id, { share: s.value })}
-                        style={{ minWidth: 34, padding: '3px 8px', fontFamily: 'var(--font-mono)', fontSize: 11, background: on ? `${ACCENT}22` : 'transparent', border: `1px solid ${on ? ACCENT : 'var(--border-dim)'}`, color: on ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
+                        style={{ minWidth: 34, padding: '3px 8px', fontFamily: 'var(--font-body)', fontSize: 12, background: on ? `${ACCENT}22` : 'transparent', border: `1px solid ${on ? ACCENT : 'var(--border-dim)'}`, color: on ? ACCENT : 'var(--text-dim)', cursor: 'pointer' }}>
                         {s.label}
                       </button>
                     )
                   })}
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', letterSpacing: '0.04em' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.02em' }}>
                     {hobby === span
                       ? `${fmtDuration(span)} of hobby time`
                       : `≈ ${fmtDuration(hobby)} of ${fmtDuration(span)} — the rest shared with everything else`}
@@ -193,14 +193,14 @@ export default function TimeWindowsPanel() {
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button onClick={addRow} disabled={busy}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
-          <Plus size={13} /> ADD A WINDOW
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+          <Plus size={13} /> Add a Window
         </button>
         {list.some((w) => w.active) && (
           <button onClick={exportIcs}
             title="Download these blocks as a weekly-recurring .ics for your own calendar"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
-            <CalendarArrowDown size={13} /> EXPORT .ICS
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
+            <CalendarArrowDown size={13} /> Export .ics
           </button>
         )}
       </div>

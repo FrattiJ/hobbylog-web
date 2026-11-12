@@ -35,10 +35,10 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
 
   return (
     <>
-      <p style={authLabel}>NEW PASSWORD</p>
+      <p style={authLabel}>New Password</p>
       <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter}
         placeholder="••••••••" autoComplete="new-password" aria-label="New password" style={{ ...authInput, marginBottom: 16 }} />
-      <p style={authLabel}>CONFIRM PASSWORD</p>
+      <p style={authLabel}>Confirm Password</p>
       <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} onKeyDown={onEnter}
         placeholder="••••••••" autoComplete="new-password" aria-label="Confirm password" style={{ ...authInput, marginBottom: 20 }} />
       <AuthMessage message={error ? { kind: 'error', text: error } : null} />

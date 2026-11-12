@@ -15,12 +15,12 @@ import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
 
 const SORT_OPTIONS: { id: SortOption; label: string; defaultDir: 'asc' | 'desc' }[] = [
-  { id: 'recent',  label: 'RECENT',       defaultDir: 'desc' },
-  { id: 'name',    label: 'NAME',         defaultDir: 'asc'  },
-  { id: 'release', label: 'RELEASE DATE', defaultDir: 'desc' },
-  { id: 'ttb',     label: 'TIME TO BEAT', defaultDir: 'asc'  },
-  { id: 'rank',    label: 'RANK',         defaultDir: 'asc'  },
-  { id: 'added',   label: 'DATE ADDED',   defaultDir: 'asc'  },
+  { id: 'recent',  label: 'Recent',       defaultDir: 'desc' },
+  { id: 'name',    label: 'Name',         defaultDir: 'asc'  },
+  { id: 'release', label: 'Release Date', defaultDir: 'desc' },
+  { id: 'ttb',     label: 'Time to Beat', defaultDir: 'asc'  },
+  { id: 'rank',    label: 'Rank',         defaultDir: 'asc'  },
+  { id: 'added',   label: 'Date Added',   defaultDir: 'asc'  },
 ]
 
 function sortValue(e: Entry, by: SortOption): string | number | null {
@@ -185,8 +185,8 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     padding: '8px 14px',
     color: 'var(--text-hi)',
     fontSize: 14,
-    fontFamily: 'var(--font-mono)',
-    letterSpacing: '0.04em',
+    fontFamily: 'var(--font-body)',
+    letterSpacing: '0.02em',
     outline: 'none',
     width: '100%',
   }
@@ -214,21 +214,18 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>
-            CATEGORY / {hobbyId.toUpperCase()}
-          </p>
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: 22,
             fontWeight: 900,
             color: 'var(--text-hi)',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.05em',
             margin: 0,
           }}>
             {hobby.pluralLabel.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', marginTop: 4, letterSpacing: '0.1em' }}>
-            {entries.length} RECORDS INDEXED
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', marginTop: 4, letterSpacing: '0.05em' }}>
+            {entries.length} entries
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -244,18 +241,18 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
               border: `1px solid ${hobby.accent}88`,
               borderLeft: `3px solid ${hobby.accent}`,
               color: hobby.accent,
-              fontFamily: 'var(--font-display)',
+              fontFamily: 'var(--font-body)',
               fontSize: 14,
               fontWeight: 700,
-              letterSpacing: '0.1em',
+              letterSpacing: '0.05em',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              transition: 'var(--t-fast)',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = `${hobby.accent}44`; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${hobby.accent}44)` }}
             onMouseLeave={(e) => { e.currentTarget.style.background = `${hobby.accent}22`; e.currentTarget.style.filter = 'none' }}
           >
             <Plus size={13} />
-            ADD {hobby.label.toUpperCase()}
+            Add {hobby.label}
           </button>
         </div>
       </div>
@@ -276,16 +273,15 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 onClick={() => setSubtypeFilter(s.id === 'all' ? 'all' : active ? 'all' : s.id)}
                 style={{
                   padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-body)',
                   fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   background: active ? `${hobby.accent}22` : 'transparent',
                   border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
                   borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
                   color: active ? hobby.accent : 'var(--text-dim)',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
+                  transition: 'var(--t-fast)',
                 }}
               >
                 {s.label} ({s.count})
@@ -313,16 +309,15 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 onClick={() => setMealTag(active ? 'all' : t.id)}
                 style={{
                   padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-body)',
                   fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   background: active ? `${hobby.accent}22` : 'transparent',
                   border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
                   borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
                   color: active ? hobby.accent : 'var(--text-dim)',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
+                  transition: 'var(--t-fast)',
                 }}
               >
                 {t.label} ({t.count})
@@ -339,7 +334,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={`SEARCH ${hobby.pluralLabel.toUpperCase()}…`}
+            placeholder={`Search ${hobby.pluralLabel}…`}
             style={inp}
           />
         </div>
@@ -358,19 +353,18 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 }}
                 style={{
                   padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-body)',
                   fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   background: active ? `${color}22` : 'transparent',
                   border: `1px solid ${active ? color : 'var(--border-dim)'}`,
                   borderLeft: active ? `2px solid ${color}` : '1px solid var(--border-dim)',
                   color: active ? color : 'var(--text-dim)',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
+                  transition: 'var(--t-fast)',
                 }}
               >
-                {s === 'all' ? 'ALL' : statusLabelFor(hobby, s)}
+                {s === 'all' ? 'All' : statusLabelFor(hobby, s)}
               </button>
             )
           })}
@@ -383,12 +377,12 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             onChange={(e) => handleSortChange(e.target.value as SortOption)}
             style={{
               background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', fontFamily: 'var(--font-mono)', fontSize: 14,
-              letterSpacing: '0.1em', padding: '6px 10px', cursor: 'pointer', outline: 'none',
+              color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14,
+              letterSpacing: '0.05em', padding: '6px 10px', cursor: 'pointer', outline: 'none',
             }}
           >
             {sortOptions.map((o) => (
-              <option key={o.id} value={o.id}>SORT: {o.label}</option>
+              <option key={o.id} value={o.id}>Sort: {o.label}</option>
             ))}
           </select>
           <button
@@ -398,7 +392,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 32,
               background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', cursor: 'pointer', transition: 'all 0.12s ease',
+              color: 'var(--text-mid)', cursor: 'pointer', transition: 'var(--t-fast)',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-hi)')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-mid)')}
@@ -414,22 +408,22 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
               display: 'flex', alignItems: 'center', gap: 8,
               marginLeft: 'auto',
               padding: '8px 18px',
-              fontFamily: 'var(--font-display)',
+              fontFamily: 'var(--font-body)',
               fontSize: 14,
               fontWeight: 700,
-              letterSpacing: '0.1em',
+              letterSpacing: '0.05em',
               background: rankMode ? '#d97706' : '#d9770622',
               border: '1px solid #d97706',
               borderLeft: '3px solid #d97706',
               color: rankMode ? 'var(--bg-base)' : '#d97706',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              transition: 'var(--t-fast)',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.filter = 'drop-shadow(0 0 6px #d9770666)')}
             onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
           >
             <ListOrdered size={14} />
-            {rankMode ? 'DONE RANKING' : isRecipe ? 'RANK TO-TRY LIST' : 'RANK BACKLOG'}
+            {rankMode ? 'Done Ranking' : isRecipe ? 'Rank To-Try List' : 'Rank Backlog'}
           </button>
         )}
         {!rankMode && (
@@ -438,13 +432,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               marginLeft: statusFilter === 'backlog' ? 8 : 'auto',
-              padding: '8px 18px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em',
+              padding: '8px 18px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em',
               background: selectMode ? hobby.accent : `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, borderLeft: `3px solid ${hobby.accent}`,
-              color: selectMode ? 'var(--bg-base)' : hobby.accent, cursor: 'pointer', transition: 'all 0.15s ease',
+              color: selectMode ? 'var(--bg-base)' : hobby.accent, cursor: 'pointer', transition: 'var(--t-fast)',
             }}
           >
             <CheckSquare size={14} />
-            {selectMode ? 'DONE' : 'SELECT'}
+            {selectMode ? 'Done' : 'Select'}
           </button>
         )}
       </div>
@@ -452,13 +446,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
       {/* Rank mode — ordered backlog list with reorder controls */}
       {rankMode && statusFilter === 'backlog' ? (
         ranked.length === 0 ? (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.14em', textAlign: 'center', padding: 32 }}>
-            BACKLOG EMPTY — NOTHING TO RANK
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.08em', textAlign: 'center', padding: 32 }}>
+            Your backlog is empty, so there is nothing to rank yet.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 720 }}>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.14em', margin: 0 }}>
-              DRAG ROWS, TYPE A POSITION NUMBER, OR USE THE ARROWS
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>
+              Drag rows, type a position number, or use the arrows
             </p>
             {ranked.map((e, i) => (
               <div
@@ -510,7 +504,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                     border: '1px solid var(--border-dim)',
                     padding: '6px 0',
                     textAlign: 'center',
-                    fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900,
+                    fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 900,
                     color: i === 0 ? '#d97706' : 'var(--text-mid)',
                     outline: 'none',
                   }}
@@ -519,11 +513,11 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                   <img src={e.cover_url} alt="" draggable={false} style={{ width: 32, height: 44, objectFit: 'cover', flexShrink: 0, border: `1px solid ${hobby.accent}33` }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.04em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {e.title}
                   </p>
                   {i === 0 && (
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#d97706', letterSpacing: '0.14em' }}>▸ UP NEXT</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', letterSpacing: '0.08em' }}>Up Next</span>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -537,7 +531,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                         color: disabled ? 'var(--text-mute)' : hobby.accent,
                         cursor: disabled ? 'default' : 'pointer',
                         opacity: disabled ? 0.4 : 1,
-                        transition: 'all 0.12s ease',
+                        transition: 'var(--t-fast)',
                       }}
                       onMouseEnter={(ev) => { if (!disabled) ev.currentTarget.style.background = `${hobby.accent}22` }}
                       onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
@@ -560,14 +554,14 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             background: 'var(--bg-card)',
           }}
         >
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: hobby.accent, letterSpacing: '0.2em', marginBottom: 8 }}>
-            ◈ NO DATA FOUND
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: hobby.accent, letterSpacing: '0.08em', marginBottom: 8 }}>
+            Nothing here yet
           </p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 4 }}>
-            {entries.length === 0 ? `${hobby.pluralLabel.toUpperCase()} LIBRARY EMPTY` : 'NO MATCHES'}
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 4 }}>
+            {entries.length === 0 ? `${hobby.pluralLabel} Library Empty` : 'No matches'}
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 20 }}>
-            {entries.length === 0 ? 'INITIALIZE FIRST RECORD' : 'ADJUST QUERY PARAMETERS'}
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.05em', marginBottom: 20 }}>
+            {entries.length === 0 ? 'Add your first one to get started.' : 'Try a different search or filter.'}
           </p>
           {entries.length === 0 && (
             <button
@@ -577,13 +571,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 background: `${hobby.accent}22`,
                 border: `1px solid ${hobby.accent}`,
                 color: hobby.accent,
-                fontFamily: 'var(--font-display)',
+                fontFamily: 'var(--font-body)',
                 fontSize: 14,
-                letterSpacing: '0.1em',
+                letterSpacing: '0.05em',
                 cursor: 'pointer',
               }}
             >
-              ADD FIRST RECORD
+              Add Your First Entry
             </button>
           )}
         </div>
@@ -593,19 +587,19 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             const allIds = display.map((e) => e.id)
             const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id))
             const sel = allIds.filter((id) => selectedIds.has(id))
-            const barBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: sel.length ? `${color}18` : 'transparent', border: `1px solid ${sel.length ? color : 'var(--border-dim)'}`, color: sel.length ? color : 'var(--text-mute)', cursor: sel.length && !bulkBusy ? 'pointer' : 'not-allowed' })
+            const barBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', background: sel.length ? `${color}18` : 'transparent', border: `1px solid ${sel.length ? color : 'var(--border-dim)'}`, color: sel.length ? color : 'var(--text-mute)', cursor: sel.length && !bulkBusy ? 'pointer' : 'not-allowed' })
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 14px', marginBottom: 14, background: 'var(--bg-card)', border: `1px solid ${hobby.accent}66`, borderLeft: `3px solid ${hobby.accent}`, position: 'sticky', top: 8, zIndex: 5 }}>
                 <button onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: 'transparent', border: `1px solid ${hobby.accent}66`, color: hobby.accent, cursor: 'pointer' }}>
-                  <CheckSquare size={13} /> {allSelected ? 'CLEAR ALL' : `SELECT ALL (${allIds.length})`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', background: 'transparent', border: `1px solid ${hobby.accent}66`, color: hobby.accent, cursor: 'pointer' }}>
+                  <CheckSquare size={13} /> {allSelected ? 'Clear All' : `Select All (${allIds.length})`}
                 </button>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
                 <span style={{ flex: 1 }} />
                 {(['in_progress', 'completed', 'backlog'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
                   <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
                 ))}
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> DELETE</button>
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> Delete</button>
                 <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
               </div>
             )

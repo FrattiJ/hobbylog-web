@@ -28,11 +28,11 @@ function SortBtn({ field, label, sortField, sortDir, onToggle }: {
       style={{
         display: 'flex', alignItems: 'center', gap: 4,
         padding: '4px 10px',
-        fontFamily: 'var(--font-mono)', fontSize: 14, letterSpacing: '0.12em',
+        fontFamily: 'var(--font-body)', fontSize: 14, letterSpacing: '0.05em',
         background: active ? 'color-mix(in srgb, var(--text-dim) 20%, transparent)' : 'transparent',
         border: `1px solid ${active ? 'var(--text-dim)' : 'var(--border-dim)'}`,
         color: active ? 'var(--text-mid)' : 'var(--text-dim)',
-        cursor: 'pointer', transition: 'all 0.12s ease',
+        cursor: 'pointer', transition: 'var(--t-fast)',
       }}
     >
       {label}
@@ -149,9 +149,8 @@ export default function DashboardPage() {
   return (
     <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>SYSTEM / STATUS</p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>
-          MISSION OVERVIEW
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
+          DASHBOARD
         </h1>
       </div>
 
@@ -159,7 +158,7 @@ export default function DashboardPage() {
 
       {/* ── Clickable stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <StatFilterCard label="Total Records"  value={entries.length}    accent="#7c3aed" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
+        <StatFilterCard label="Total Records"  value={entries.length}    accent="#955ff0" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
         <StatFilterCard label="In Progress"    value={inProgress.length} accent="#0891b2" index={1} active={activeFilter === 'in_progress'} onClick={() => handleStatClick('in_progress')} />
         <StatFilterCard label="Completed"      value={completed.length}  accent="#22c55e" index={2} active={activeFilter === 'completed'}   onClick={() => handleStatClick('completed')} />
         <StatFilterCard label="Backlog"        value={backlog.length}    accent="var(--text-dim)" index={3} active={activeFilter === 'backlog'}     onClick={() => handleStatClick('backlog')} />
@@ -179,7 +178,7 @@ export default function DashboardPage() {
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-dim)',
-            borderTop: `2px solid ${activeFilter === 'in_progress' ? '#0891b2' : activeFilter === 'completed' ? '#22c55e' : activeFilter === 'backlog' ? 'var(--text-dim)' : '#7c3aed'}`,
+            borderTop: `2px solid ${activeFilter === 'in_progress' ? '#0891b2' : activeFilter === 'completed' ? '#22c55e' : activeFilter === 'backlog' ? 'var(--text-dim)' : '#955ff0'}`,
           }}>
             {/* Panel header */}
             <div style={{
@@ -187,8 +186,8 @@ export default function DashboardPage() {
               padding: '12px 16px', borderBottom: '1px solid var(--border-dim)', flexWrap: 'wrap', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: 0 }}>
-                  {activeFilter === 'all' ? 'ALL RECORDS' : STATUS_LABELS[activeFilter].toUpperCase()} — {expandedEntries.length} ENTRIES
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>
+                  {activeFilter === 'all' ? 'All entries' : STATUS_LABELS[activeFilter]} — {expandedEntries.length} entries
                 </p>
               </div>
 
@@ -199,31 +198,31 @@ export default function DashboardPage() {
                   onChange={(e) => setHobbyFilter(e.target.value)}
                   style={{
                     background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
-                    color: 'var(--text-mid)', fontFamily: 'var(--font-mono)', fontSize: 14,
-                    letterSpacing: '0.1em', padding: '4px 8px', cursor: 'pointer',
+                    color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14,
+                    letterSpacing: '0.05em', padding: '4px 8px', cursor: 'pointer',
                     outline: 'none',
                   }}
                 >
-                  <option value="all">ALL CATEGORIES</option>
+                  <option value="all">All Categories</option>
                   {enabledHobbies.filter((h) => !h.customSection).map((h) => (
-                    <option key={h.id} value={h.id}>{h.pluralLabel.toUpperCase()}</option>
+                    <option key={h.id} value={h.id}>{h.pluralLabel}</option>
                   ))}
                 </select>
 
                 {/* Sort buttons */}
-                <SortBtn field="updated" label="RECENT" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
-                <SortBtn field="title"   label="TITLE"  sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
-                <SortBtn field="rating"  label="RATING" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
-                <SortBtn field="hobby"   label="TYPE"   sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
-                {activeFilter === 'backlog' && <SortBtn field="priority" label="PRIORITY" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />}
+                <SortBtn field="updated" label="Recent" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
+                <SortBtn field="title"   label="Title"  sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
+                <SortBtn field="rating"  label="Rating" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
+                <SortBtn field="hobby"   label="Type"   sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
+                {activeFilter === 'backlog' && <SortBtn field="priority" label="Priority" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />}
               </div>
             </div>
 
             {/* Entry grid */}
             <div style={{ padding: 12 }}>
               {expandedEntries.length === 0 ? (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.14em', textAlign: 'center', padding: '24px 0' }}>
-                  NO RECORDS MATCH FILTER
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.08em', textAlign: 'center', padding: '24px 0' }}>
+                  No entries match this filter
                 </p>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
@@ -237,8 +236,8 @@ export default function DashboardPage() {
 
       {/* ── Category index ── */}
       <div style={{ marginBottom: 32 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', marginBottom: 12 }}>
-          CATEGORY INDEX
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12 }}>
+          Category Index
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
           {(() => {
@@ -252,8 +251,8 @@ export default function DashboardPage() {
             return (
               <MechCard key={h.id} accent={h.accent} index={i + 4} hoverable onClick={() => router.push(HOBBY_PATHS[h.id])}>
                 <div style={{ padding: '14px 10px', textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 24, color: h.accent, lineHeight: 1, marginBottom: 4 }}>{count}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1.3 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 24, color: h.accent, lineHeight: 1, marginBottom: 4 }}>{count}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', lineHeight: 1.3 }}>
                     {h.pluralLabel}
                   </p>
                 </div>
@@ -268,7 +267,7 @@ export default function DashboardPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <span style={{ width: 8, height: 8, background: '#0891b2', borderRadius: '50%', animation: 'status-blink 2s ease-in-out infinite', flexShrink: 0 }} />
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: 0 }}>ACTIVE OPERATIONS</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>In progress now</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {inProgress.slice(0, 6).map((e, i) => <EntryCard key={e.id} entry={e} index={i + 11} />)}
@@ -278,16 +277,16 @@ export default function DashboardPage() {
 
       {/* ── Recent ── */}
       <div>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', marginBottom: 12 }}>RECENT ACTIVITY</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12 }}>Recent Activity</p>
         {entries.length === 0 ? (
-          <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--border-dim)', borderLeft: '3px solid #7c3aed', background: 'var(--bg-card)' }}>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 8 }}>◈ NO RECORDS FOUND</p>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 16 }}>DATABASE EMPTY</p>
+          <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--border-dim)', borderLeft: '3px solid #955ff0', background: 'var(--bg-card)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 8 }}>No entries found</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 16 }}>Nothing logged yet</p>
             <button
               onClick={() => router.push('/games')}
-              style={{ padding: '8px 20px', background: '#7c3aed22', border: '1px solid #7c3aed', color: '#7c3aed', fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.1em', cursor: 'pointer' }}
+              style={{ padding: '8px 20px', background: '#955ff022', border: '1px solid #955ff0', color: '#955ff0', fontFamily: 'var(--font-body)', fontSize: 14, letterSpacing: '0.05em', cursor: 'pointer' }}
             >
-              INITIALIZE FIRST RECORD
+              Add your first one to get started.
             </button>
           </div>
         ) : (

@@ -58,13 +58,13 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <Label>GOALS</Label>
-        <Button variant="ghost" onClick={() => setAdding(true)}><Plus size={12} /> NEW GOAL</Button>
+        <Label>Goals</Label>
+        <Button variant="ghost" onClick={() => setAdding(true)}><Plus size={12} /> New Goal</Button>
       </div>
 
-      {loading ? <Label>LOADING…</Label> : goals.length === 0 ? (
+      {loading ? <Label>Loading…</Label> : goals.length === 0 ? (
         <Empty
-          title="NO GOALS SET"
+          title="No goals set"
           hint="Set a number to chase — a 225 bench, a sub-8:00 mile, 100 workouts logged, a goal bodyweight — and it ticks over the moment a workout hits it. Or add a plain reminder like “work out today” and check it off yourself."
         />
       ) : (
@@ -96,7 +96,7 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
                   <Label style={{ marginTop: 4 }}>
                     {[
                       exercise?.name,
-                      METRIC_LABELS[goal.metric].toUpperCase(),
+                      METRIC_LABELS[goal.metric],
                       goal.target_date ? `BY ${goal.target_date}` : null,
                     ].filter(Boolean).join(' · ')}
                   </Label>
@@ -111,14 +111,14 @@ export default function GoalsPanel({ exercises }: { exercises: Exercise[] }) {
                   style={{ marginTop: 10 }}
                   onClick={() => toggle(goal.id, !done)}
                 >
-                  <Check size={12} /> {done ? 'DONE — UNDO' : 'MARK DONE'}
+                  <Check size={12} /> {done ? 'Done · Undo' : 'Mark Done'}
                 </Button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
                   <div style={{ flex: 1, height: 5, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 0.4s ease' }} />
                   </div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>
                     {current == null ? '—' : fmtGoalValue(goal.metric, current)} / {fmtGoalValue(goal.metric, goal.target)}
                   </span>
                 </div>
@@ -191,13 +191,13 @@ function AddGoal({ exercises, onClose, onSaved }: {
 
   return (
     <Modal title="New goal" onClose={onClose} width={460}>
-      <Label style={{ marginBottom: 5 }}>NAME</Label>
+      <Label style={{ marginBottom: 5 }}>Name</Label>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bench 225" />
 
       {/* A bodyweight goal measures you, not a lift, so the picker would only
           confuse things — choosing one swaps the metric out from under it. */}
       {!isBodyweightMetric(metric) && (<>
-      <Label style={{ margin: '14px 0 5px' }}>EXERCISE</Label>
+      <Label style={{ margin: '14px 0 5px' }}>Exercise</Label>
       {/* The picker searches the whole catalog, not just your library. A goal is
           something you haven't hit yet, so requiring you to have already logged
           the lift was backwards -- picking a new one creates it, ready to track. */}
@@ -206,16 +206,16 @@ function AddGoal({ exercises, onClose, onSaved }: {
         onClick={() => setPicking(true)}
       >
         <Search size={13} />
-        {picked ? picked.name.toUpperCase() : 'ANY EXERCISE — SEARCH THE CATALOG'}
+        {picked ? picked.name : 'Any exercise (search the catalog)'}
       </Button>
       {picked && (
         <Button variant="quiet" style={{ marginTop: 4 }} onClick={() => setPicked(null)}>
-          CLEAR — MAKE IT A WHOLE-PRACTICE GOAL
+          Clear (make it a whole-practice goal)
         </Button>
       )}
       </>)}
 
-      <Label style={{ margin: '14px 0 5px' }}>MEASURE</Label>
+      <Label style={{ margin: '14px 0 5px' }}>Measure</Label>
       <Select value={metric} onChange={(e) => setMetric(e.target.value as GoalMetric)} style={{ width: '100%' }}>
         {metrics.map((m) => <option key={m} value={m}>{METRIC_LABELS[m]}</option>)}
       </Select>
@@ -223,7 +223,7 @@ function AddGoal({ exercises, onClose, onSaved }: {
       <div style={{ display: 'grid', gridTemplateColumns: metric === 'manual' ? '1fr' : '1fr 1fr', gap: 10, marginTop: 14 }}>
         {metric !== 'manual' && (
           <div>
-            <Label style={{ marginBottom: 5 }}>TARGET</Label>
+            <Label style={{ marginBottom: 5 }}>Target</Label>
             <Input
               value={target} onChange={(e) => setTarget(e.target.value)}
               placeholder={isTimeMetric(metric) ? 'mm:ss' : isBodyweightMetric(metric) ? '175' : '225'}
@@ -232,14 +232,14 @@ function AddGoal({ exercises, onClose, onSaved }: {
           </div>
         )}
         <div>
-          <Label style={{ marginBottom: 5 }}>BY (OPTIONAL)</Label>
+          <Label style={{ marginBottom: 5 }}>By (Optional)</Label>
           <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Button variant="quiet" onClick={onClose}>CANCEL</Button>
-        <Button variant="solid" onClick={save} disabled={saving}>{saving ? 'SAVING…' : 'ADD GOAL'}</Button>
+        <Button variant="quiet" onClick={onClose}>Cancel</Button>
+        <Button variant="solid" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Add Goal'}</Button>
       </div>
 
       {picking && (

@@ -29,22 +29,21 @@ interface StatCardProps {
   index?: number
 }
 
-export default function StatCard({ label, value, accent = '#7c3aed', sub, index = 0 }: StatCardProps) {
+export default function StatCard({ label, value, accent = '#955ff0', sub, index = 0 }: StatCardProps) {
   const numericValue = typeof value === 'number' ? value : (parseFloat(String(value)) || 0)
   const isNumeric = typeof value === 'number' || (!isNaN(parseFloat(String(value))) && value !== '—')
   const animated = useCountUp(isNumeric ? numericValue : 0)
 
   return (
-    <MechCard accent={accent} index={index} panelNum={index + 1}>
+    <MechCard accent={accent} index={index}>
       <div style={{ padding: '20px 18px 16px' }}>
         <p
           style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 14,
-            letterSpacing: '0.18em',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            fontWeight: 500,
             color: 'var(--text-dim)',
-            textTransform: 'uppercase',
-            marginBottom: 10,
+            margin: '0 0 10px',
           }}
         >
           {label}
@@ -52,7 +51,7 @@ export default function StatCard({ label, value, accent = '#7c3aed', sub, index 
         <p
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: 32,
+            fontSize: 34,
             fontWeight: 400,
             color: 'var(--text-hi)',
             lineHeight: 1,
@@ -62,7 +61,7 @@ export default function StatCard({ label, value, accent = '#7c3aed', sub, index 
           {isNumeric ? animated.toLocaleString() : value}
         </p>
         {sub && (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
             {sub}
           </p>
         )}

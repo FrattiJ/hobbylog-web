@@ -16,7 +16,7 @@ import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 
-const ACCENT = '#7c3aed'
+const ACCENT = '#955ff0'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function EntryDetail({ entry, onBack, onChanged }: {
@@ -132,9 +132,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
     borderLeft: `2px solid ${accent}66`, padding: '9px 12px', color: 'var(--text-hi)',
-    fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none',
+    fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none',
   }
-  const label: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 6px' }
+  const label: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }
 
   async function saveCover(url: string) {
     try {
@@ -280,8 +280,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   return (
     <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.08em' }}>
-        <ArrowLeft size={14} /> BACK TO {(hobby?.pluralLabel ?? '').toUpperCase()}
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
+        <ArrowLeft size={14} /> Back To {(hobby?.pluralLabel ?? '')}
       </button>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? 20 : 32 }}>
@@ -291,21 +291,21 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             {coverUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-display)' }}>{entry.title[0]}</span>}
+              : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-body)' }}>{entry.title[0]}</span>}
           </div>
 
           {editingCover ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
               <input autoFocus value={coverInput} onChange={(e) => setCoverInput(e.target.value)} placeholder="Paste image URL…" style={inp} />
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>SAVE</button>
-                <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>UPLOAD</button>
-                <button onClick={() => { setEditingCover(false); setCoverResults([]) }} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>Save</button>
+                <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>Upload</button>
+                <button onClick={() => { setEditingCover(false); setCoverResults([]) }} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>Cancel</button>
               </div>
               {coverSearchType && (
                 <button onClick={findCovers} disabled={coverSearching}
-                  style={{ padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px dashed ${accent}66`, cursor: coverSearching ? 'wait' : 'pointer' }}>
-                  {coverSearching ? 'SEARCHING…' : '⌕ FIND COVERS'}
+                  style={{ padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: 'transparent', border: `1px dashed ${accent}66`, cursor: coverSearching ? 'wait' : 'pointer' }}>
+                  {coverSearching ? 'Searching…' : 'Find Covers'}
                 </button>
               )}
               {coverResults.length > 0 && (
@@ -324,8 +324,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             </div>
           ) : (
             <button onClick={() => { setCoverInput(entry.cover_url ?? ''); setEditingCover(true) }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginBottom: 16, padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em', cursor: 'pointer' }}>
-              <ImageIcon size={12} /> {coverUrl ? 'CHANGE COVER' : 'SET COVER'}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginBottom: 16, padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer' }}>
+              <ImageIcon size={12} /> {coverUrl ? 'Change Cover' : 'Set Cover'}
             </button>
           )}
 
@@ -333,8 +333,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             <div style={{ background: 'var(--bg-card)', border: `1px solid ${accent}33`, borderLeft: `3px solid ${accent}`, padding: 12 }}>
               {metaRows.map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 8 }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{k.replace(/_/g, ' ')}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{typeof v === 'number' && k === 'rating' ? `${v.toFixed(1)}/10` : String(v)}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: 0 }}>{k.replace(/_/g, ' ')}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{typeof v === 'number' && k === 'rating' ? `${v.toFixed(1)}/10` : String(v)}</p>
                 </div>
               ))}
             </div>
@@ -344,12 +344,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         {/* Main */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.06em' }}>{entry.title}</h1>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>
-              {entry.date_started && <span>STARTED {entry.date_started}</span>}
-              {entry.date_completed && <span>{isRecipe ? 'FIRST MADE' : 'COMPLETED'} {entry.date_completed}</span>}
-              {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>MADE {progressCurrent}x</span>}
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.05em' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em' }}>{entry.title}</h1>
+            <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>
+              {entry.date_started && <span>Started {entry.date_started}</span>}
+              {entry.date_completed && <span>{isRecipe ? 'First Made' : 'Completed'} {entry.date_completed}</span>}
+              {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>Made {progressCurrent}x</span>}
             </div>
           </div>
 
@@ -358,14 +358,14 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             <div style={{ padding: '1px', clipPath: CLIP_SM, background: `${accent}55` }}>
               <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>RECIPE</h2>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>RECIPE</h2>
                   {recipeDraft ? (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setRecipeDraft(null)} disabled={busy} style={{ padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
-                      <button onClick={saveRecipe} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: busy ? 'wait' : 'pointer' }}><Save size={11} /> SAVE RECIPE</button>
+                      <button onClick={() => setRecipeDraft(null)} disabled={busy} style={{ padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={saveRecipe} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: busy ? 'wait' : 'pointer' }}><Save size={11} /> Save Recipe</button>
                     </div>
                   ) : (
-                    <button onClick={() => setRecipeDraft(recipe)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}><Pencil size={11} /> EDIT</button>
+                    <button onClick={() => setRecipeDraft(recipe)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}><Pencil size={11} /> Edit</button>
                   )}
                 </div>
                 {recipeDraft
@@ -381,8 +381,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <FileText size={14} style={{ color: '#22c55e' }} />
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'FIELD REPORT'}</h2>
-                  {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>{isRecipe ? 'Notes for Next Time' : 'YOUR REVIEW'}</h2>
+                  {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
                 </div>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
               </div>
@@ -392,36 +392,36 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           {/* Edit panel */}
           <div style={{ padding: '1px', clipPath: CLIP_SM, background: `${accent}55` }}>
             <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>EDIT ENTRY</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>EDIT ENTRY</h2>
 
               <div>
-                <p style={label}>STATUS</p>
+                <p style={label}>Status</p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {statusesFor(hobby).map((s) => {
                     const active = status === s
-                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{statusLabelFor(hobby, s)}</button>
+                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.05em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{statusLabelFor(hobby, s)}</button>
                   })}
                 </div>
               </div>
 
               <div>
-                <p style={label}>VISIBILITY</p>
+                <p style={label}>Visibility</p>
                 <button onClick={togglePrivate}
                   title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.04em', textAlign: 'left' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }}>
                   {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
                   <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{isPrivate ? 'PRIVATE' : 'SHARED'}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
                 </button>
               </div>
 
               {isTV && (
                 <div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>SEASON</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} /></div>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>EPISODE</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Season</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Episode</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} /></div>
                   </div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
                     {tmdbId ? 'Saving converts season + episode into total episodes watched automatically.' : 'Add this show via search to auto-convert; otherwise set Progress below by hand.'}
                   </p>
                 </div>
@@ -429,20 +429,20 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
               {isManga && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUME</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} /></div>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUMES TOTAL</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volume</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volumes Total</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} /></div>
                 </div>
               )}
 
               {(!hobby?.hideRating || !isPercent) && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {!hobby?.hideRating && (
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Rating /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
                   )}
                   {!isPercent && !isRecipe && (
                     <>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Progress ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Total</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
                     </>
                   )}
                 </div>
@@ -453,8 +453,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               )}
 
               {community && community.count > 0 && community.avg != null && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
-                  <span style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>THE CROWD</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-body)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                  <span style={{ color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Community</span>
                   <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill="#d97706" /> {community.avg}/10</span>
                   <span style={{ color: 'var(--text-dim)' }}>· {community.count} other{community.count === 1 ? '' : 's'}</span>
                   {rating && (
@@ -470,32 +470,32 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <div style={{ height: 4, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, progressPct)}%`, background: accent }} />
                   </div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', textAlign: 'right', margin: '4px 0 0' }}>{progressPct}%</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', textAlign: 'right', margin: '4px 0 0' }}>{progressPct}%</p>
                 </div>
               )}
 
               {!isCompleted && (
                 <div>
-                  <p style={label}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'NOTES'}</p>
+                  <p style={label}>{isRecipe ? 'Notes for Next Time' : 'Notes'}</p>
                   <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
                 </div>
               )}
 
-              {note && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{note}</p>}
+              {note && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{note}</p>}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border-dim)', paddingTop: 14 }}>
-                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #ef444455', cursor: 'pointer' }}><Trash2 size={11} /> DELETE</button>
+                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #ef444455', cursor: 'pointer' }}><Trash2 size={11} /> Delete</button>
                 <div style={{ flex: 1 }} />
-                {canRefetch && <button onClick={updateDetails} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer' }}><Pencil size={11} /> UPDATE DETAILS</button>}
-                <button onClick={save} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}><Save size={12} /> {busy ? '…' : 'SAVE'}</button>
+                {canRefetch && <button onClick={updateDetails} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer' }}><Pencil size={11} /> Update Details</button>}
+                <button onClick={save} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}><Save size={12} /> {busy ? '…' : 'Save'}</button>
               </div>
             </div>
           </div>
 
           {/* Session log */}
           <div>
-            <p style={{ ...label, marginBottom: 4 }}>{isRecipe ? 'LOG A COOK' : 'LOG A SESSION'}</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            <p style={{ ...label, marginBottom: 4 }}>{isRecipe ? 'Log a Cook' : 'Log a Session'}</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
               {isRecipe
                 ? 'Each log counts as one more time you made it. Time and notes are optional.'
                 : isGameEntry
@@ -503,16 +503,16 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 : `How long you spent${showSessionProgress ? `, and how much ${progUnit} you got through` : ''}.`}
             </p>
             {(() => {
-              const miniLabel: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }
+              const miniLabel: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 4 }
               return (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
                   <div>
                     <span style={miniLabel}>{isGameEntry ? 'Time played' : 'Time spent'}</span>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input type="number" min={0} value={sHours} onChange={(e) => setSHours(e.target.value)} placeholder="0" aria-label="Hours" style={{ ...inp, width: 56, textAlign: 'center' }} />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>h</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>h</span>
                       <input type="number" min={0} max={59} value={sMinutes} onChange={(e) => setSMinutes(e.target.value)} placeholder="0" aria-label="Minutes" style={{ ...inp, width: 56, textAlign: 'center' }} />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>m</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>m</span>
                     </div>
                   </div>
                   {showSessionProgress && (
@@ -525,14 +525,14 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                     <span style={miniLabel}>Notes</span>
                     <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} />
                   </div>
-                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I MADE THIS' : 'LOG'}</button>
+                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I Made This' : 'Log'}</button>
                 </div>
               )
             })()}
             {sessions.map((s) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 6 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged && !isRecipe ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
                 </span>
                 <button onClick={async () => { await deleteSession(s.id); loadExtras() }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>

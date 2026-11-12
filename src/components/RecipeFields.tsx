@@ -18,10 +18,10 @@ export default function RecipeFields({ value, onChange, accent }: {
   const inp: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
     borderLeft: `2px solid ${accent}66`, padding: '9px 12px', color: 'var(--text-hi)',
-    fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none',
+    fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none',
   }
-  const label: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 6px' }
-  const pill = (active: boolean, c: string): React.CSSProperties => ({ padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', background: active ? `${c}22` : 'transparent', border: `1px solid ${active ? c : 'var(--border-dim)'}`, color: active ? c : 'var(--text-dim)', cursor: 'pointer' })
+  const label: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }
+  const pill = (active: boolean, c: string): React.CSSProperties => ({ padding: '5px 10px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', background: active ? `${c}22` : 'transparent', border: `1px solid ${active ? c : 'var(--border-dim)'}`, color: active ? c : 'var(--text-dim)', cursor: 'pointer' })
 
   function toggleTag(id: string) {
     const has = value.meal_tags.includes(id)
@@ -31,7 +31,7 @@ export default function RecipeFields({ value, onChange, accent }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <p style={label}>MEAL / COURSE</p>
+        <p style={label}>Meal / Course</p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {MEAL_TAGS.map((t) => (
             <button type="button" key={t.id} aria-pressed={value.meal_tags.includes(t.id)} onClick={() => toggleTag(t.id)} style={pill(value.meal_tags.includes(t.id), accent)}>{t.label}</button>

@@ -223,24 +223,24 @@ export default function TodayTab() {
     }
   }
 
-  if (loading) return <Label>LOADING…</Label>
+  if (loading) return <Label>Loading…</Label>
 
   if (draft.length === 0) {
     return (
       <>
         <WeighInCard />
-        <Rule>START A SESSION</Rule>
+        <Rule>Start a Session</Rule>
         {todays.length > 0 && (
           <>
             <Label style={{ marginBottom: 8 }}>
               {todays.length > 1
-                ? `${DAY_FULL[todayDow].toUpperCase()} — PICK ONE`
-                : `SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()}`}
+                ? `${DAY_FULL[todayDow]} — Pick One`
+                : `Scheduled For ${DAY_FULL[todayDow]}`}
             </Label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {todays.map((r) => (
                 <Button key={r.id} variant="solid" onClick={() => loadRoutine(r.id)}>
-                  <CalendarCheck size={12} /> {r.name.toUpperCase()}
+                  <CalendarCheck size={12} /> {r.name}
                 </Button>
               ))}
             </div>
@@ -250,12 +250,12 @@ export default function TodayTab() {
         {others.length > 0 && (
           <>
             <Label style={{ marginBottom: 8 }}>
-              {todays.length > 0 ? 'OTHER ROUTINES' : `NOTHING SCHEDULED FOR ${DAY_FULL[todayDow].toUpperCase()}`}
+              {todays.length > 0 ? 'Other Routines' : `Nothing scheduled for ${DAY_FULL[todayDow]}`}
             </Label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {others.map((r) => (
                 <Button key={r.id} variant="ghost" onClick={() => loadRoutine(r.id)}>
-                  {r.name.toUpperCase()}
+                  {r.name}
                   {r.day_of_week != null && (
                     <span style={{ opacity: 0.5, marginLeft: 2 }}>· {DAY_NAMES[r.day_of_week]}</span>
                   )}
@@ -265,11 +265,11 @@ export default function TodayTab() {
           </>
         )}
         <Empty
-          title={routines.length ? 'OR GO FREESTYLE' : 'NO ROUTINES YET'}
+          title={routines.length ? 'Or Go Freestyle' : 'No routines yet'}
           hint={routines.length
             ? 'Pick exercises as you go and log sets without a routine.'
             : 'Build a routine on the Routines tab, or just start adding exercises here and log as you go.'}
-          action={<Button variant="ghost" onClick={() => setPicking(true)}><Plus size={13} /> ADD AN EXERCISE</Button>}
+          action={<Button variant="ghost" onClick={() => setPicking(true)}><Plus size={13} /> Add an Exercise</Button>}
         />
         {picking && <ExercisePicker mine={allExercises} onPick={addExercise} onClose={() => setPicking(false)} />}
       </>
@@ -281,13 +281,13 @@ export default function TodayTab() {
       <WeighInCard />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.06em' }}>
-            {(routineName ?? 'FREESTYLE').toUpperCase()}
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.02em' }}>
+            {(routineName ?? 'Freestyle')}
           </div>
-          <Label style={{ marginTop: 3 }}>{loggedSets.length} SETS LOGGED</Label>
+          <Label style={{ marginTop: 3 }}>{loggedSets.length} Sets Logged</Label>
         </div>
         <Button variant="quiet" onClick={reset} title="Discard this session">
-          <RotateCcw size={12} /> DISCARD
+          <RotateCcw size={12} /> Discard
         </Button>
       </div>
 
@@ -314,7 +314,7 @@ export default function TodayTab() {
             <div style={{
               display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10, paddingBottom: 8,
               borderBottom: '1px solid var(--border-dim)',
-              fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--text-dim)',
+              fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: 'var(--text-dim)',
             }}>
               <Trophy size={11} style={{ color: '#eab308' }} />
               {d.records.map((r) => (
@@ -333,12 +333,12 @@ export default function TodayTab() {
           />
 
           <div style={{ marginTop: 10, borderTop: '1px solid var(--border-dim)', paddingTop: 9 }}>
-            <Label style={{ marginBottom: 5 }}>SETUP NOTES</Label>
+            <Label style={{ marginBottom: 5 }}>Setup Notes</Label>
             {/* The carried-forward note stays visible while you type over it, so
                 you can copy a seat position rather than retype it from memory. */}
             {d.lastNote && (
               <p style={{
-                fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+                fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
                 border: '1px dashed var(--border-dim)', padding: '6px 8px', marginBottom: 6,
                 lineHeight: 1.5, fontStyle: 'italic',
               }}>
@@ -356,22 +356,22 @@ export default function TodayTab() {
       ))}
 
       <Button variant="ghost" style={{ width: '100%', marginTop: 12 }} onClick={() => setPicking(true)}>
-        <Plus size={13} /> ADD EXERCISE
+        <Plus size={13} /> Add Exercise
       </Button>
 
-      <Rule>SESSION DETAILS</Rule>
+      <Rule>Session Details</Rule>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
         <div>
-          <Label style={{ marginBottom: 5 }}>DATE</Label>
+          <Label style={{ marginBottom: 5 }}>Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
+          <Label style={{ marginBottom: 5 }}>Duration (min)</Label>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" inputMode="numeric" />
         </div>
       </div>
       <div style={{ marginTop: 10 }}>
-        <Label style={{ marginBottom: 5 }}>NOTES</Label>
+        <Label style={{ marginBottom: 5 }}>Notes</Label>
         <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="How did it feel?" />
       </div>
 
@@ -379,7 +379,7 @@ export default function TodayTab() {
         variant="solid" style={{ width: '100%', marginTop: 16, padding: '13px' }}
         onClick={save} disabled={saving || loggedSets.length === 0}
       >
-        <Save size={14} /> {saving ? 'SAVING…' : `FINISH WORKOUT (${loggedSets.length} SETS)`}
+        <Save size={14} /> {saving ? 'Saving…' : `Finish Workout (${loggedSets.length} Sets)`}
       </Button>
 
       {picking && <ExercisePicker mine={allExercises} onPick={addExercise} onClose={() => setPicking(false)} />}
@@ -391,13 +391,13 @@ export default function TodayTab() {
 // one; otherwise it's the routine's target, which is what stops a freshly loaded
 // routine from looking empty.
 function grayLegend(d: DraftExercise): string {
-  if (d.lastSets.length > 0) return `GREYED VALUES = ${formatNoteDate(d.lastSets[0].date)}`
-  if (d.targets && (d.targets.reps != null || d.targets.seconds != null)) return 'GREYED VALUES = ROUTINE TARGET'
-  return TRACKING_LABELS[d.exercise.tracking_type].toUpperCase()
+  if (d.lastSets.length > 0) return `Greyed Values = ${formatNoteDate(d.lastSets[0].date)}`
+  if (d.targets && (d.targets.reps != null || d.targets.seconds != null)) return 'Greyed values are the routine target'
+  return TRACKING_LABELS[d.exercise.tracking_type]
 }
 
 function formatNoteDate(date: string): string {
-  if (!date) return 'LAST TIME'
+  if (!date) return 'Last Time'
   const [y, m, d] = date.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }

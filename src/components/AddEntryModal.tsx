@@ -173,10 +173,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
     borderLeft: `2px solid ${accent}66`, padding: '9px 12px', color: 'var(--text-hi)',
-    fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none',
+    fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none',
   }
-  const label: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 6px' }
-  const pill = (active: boolean, c: string): React.CSSProperties => ({ padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', background: active ? `${c}22` : 'transparent', border: `1px solid ${active ? c : 'var(--border-dim)'}`, color: active ? c : 'var(--text-dim)', cursor: 'pointer' })
+  const label: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }
+  const pill = (active: boolean, c: string): React.CSSProperties => ({ padding: '5px 10px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', background: active ? `${c}22` : 'transparent', border: `1px solid ${active ? c : 'var(--border-dim)'}`, color: active ? c : 'var(--text-dim)', cursor: 'pointer' })
 
   return (
     <div onClick={(e) => { if (e.currentTarget === e.target) onClose() }}
@@ -190,8 +190,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
                 <button onClick={onBack} title="Pick a different category" style={{ color: accent, background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }}><ArrowLeft size={16} /></button>
               )}
               <div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.2em', margin: 0 }}>NEW RECORD /</p>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.1em', margin: 0 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>Add</p>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
                   {(hobbyId === 'books' ? BOOK_SUBTYPE_MAP[bookSubtype].label : hobby.label).toUpperCase()}
                 </h2>
               </div>
@@ -201,7 +201,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
 
           {hobbyId === 'books' && (
             <div style={{ marginBottom: 14 }}>
-              <p style={label}>TYPE</p>
+              <p style={label}>Type</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {BOOK_SUBTYPES.map((s) => (
                   <button key={s.id} onClick={() => setBookSubtype(s.id)} style={pill(bookSubtype === s.id, accent)}>{s.label}</button>
@@ -212,11 +212,11 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
 
           {searchType && !selected && (
             <div style={{ marginBottom: 14 }}>
-              <p style={label}>SEARCH {hobby.pluralLabel.toUpperCase()}</p>
+              <p style={label}>Search {hobby.pluralLabel}</p>
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Type a title…" style={inp} autoFocus />
               {(searching || results.length > 0) && (
                 <div style={{ marginTop: 6, border: '1px solid var(--border-dim)', maxHeight: 240, overflowY: 'auto' }}>
-                  {searching && results.length === 0 && <div style={{ padding: 10, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>SEARCHING…</div>}
+                  {searching && results.length === 0 && <div style={{ padding: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>Searching…</div>}
                   {results.map((r) => (
                     <button key={`${r.external_source}-${r.external_id}`} onClick={() => pick(r)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 8, textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-dim)', cursor: 'pointer' }}
@@ -227,8 +227,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
                         ? <img src={r.cover_url} alt="" style={{ width: 30, height: 44, objectFit: 'cover', flexShrink: 0 }} />
                         : <div style={{ width: 30, height: 44, background: 'var(--bg-base)', flexShrink: 0 }} />}
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{r.year ?? ''}</div>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>{r.year ?? ''}</div>
                       </div>
                     </button>
                   ))}
@@ -238,12 +238,12 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <p style={label}>TITLE *</p>
+            <p style={label}>Title *</p>
             <input value={title} onChange={(e) => { setTitle(e.target.value); setSelected(null) }} placeholder={isRecipe ? 'Recipe name…' : 'Entry title…'} style={inp} />
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <p style={label}>STATUS</p>
+            <p style={label}>Status</p>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {statusesFor(hobby).map((s) => (
                 <button key={s} onClick={() => setStatus(s)} style={pill(status === s, accent)}>{statusLabelFor(hobby, s)}</button>
@@ -260,9 +260,9 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
 
           {hobbyId === 'games' && ttbTiers && (
             <div style={{ marginBottom: 14 }}>
-              <p style={label}>COMPLETION TIME</p>
+              <p style={label}>Completion Time</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['RUSHED', 'hastily'], ['MAIN', 'normally'], ['100%', 'completely']] as const).map(([lbl, key]) => {
+                {([['Rushed', 'hastily'], ['Main', 'normally'], ['100%', 'completely']] as const).map(([lbl, key]) => {
                   const v = ttbTiers[key]
                   if (v == null) return null
                   return <button key={key} onClick={() => setGameTTB(String(v))} style={pill(gameTTB === String(v), accent)}>{lbl} · {v}h</button>
@@ -275,7 +275,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               {!hobby.hideRating && (
                 <div style={{ flex: 1 }}>
-                  <p style={label}>RATING /10</p>
+                  <p style={label}>Rating /10</p>
                   <input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} />
                 </div>
               )}
@@ -287,7 +287,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
               )}
               {showTotal && (
                 <div style={{ flex: 1 }}>
-                  <p style={label}>TOTAL ({totalUnit})</p>
+                  <p style={label}>Total ({totalUnit})</p>
                   <input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder={enriching ? 'fetching…' : '—'} style={inp} />
                 </div>
               )}
@@ -297,11 +297,11 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           {hobbyId === 'books' && bookSubtype === 'manga' && (
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               <div style={{ flex: 1 }}>
-                <p style={label}>VOLUME</p>
+                <p style={label}>Volume</p>
                 <input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={label}>VOLUMES TOTAL</p>
+                <p style={label}>Volumes Total</p>
                 <input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} />
               </div>
             </div>
@@ -320,18 +320,18 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <p style={label}>{isRecipe ? 'PHOTO' : 'COVER'}</p>
+            <p style={label}>{isRecipe ? 'Photo' : 'Cover'}</p>
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={coverUrl.startsWith('data:') ? '(uploaded image)' : coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="Paste an image URL…" style={{ ...inp, flex: 1, minWidth: 0 }} />
               {coverUrl.startsWith('data:') && (
                 <button type="button" onClick={() => setCoverUrl('')} title="Remove image"
-                  style={{ flexShrink: 0, padding: '0 10px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
-                  CLEAR
+                  style={{ flexShrink: 0, padding: '0 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
+                  Clear
                 </button>
               )}
               <button type="button" onClick={() => coverFileRef.current?.click()} title="Upload an image"
-                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>
-                <Upload size={13} /> UPLOAD
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '0 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>
+                <Upload size={13} /> Upload
               </button>
             </div>
             {coverUrl && (
@@ -343,23 +343,23 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <p style={label}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'NOTES'}</p>
+            <p style={label}>{isRecipe ? 'Notes for Next Time' : 'Notes'}</p>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : '—'} style={{ ...inp, resize: 'vertical' }} />
           </div>
 
           <button type="button" onClick={() => setIsPrivate((v) => !v)}
             title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 16, padding: '10px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.04em', textAlign: 'left' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 16, padding: '10px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', textAlign: 'left' }}>
             {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
             <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{isPrivate ? 'PRIVATE' : 'SHARED'}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
           </button>
 
-          {error && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>✗ {error}</p>}
+          {error && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>✗ {error}</p>}
 
           <button onClick={save} disabled={saving || !title.trim()}
-            style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: saving ? 'wait' : 'pointer', opacity: saving || !title.trim() ? 0.5 : 1 }}>
-            {saving ? 'SAVING…' : 'ADD RECORD'}
+            style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: saving ? 'wait' : 'pointer', opacity: saving || !title.trim() ? 0.5 : 1 }}>
+            {saving ? 'Saving…' : 'Add Entry'}
           </button>
         </div>
       </div>

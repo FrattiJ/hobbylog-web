@@ -4,7 +4,7 @@ import { Sparkles, X } from 'lucide-react'
 import { CHANGELOG, markChangelogSeen } from '@/lib/changelog'
 import { CLIP } from './MechCard'
 
-const ACCENT = '#7c3aed'
+const ACCENT = '#955ff0'
 
 export default function WhatsNew({ onClose }: { onClose: () => void }) {
   function close() { markChangelogSeen(); onClose() }
@@ -20,14 +20,14 @@ export default function WhatsNew({ onClose }: { onClose: () => void }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
             <Sparkles size={16} style={{ color: ACCENT }} />
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: ACCENT, letterSpacing: '0.2em', margin: 0 }}>WHAT&rsquo;S NEW</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: ACCENT, letterSpacing: '0.08em', margin: 0 }}>WHAT&rsquo;S NEW</p>
           </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.06em', margin: '0 0 2px' }}>v{latest.version}</h2>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em', margin: '0 0 18px' }}>{latest.date}</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: '0 0 2px' }}>v{latest.version}</h2>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: '0 0 18px' }}>{latest.date}</p>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {latest.items.map((it, i) => (
-              <li key={i} style={{ display: 'flex', gap: 10, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>
+              <li key={i} style={{ display: 'flex', gap: 10, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>
                 <span style={{ color: ACCENT, flexShrink: 0 }}>▸</span>
                 <span>{it}</span>
               </li>
@@ -35,8 +35,8 @@ export default function WhatsNew({ onClose }: { onClose: () => void }) {
           </ul>
 
           <button onClick={close}
-            style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`, cursor: 'pointer' }}>
-            GOT IT
+            style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`, cursor: 'pointer' }}>
+            Got It
           </button>
         </div>
       </div>

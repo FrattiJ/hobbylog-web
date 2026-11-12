@@ -25,8 +25,8 @@ function parseWeight(text: string): number | null {
 
 function fmtDelta(current: number, previous: number): string | null {
   const d = Math.round((current - previous) * 10) / 10
-  if (d === 0) return 'NO CHANGE'
-  return `${d > 0 ? '+' : ''}${d} LBS`
+  if (d === 0) return 'No change'
+  return `${d > 0 ? '+' : ''}${d} lbs`
 }
 
 // -- Today's weigh-in, on the Today tab --------------------------------------
@@ -98,32 +98,32 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
             style={{ flex: '1 1 110px', minWidth: 0 }}
           />
           <Button variant="solid" accent={BLUE} onClick={save} disabled={saving}>
-            <Check size={12} /> {saving ? 'SAVING…' : 'LOG'}
+            <Check size={12} /> {saving ? 'Saving…' : 'Log'}
           </Button>
           {todays && (
-            <Button variant="quiet" onClick={() => { setEditing(false); setText('') }}>CANCEL</Button>
+            <Button variant="quiet" onClick={() => { setEditing(false); setText('') }}>Cancel</Button>
           )}
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--text-hi)' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 22, color: 'var(--text-hi)' }}>
               {todays!.weight}
             </span>
-            <Label>LBS</Label>
+            <Label>lbs</Label>
             {previous && (
               <Label style={{ color: 'var(--text-mute)' }}>{fmtDelta(todays!.weight, previous.weight)}</Label>
             )}
           </div>
           <Button variant="quiet" onClick={() => { setEditing(true); setText(String(todays!.weight)) }}>
-            CHANGE
+            Change
           </Button>
         </div>
       )}
 
       {showInput && !todays && previous && (
         <Label style={{ marginTop: 7, color: 'var(--text-mute)' }}>
-          LAST READING {previous.weight} LBS ON {previous.date}
+          Last Reading {previous.weight} lbs on {previous.date}
         </Label>
       )}
     </div>
@@ -179,11 +179,11 @@ export function WeighInModal({ existing, onClose, onSaved }: {
     <Modal title="Log a weigh-in" onClose={onClose} width={420}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
-          <Label style={{ marginBottom: 5 }}>DATE</Label>
+          <Label style={{ marginBottom: 5 }}>Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={isoDay(new Date())} />
         </div>
         <div>
-          <Label style={{ marginBottom: 5 }}>WEIGHT (LBS)</Label>
+          <Label style={{ marginBottom: 5 }}>Weight (lbs)</Label>
           <Input
             autoFocus value={text} onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') save() }}
@@ -194,17 +194,17 @@ export function WeighInModal({ existing, onClose, onSaved }: {
 
       {onThatDay && (
         <Label style={{ marginTop: 9, color: ACCENT }}>
-          ALREADY LOGGED THAT DAY — SAVING REPLACES IT
+          Already logged that day. Saving replaces it.
         </Label>
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
         {onThatDay && (
-          <Button variant="quiet" onClick={remove} disabled={saving}><Trash2 size={12} /> REMOVE</Button>
+          <Button variant="quiet" onClick={remove} disabled={saving}><Trash2 size={12} /> Remove</Button>
         )}
-        <Button variant="quiet" onClick={onClose}>CANCEL</Button>
+        <Button variant="quiet" onClick={onClose}>Cancel</Button>
         <Button variant="solid" accent={BLUE} onClick={save} disabled={saving}>
-          {saving ? 'SAVING…' : 'SAVE'}
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </Modal>

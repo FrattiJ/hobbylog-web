@@ -78,25 +78,25 @@ export default function ExportPanel() {
   }
   const h2: React.CSSProperties = {
     fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700,
-    color: 'var(--text-hi)', letterSpacing: '0.08em', margin: '0 0 12px',
+    color: 'var(--text-hi)', letterSpacing: '0.05em', margin: '0 0 12px',
   }
   const note: React.CSSProperties = {
-    fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+    fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
     margin: '0 0 12px', lineHeight: 1.5,
   }
 
   return (
     <div style={card}>
       <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Upload size={15} style={{ color: ACCENT }} /> EXPORT YOUR DATA
+        <Upload size={15} style={{ color: ACCENT }} /> Export Your Data
       </h2>
       <p style={note}>
         Your library as a spreadsheet — every entry, session log, workout, set and
         record. It&apos;s yours; take it wherever you like.
       </p>
 
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>
-        WHAT TO INCLUDE
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }}>
+        What to Include
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginBottom: 16 }}>
         {HOBBIES.map((h) => {
@@ -111,20 +111,20 @@ export default function ExportPanel() {
                 border: `1px solid ${on ? h.accent : 'var(--border-dim)'}`,
                 borderLeft: on ? `3px solid ${h.accent}` : '1px solid var(--border-dim)',
                 color: on ? h.accent : 'var(--text-dim)', cursor: 'pointer',
-                fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em',
+                fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em',
                 textAlign: 'left',
               }}
             >
               {Icon && <Icon size={14} />}
-              <span style={{ flex: 1 }}>{h.pluralLabel.toUpperCase()}</span>
+              <span style={{ flex: 1 }}>{h.pluralLabel}</span>
               {on && <Check size={13} />}
             </button>
           )
         })}
       </div>
 
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 6px' }}>
-        FORMAT
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }}>
+        Format
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         {([
@@ -134,8 +134,8 @@ export default function ExportPanel() {
           <button
             key={id} onClick={() => setFormat(id)}
             style={{
-              padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12,
-              letterSpacing: '0.08em',
+              padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 12,
+              letterSpacing: '0.05em',
               background: format === id ? `${ACCENT}22` : 'transparent',
               border: `1px solid ${format === id ? ACCENT : 'var(--border-dim)'}`,
               color: format === id ? ACCENT : 'var(--text-dim)', cursor: 'pointer',
@@ -154,17 +154,17 @@ export default function ExportPanel() {
       <button
         onClick={run} disabled={busy || picked.length === 0}
         style={{
-          padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12,
-          fontWeight: 700, letterSpacing: '0.1em', color: ACCENT,
+          padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12,
+          fontWeight: 700, letterSpacing: '0.05em', color: ACCENT,
           background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, borderLeft: `3px solid ${ACCENT}`,
           cursor: busy ? 'wait' : 'pointer', opacity: busy || picked.length === 0 ? 0.5 : 1,
         }}
       >
-        {busy ? 'BUILDING…' : 'EXPORT'}
+        {busy ? 'Building…' : 'Export'}
       </button>
 
       {msg && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>
           {msg}
         </p>
       )}

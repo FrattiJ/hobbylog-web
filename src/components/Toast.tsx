@@ -44,7 +44,7 @@ function ToastRow({ t, onClose }: { t: Toast; onClose: () => void }) {
       }}
     >
       <Icon size={15} style={{ color, flexShrink: 0, marginTop: 1 }} />
-      <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-hi)', lineHeight: 1.45, wordBreak: 'break-word' }}>{t.message}</span>
+      <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-hi)', lineHeight: 1.45, wordBreak: 'break-word' }}>{t.message}</span>
       <button onClick={onClose} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 0, display: 'flex' }}>
         <X size={14} />
       </button>

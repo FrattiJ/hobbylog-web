@@ -9,10 +9,10 @@ import ProgressTab from './ProgressTab'
 import { ACCENT } from './ui'
 
 const TABS = [
-  { id: 'today', label: 'TODAY' },
-  { id: 'routines', label: 'ROUTINES' },
-  { id: 'history', label: 'HISTORY' },
-  { id: 'progress', label: 'PROGRESS' },
+  { id: 'today', label: 'Today' },
+  { id: 'routines', label: 'Routines' },
+  { id: 'history', label: 'History' },
+  { id: 'progress', label: 'Progress' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -38,16 +38,16 @@ export default function FitnessPage() {
         <Dumbbell size={20} style={{ color: ACCENT }} />
         <h1 style={{
           fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900,
-          letterSpacing: '0.1em', color: 'var(--text-hi)',
+          letterSpacing: '0.05em', color: 'var(--text-hi)',
         }}>
           FITNESS
         </h1>
       </div>
       <p style={{
-        fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.14em',
-        color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 18,
+        fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em',
+        color: 'var(--text-dim)', marginBottom: 18,
       }}>
-        BUILD ROUTINES · LOG SETS · TRACK RECORDS
+        Build routines, log sets and track records
       </p>
 
       <div className="scroll-hide" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 18, overflowX: 'auto' }}>
@@ -59,11 +59,11 @@ export default function FitnessPage() {
               onClick={() => select(t.id)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '10px 16px',
-                fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: active ? 700 : 400,
-                letterSpacing: '0.12em', whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: active ? 700 : 400,
+                letterSpacing: '0.05em', whiteSpace: 'nowrap',
                 color: active ? ACCENT : 'var(--text-dim)',
                 borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`,
-                marginBottom: -1, transition: 'all 0.15s ease',
+                marginBottom: -1, transition: 'var(--t-fast)',
               }}
             >
               {t.label}

@@ -66,15 +66,15 @@ export default function HistoryTab() {
     }
   }
 
-  if (loading) return <Label>LOADING…</Label>
+  if (loading) return <Label>Loading…</Label>
 
   if (workouts.length === 0) {
-    return <Empty title="NO WORKOUTS LOGGED" hint="Once you finish a session on the Today tab it shows up here." />
+    return <Empty title="No workouts logged" hint="Once you finish a session on the Today tab it shows up here." />
   }
 
   return (
     <>
-      <Label style={{ marginBottom: 12 }}>{workouts.length} WORKOUT{workouts.length === 1 ? '' : 'S'}</Label>
+      <Label style={{ marginBottom: 12 }}>{workouts.length} workout{workouts.length === 1 ? '' : 's'}</Label>
       {workouts.map((w) => {
         const expanded = open === w.id
         const isEditing = editing === w.id
@@ -104,10 +104,10 @@ export default function HistoryTab() {
                 <Label style={{ marginTop: 3 }}>
                   {[
                     formatDate(w.date),
-                    `${w.sets.length} SETS`,
-                    volume > 0 ? `${Math.round(volume).toLocaleString()} LBS` : null,
-                    w.duration_minutes ? `${w.duration_minutes} MIN` : null,
-                    weights.get(w.date) ? `${weights.get(w.date)} LBS BW` : null,
+                    `${w.sets.length} Sets`,
+                    volume > 0 ? `${Math.round(volume).toLocaleString()} lbs` : null,
+                    w.duration_minutes ? `${w.duration_minutes} min` : null,
+                    weights.get(w.date) ? `${weights.get(w.date)} lbs BW` : null,
                   ].filter(Boolean).join(' · ')}
                 </Label>
               </div>
@@ -148,7 +148,7 @@ export default function HistoryTab() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {g.sets.map((s, j) => (
                         <span key={s.id} style={{
-                          fontFamily: 'var(--font-mono)', fontSize: 12,
+                          fontFamily: 'var(--font-body)', fontSize: 12,
                           color: s.is_warmup ? 'var(--text-mute)' : 'var(--text-hi)',
                           border: '1px solid var(--border-dim)', padding: '3px 8px',
                         }}>
@@ -159,7 +159,7 @@ export default function HistoryTab() {
                     </div>
                     {g.exercise && notes.get(`${w.id}:${g.exercise.id}`) && (
                       <p style={{
-                        fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+                        fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
                         marginTop: 5, lineHeight: 1.5, fontStyle: 'italic',
                       }}>
                         {notes.get(`${w.id}:${g.exercise.id}`)}
@@ -175,10 +175,10 @@ export default function HistoryTab() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                  <Label>{weights.get(w.date) ? `BODYWEIGHT ${weights.get(w.date)} LBS` : ''}</Label>
+                  <Label>{weights.get(w.date) ? `Bodyweight ${weights.get(w.date)} lbs` : ''}</Label>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <Button variant="ghost" onClick={() => setEditing(w.id)}><Pencil size={13} /> EDIT</Button>
-                    <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> DELETE</Button>
+                    <Button variant="ghost" onClick={() => setEditing(w.id)}><Pencil size={13} /> Edit</Button>
+                    <Button variant="quiet" onClick={() => setConfirming(w)}><Trash2 size={13} /> Delete</Button>
                   </div>
                 </div>
               </div>
@@ -295,17 +295,17 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
   return (
     <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border-dim)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
-        <Label>EDITING THIS SESSION</Label>
-        <Button variant="quiet" onClick={onCancel}><X size={13} /> CANCEL</Button>
+        <Label>Editing This Session</Label>
+        <Button variant="quiet" onClick={onCancel}><X size={13} /> Cancel</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 8 }}>
         <div>
-          <Label style={{ marginBottom: 5 }}>DATE</Label>
+          <Label style={{ marginBottom: 5 }}>Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <Label style={{ marginBottom: 5 }}>DURATION (MIN)</Label>
+          <Label style={{ marginBottom: 5 }}>Duration (min)</Label>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="—" inputMode="numeric" />
         </div>
       </div>
@@ -315,10 +315,10 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
           be a second way to write one value, and blanking it would have to mean
           deleting a weigh-in you may have recorded that morning independently. */}
       <Label style={{ marginTop: 10, color: 'var(--text-mute)' }}>
-        BODYWEIGHT IS LOGGED SEPARATELY — SEE THE WEIGH-IN CARD ON TODAY, OR PROGRESS FOR AN OLDER DAY
+        Bodyweight is logged separately. Use the weigh-in card on Today, or Progress for an older day.
       </Label>
 
-      <Rule>SETS</Rule>
+      <Rule>Sets</Rule>
 
       {rows.map((r, i) => (
         <div key={r.exercise.id} style={{
@@ -336,7 +336,7 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
             onChange={(sets) => setRows(rows.map((x, j) => (j === i ? { ...x, sets } : x)))}
           />
           <div style={{ marginTop: 10 }}>
-            <Label style={{ marginBottom: 5 }}>SETUP NOTES</Label>
+            <Label style={{ marginBottom: 5 }}>Setup Notes</Label>
             <TextArea
               value={r.note}
               onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
@@ -348,24 +348,24 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
       ))}
 
       {rows.length === 0 && (
-        <Empty title="NOTHING EDITABLE" hint="Every set here belongs to an exercise that has since been deleted." />
+        <Empty title="Nothing editable" hint="Every set here belongs to an exercise that has since been deleted." />
       )}
 
       {orphanSets.length > 0 && (
         <Label style={{ marginBottom: 8 }}>
-          {orphanSets.length} SET{orphanSets.length === 1 ? '' : 'S'} FROM A DELETED EXERCISE ARE KEPT AS-IS
+          {orphanSets.length} set{orphanSets.length === 1 ? '' : 's'} from a deleted exercise {orphanSets.length === 1 ? 'is' : 'are'} kept as-is
         </Label>
       )}
 
       <div style={{ marginTop: 4 }}>
-        <Label style={{ marginBottom: 5 }}>SESSION NOTES</Label>
+        <Label style={{ marginBottom: 5 }}>Session Notes</Label>
         <TextArea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} placeholder="How did it feel?" />
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-        <Button variant="quiet" onClick={onCancel}>CANCEL</Button>
+        <Button variant="quiet" onClick={onCancel}>Cancel</Button>
         <Button variant="solid" onClick={save} disabled={saving}>
-          <Save size={13} /> {saving ? 'SAVING…' : 'SAVE CHANGES'}
+          <Save size={13} /> {saving ? 'Saving…' : 'Save Changes'}
         </Button>
       </div>
     </div>
@@ -374,5 +374,5 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
 
 function formatDate(date: string): string {
   const [y, m, d] = date.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 }

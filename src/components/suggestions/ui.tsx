@@ -21,12 +21,12 @@ export function Panel({ accent, title, sub, right, children, style }: {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: sub ? 14 : 16 }}>
             <div>
               {title && (
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>
                   {title}
                 </h2>
               )}
               {sub && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '5px 0 0', letterSpacing: '0.08em', lineHeight: 1.5 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '5px 0 0', letterSpacing: '0.05em', lineHeight: 1.5 }}>
                   {sub}
                 </p>
               )}
@@ -43,8 +43,8 @@ export function Panel({ accent, title, sub, right, children, style }: {
 export function Tag({ children, color = 'var(--text-dim)' }: { children: React.ReactNode; color?: string }) {
   return (
     <span style={{
-      fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', padding: '2px 7px',
-      background: `${color}18`, color, border: `1px solid ${color}44`, textTransform: 'uppercase',
+      fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '2px 7px',
+      background: `${color}18`, color, border: `1px solid ${color}44`,
       whiteSpace: 'nowrap',
     }}>
       {children}
@@ -62,12 +62,11 @@ export function Btn({ children, onClick, color = 'var(--text-dim)', disabled, fi
   return (
     <button onClick={onClick} disabled={disabled}
       style={{
-        padding: '5px 11px', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em',
-        textTransform: 'uppercase', background: filled ? `${color}22` : 'transparent',
+        padding: '5px 11px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', background: filled ? `${color}22` : 'transparent',
         border: `1px solid ${disabled ? 'var(--border-dim)' : color}`,
         color: disabled ? 'var(--text-mute)' : color,
         cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
-        transition: 'all 0.12s ease', whiteSpace: 'nowrap',
+        transition: 'var(--t-fast)', whiteSpace: 'nowrap',
       }}>
       {children}
     </button>
@@ -80,7 +79,7 @@ export function Reasons({ items, accent }: { items: string[]; accent: string }) 
   return (
     <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {items.map((r, i) => (
-        <li key={i} style={{ display: 'flex', gap: 7, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+        <li key={i} style={{ display: 'flex', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
           <span style={{ color: accent, flexShrink: 0 }}>›</span>
           <span>{r}</span>
         </li>
@@ -96,7 +95,7 @@ export function ScoreBar({ score, accent }: { score: number; accent: string }) {
       <div style={{ flex: 1, height: 4, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
         <div style={{ height: '100%', width: `${Math.round(score * 100)}%`, background: accent, transition: 'width 0.4s ease' }} />
       </div>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', width: 30, textAlign: 'right' }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', width: 30, textAlign: 'right' }}>
         {Math.round(score * 100)}
       </span>
     </div>
@@ -105,7 +104,7 @@ export function ScoreBar({ score, accent }: { score: number; accent: string }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.1em', textAlign: 'center', padding: '28px 12px', margin: 0, lineHeight: 1.7 }}>
+    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', textAlign: 'center', padding: '28px 12px', margin: 0, lineHeight: 1.7 }}>
       {children}
     </p>
   )
@@ -120,7 +119,7 @@ export function Cover({ url, title, accent, size = 'md' }: { url: string | null;
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 900, color: `${accent}88` }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 900, color: `${accent}88` }}>
           {title[0]}
         </div>
       )}

@@ -18,7 +18,7 @@ interface MechCardProps {
 
 export default function MechCard({
   children,
-  accent = '#7c3aed',
+  accent = '#955ff0',
   index = 0,
   panelNum,
   className = '',
@@ -30,6 +30,8 @@ export default function MechCard({
   const [hovered, setHovered] = useState(false)
 
   return (
+    // The outer element takes focus and hover. It is not clipped, because a
+    // clip-path would cut the focus ring off along with the corners.
     <div
       className={`mech-enter ${className}`}
       onClick={onClick}
@@ -41,17 +43,17 @@ export default function MechCard({
       onMouseEnter={() => hoverable && setHovered(true)}
       onMouseLeave={() => hoverable && setHovered(false)}
       style={{
-        padding: '1px',
-        clipPath: CLIP,
-        background: `${accent}${hovered ? 'cc' : '55'}`,
-        transition: 'all 0.2s ease',
+        transition: 'var(--t-fast)',
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
         filter: hovered ? `drop-shadow(0 0 10px ${accent}44)` : 'none',
         cursor: onClick ? 'pointer' : 'default',
-        animationDelay: `${index * 80}ms`,
+        // A short stagger for the first row only; a long list should not make
+        // its last card wait seconds to appear.
+        animationDelay: `${Math.min(index, 6) * 40}ms`,
         ...style,
       }}
     >
+     <div style={{ padding: '1px', clipPath: CLIP, background: `${accent}${hovered ? 'cc' : '55'}`, transition: 'var(--t-fast)', height: '100%' }}>
       <div
         style={{
           background: 'var(--bg-card)',
@@ -84,9 +86,8 @@ export default function MechCard({
               top: 8,
               right: 12,
               fontFamily: 'var(--font-mono)',
-              fontSize: 14,
+              fontSize: 13,
               color: 'var(--text-dim)',
-              letterSpacing: '0.1em',
               zIndex: 1,
             }}
           >
@@ -96,6 +97,7 @@ export default function MechCard({
 
         {children}
       </div>
+     </div>
     </div>
   )
 }

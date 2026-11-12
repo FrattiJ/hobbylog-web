@@ -57,20 +57,20 @@ export default function RoutinesTab() {
     )
   }
 
-  if (loading) return <Label>LOADING…</Label>
+  if (loading) return <Label>Loading…</Label>
 
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <Label>{routines.length} ROUTINE{routines.length === 1 ? '' : 'S'}</Label>
-        <Button variant="solid" onClick={() => setEditing('new')}><Plus size={13} /> NEW ROUTINE</Button>
+        <Label>{routines.length} routine{routines.length === 1 ? '' : 's'}</Label>
+        <Button variant="solid" onClick={() => setEditing('new')}><Plus size={13} /> New Routine</Button>
       </div>
 
       {routines.length === 0 ? (
         <Empty
-          title="NO ROUTINES YET"
+          title="No routines yet"
           hint="A routine is just an ordered list of exercises with target sets and reps. Build one here, then load it on the Today tab to log against it."
-          action={<Button variant="ghost" onClick={() => setEditing('new')}><Plus size={13} /> BUILD ONE</Button>}
+          action={<Button variant="ghost" onClick={() => setEditing('new')}><Plus size={13} /> Build One</Button>}
         />
       ) : (
         routines.map((r) => (
@@ -112,7 +112,7 @@ function RoutineCard({ routine, count, onEdit, onDelete }: {
         <Label style={{ marginTop: 3 }}>
           {[
             routine.day_of_week != null ? DAY_NAMES[routine.day_of_week] : null,
-            `${count} EXERCISE${count === 1 ? '' : 'S'}`,
+            `${count} exercise${count === 1 ? '' : 's'}`,
             routine.notes || null,
           ].filter(Boolean).join(' · ')}
         </Label>
@@ -155,17 +155,17 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
 
   return (
     <>
-      <Rule>YOUR EXERCISES</Rule>
+      <Rule>Your Exercises</Rule>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <Label>{exercises.length} IN YOUR LIBRARY</Label>
+        <Label>{exercises.length} In Your Library</Label>
         <Button variant="ghost" onClick={() => setOpen(!open)}>
-          {open ? 'HIDE' : 'MANAGE'}
+          {open ? 'Hide' : 'Manage'}
         </Button>
       </div>
 
       {open && (
         exercises.length === 0 ? (
-          <Empty title="NOTHING YET" hint="Exercises appear here once you add them to a routine or log one." />
+          <Empty title="Nothing yet" hint="Exercises appear here once you add them to a routine or log one." />
         ) : (
           <>
             {exercises.length > 8 && (
@@ -185,7 +185,7 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
                   <Label style={{ marginTop: 2 }}>
                     {[
                       TRACKING_LABELS[e.tracking_type],
-                      e.catalog_id ? null : 'CUSTOM',
+                      e.catalog_id ? null : 'Custom',
                       e.muscle,
                     ].filter(Boolean).join(' · ')}
                   </Label>
@@ -211,7 +211,7 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
       {confirming && (
         <Confirm
           title="Remove exercise"
-          confirmLabel="REMOVE"
+          confirmLabel="Remove"
           body={`Remove "${confirming.name}" from your library? If you've logged sets against it, it's hidden instead of deleted so your history and records stay intact.`}
           onConfirm={() => remove(confirming)}
           onCancel={() => setConfirming(null)}
@@ -250,10 +250,10 @@ function EditExercise({ exercise, onClose, onSaved }: {
 
   return (
     <Modal title="Edit exercise" onClose={onClose} width={460}>
-      <Label style={{ marginBottom: 6 }}>NAME</Label>
+      <Label style={{ marginBottom: 6 }}>Name</Label>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
 
-      <Label style={{ margin: '16px 0 6px' }}>HOW IS IT MEASURED?</Label>
+      <Label style={{ margin: '16px 0 6px' }}>How is it measured?</Label>
       <Select value={tracking} onChange={(e) => setTracking(e.target.value as TrackingType)} style={{ width: '100%' }}>
         {(Object.keys(TRACKING_LABELS) as TrackingType[]).map((t) => (
           <option key={t} value={t}>{TRACKING_LABELS[t]}</option>
@@ -261,7 +261,7 @@ function EditExercise({ exercise, onClose, onSaved }: {
       </Select>
 
       {trackingChanged && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#f59e0b', marginTop: 8, lineHeight: 1.6 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#f59e0b', marginTop: 8, lineHeight: 1.6 }}>
           Sets you already logged keep the numbers they were logged with. Changing
           how this is measured changes which of those columns are read, so old
           records may look different.
@@ -269,9 +269,9 @@ function EditExercise({ exercise, onClose, onSaved }: {
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Button variant="quiet" onClick={onClose}>CANCEL</Button>
+        <Button variant="quiet" onClick={onClose}>Cancel</Button>
         <Button variant="solid" onClick={save} disabled={saving || !name.trim()}>
-          {saving ? 'SAVING…' : 'SAVE'}
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </Modal>
@@ -345,14 +345,14 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <Label>{routine ? 'EDIT ROUTINE' : 'NEW ROUTINE'}</Label>
-        <Button variant="quiet" onClick={onDone}><X size={14} /> CANCEL</Button>
+        <Label>{routine ? 'Edit Routine' : 'New Routine'}</Label>
+        <Button variant="quiet" onClick={onDone}><X size={14} /> Cancel</Button>
       </div>
 
-      <Label style={{ marginBottom: 5 }}>NAME</Label>
+      <Label style={{ marginBottom: 5 }}>Name</Label>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push Day" />
 
-      <Label style={{ margin: '12px 0 5px' }}>SCHEDULE</Label>
+      <Label style={{ margin: '12px 0 5px' }}>Schedule</Label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {DAY_NAMES.map((d, i) => {
           const on = day === i
@@ -363,11 +363,11 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
               title={on ? `Unschedule from ${DAY_FULL[i]}` : `Schedule for ${DAY_FULL[i]}`}
               style={{
                 flex: '1 1 52px', padding: '7px 4px', cursor: 'pointer',
-                fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em',
+                fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em',
                 background: on ? `${ACCENT}22` : 'transparent',
                 border: `1px solid ${on ? ACCENT : 'var(--border-dim)'}`,
                 color: on ? ACCENT : 'var(--text-dim)',
-                transition: 'all 0.12s ease',
+                transition: 'var(--t-fast)',
               }}
             >
               {d}
@@ -375,19 +375,19 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
           )
         })}
       </div>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', marginTop: 6, lineHeight: 1.6 }}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginTop: 6, lineHeight: 1.6 }}>
         {day == null
           ? 'Not scheduled — load it by hand from the Today tab.'
           : `Loads automatically on the Today tab every ${DAY_FULL[day]}. Tap again to unschedule.`}
       </p>
 
-      <Label style={{ margin: '12px 0 5px' }}>NOTES</Label>
+      <Label style={{ margin: '12px 0 5px' }}>Notes</Label>
       <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" style={{ minHeight: 48 }} />
 
-      <Rule>EXERCISES</Rule>
+      <Rule>Exercises</Rule>
 
       {rows.length === 0 && (
-        <Empty title="NOTHING ADDED YET" hint="Search the catalog or type your own exercise name." />
+        <Empty title="Nothing added yet" hint="Search the catalog or type your own exercise name." />
       )}
 
       {/* The order here is the order the Today tab logs them in, so say so — the
@@ -395,7 +395,7 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
       {rows.length > 1 && (
         <p style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)',
+          fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
           margin: '0 0 10px', lineHeight: 1.6,
         }}>
           <GripVertical size={12} style={{ color: ACCENT, flexShrink: 0 }} />
@@ -417,14 +417,14 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
                 <span style={{
                   flexShrink: 0, width: 24, height: 24, display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--font-mono)', fontSize: 12,
+                  fontFamily: 'var(--font-body)', fontSize: 12,
                   color: ACCENT, border: `1px solid ${ACCENT}66`, background: `${ACCENT}14`,
                 }}>
                   {i + 1}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 14, color: 'var(--text-hi)' }}>{r.exercise.name}</div>
-                  <Label style={{ marginTop: 2 }}>{TRACKING_LABELS[r.exercise.tracking_type].toUpperCase()}</Label>
+                  <Label style={{ marginTop: 2 }}>{TRACKING_LABELS[r.exercise.tracking_type]}</Label>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -445,24 +445,24 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: 8 }}>
-              <NumField label="SETS" value={r.target_sets} onChange={(v) => patch(i, { target_sets: v })} />
+              <NumField label="Sets" value={r.target_sets} onChange={(v) => patch(i, { target_sets: v })} />
               {timed ? (
-                <TimeField label="TARGET TIME" value={r.target_seconds} onChange={(v) => patch(i, { target_seconds: v })} />
+                <TimeField label="Target Time" value={r.target_seconds} onChange={(v) => patch(i, { target_seconds: v })} />
               ) : (
-                <NumField label="REPS" value={r.target_reps} onChange={(v) => patch(i, { target_reps: v })} />
+                <NumField label="Reps" value={r.target_reps} onChange={(v) => patch(i, { target_reps: v })} />
               )}
-              <TimeField label="REST" value={r.rest_seconds} onChange={(v) => patch(i, { rest_seconds: v })} />
+              <TimeField label="Rest" value={r.rest_seconds} onChange={(v) => patch(i, { rest_seconds: v })} />
             </div>
           </div>
         )
       })}
 
       <Button variant="ghost" style={{ width: '100%', marginTop: 4 }} onClick={() => setPicking(true)}>
-        <Plus size={13} /> ADD EXERCISE
+        <Plus size={13} /> Add Exercise
       </Button>
 
       <Button variant="solid" style={{ width: '100%', marginTop: 16, padding: 12 }} onClick={save} disabled={saving}>
-        <Save size={14} /> {saving ? 'SAVING…' : 'SAVE ROUTINE'}
+        <Save size={14} /> {saving ? 'Saving…' : 'Save Routine'}
       </Button>
 
       {picking && <ExercisePicker mine={allExercises} onPick={addExercise} onClose={() => setPicking(false)} />}

@@ -10,8 +10,8 @@ export const ACCENT = '#ea580c' // matches HOBBY_MAP.fitness.accent
 export function Label({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.18em',
-      color: 'var(--text-dim)', textTransform: 'uppercase', ...style,
+      fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em',
+      color: 'var(--text-dim)', ...style,
     }}>
       {children}
     </div>
@@ -34,7 +34,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...rest}
       style={{
         background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
-        color: 'var(--text-hi)', fontFamily: 'var(--font-mono)', fontSize: 15,
+        color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 15,
         padding: '8px 10px', width: '100%', outline: 'none', ...style,
       }}
       onFocus={(e) => { e.currentTarget.style.borderColor = ACCENT; props.onFocus?.(e) }}
@@ -65,7 +65,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
       {...rest}
       style={{
         background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
-        color: 'var(--text-hi)', fontFamily: 'var(--font-mono)', fontSize: 13,
+        color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 13,
         padding: '8px 10px', outline: 'none', ...style,
       }}
     >
@@ -89,9 +89,9 @@ export function Button({
   const [hover, setHover] = useState(false)
   const base: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-    fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em',
+    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
     padding: '9px 14px', cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.45 : 1, transition: 'all 0.15s ease', whiteSpace: 'nowrap',
+    opacity: disabled ? 0.45 : 1, transition: 'var(--t-fast)', whiteSpace: 'nowrap',
   }
   const variants: Record<string, React.CSSProperties> = {
     solid: {
@@ -148,10 +148,10 @@ export function Modal({ title, onClose, children, width = 620 }: {
           padding: '14px 16px', borderBottom: '1px solid var(--border-dim)',
         }}>
           <span style={{
-            fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700,
-            letterSpacing: '0.12em', color: 'var(--text-hi)',
+            fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+            letterSpacing: '0.05em', color: 'var(--text-hi)',
           }}>
-            {title.toUpperCase()}
+            {title}
           </span>
           <Button variant="quiet" onClick={onClose} style={{ padding: 4 }}>✕</Button>
         </div>
@@ -164,7 +164,7 @@ export function Modal({ title, onClose, children, width = 620 }: {
 // In-app confirmation. Deliberately not window.confirm(): that's suppressed in
 // sandboxed iframes (it silently returns false, so the button appears dead) and
 // it can't be styled to match the rest of the app.
-export function Confirm({ title, body, confirmLabel = 'DELETE', onConfirm, onCancel }: {
+export function Confirm({ title, body, confirmLabel = 'Delete', onConfirm, onCancel }: {
   title: string
   body: string
   confirmLabel?: string
@@ -175,7 +175,7 @@ export function Confirm({ title, body, confirmLabel = 'DELETE', onConfirm, onCan
     <Modal title={title} onClose={onCancel} width={420}>
       <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6 }}>{body}</p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Button variant="quiet" onClick={onCancel}>CANCEL</Button>
+        <Button variant="quiet" onClick={onCancel}>Cancel</Button>
         <Button variant="solid" accent="#ef4444" onClick={onConfirm}>{confirmLabel}</Button>
       </div>
     </Modal>
@@ -183,7 +183,7 @@ export function Confirm({ title, body, confirmLabel = 'DELETE', onConfirm, onCan
 }
 
 // 0 = Sunday .. 6 = Saturday, matching Date.getDay().
-export const DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
@@ -192,11 +192,11 @@ export function Empty({ title, hint, action }: { title: string; hint?: string; a
       border: '1px dashed var(--border-dim)', padding: '40px 24px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
     }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--text-mid)', letterSpacing: '0.08em' }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)', letterSpacing: '0.05em' }}>
         {title}
       </div>
       {hint && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', maxWidth: 420, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', maxWidth: 420, lineHeight: 1.6 }}>
           {hint}
         </div>
       )}

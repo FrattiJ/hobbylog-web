@@ -82,7 +82,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const loading = (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.2em' }}>INITIALIZING…</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Loading…</span>
     </div>
   )
 
@@ -95,6 +95,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <HobbyContext.Provider value={{ enabledIds, enabledHobbies, setEnabledIds: handleSetEnabledIds }}>
       <div style={{ minHeight: '100vh', background: 'var(--bg-base)', position: 'relative' }}>
+        <a href="#main" className="skip-link">Skip to content</a>
         {/* Blueprint grid overlay */}
         <div aria-hidden style={{
           position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
@@ -110,10 +111,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {/* Mobile top bar */}
         {isMobile && (
           <header style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 52, zIndex: 70, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-dim)', display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px' }}>
-            <button onClick={() => setDrawerOpen(true)} aria-label="Menu" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', cursor: 'pointer' }}>
+            <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" aria-expanded={drawerOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', cursor: 'pointer' }}>
               <Menu size={18} />
             </button>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.12em' }}>HOBBYLOG</span>
+            <span translate="no" style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em' }}>HOBBYLOG</span>
           </header>
         )}
 
@@ -124,7 +125,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         <Sidebar profile={profile} mobile={isMobile} open={!isMobile || drawerOpen} onNavigate={() => setDrawerOpen(false)} />
 
-        <main style={{ marginLeft: isMobile ? 0 : 220, paddingTop: isMobile ? 52 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+        <main id="main" style={{ marginLeft: isMobile ? 0 : 220, paddingTop: isMobile ? 52 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
           {children}
         </main>
 
