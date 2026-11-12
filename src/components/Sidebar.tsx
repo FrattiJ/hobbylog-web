@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart2, Search, Settings, Plus, Clock, NotebookPen, Users, Sparkles,
+  BarChart2, Search, Settings, Plus, Clock, NotebookPen, Users, Sparkles, Library,
 } from 'lucide-react'
 import type { Profile } from '@/types/database'
 import { HOBBY_PATHS } from '@/lib/hobbies'
@@ -103,6 +103,7 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         <NavItem href="/search" icon={Search} label="Search" pathname={pathname} />
         <NavItem href="/suggestions" icon={Sparkles} label="What Next" accent="#955ff0" pathname={pathname} />
+        <NavItem href="/shelf" icon={Library} label="Shelf" accent="#f59e0b" pathname={pathname} />
         <NavItem href="/stats" icon={BarChart2} label="Stats" pathname={pathname} />
         <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
         <NavItem href="/notes" icon={NotebookPen} label="Notes" pathname={pathname} />

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown, CheckSquare, Trash2, X } from 'lucide-react'
+import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown, CheckSquare, Trash2, X, LayoutGrid, List } from 'lucide-react'
 import EntryCard from './EntryCard'
+import CoverTile from './CoverTile'
+import ShelfWall from './ShelfWall'
 import AddEntryModal from './AddEntryModal'
 import SteamSync from './SteamSync'
 import { useToast } from './Toast'
@@ -55,6 +57,15 @@ function loadSavedFilters(hobbyId: string): SavedFilters {
   try { return JSON.parse(sessionStorage.getItem(`hobby-filters:${hobbyId}`) ?? '{}') } catch { return {} }
 }
 
+// Covers or compact rows. A reading preference rather than a filter, so it is
+// remembered across hobbies and visits, not per page.
+type ViewMode = 'grid' | 'list'
+const VIEW_KEY = 'hobbylog-library-view'
+function loadView(): ViewMode {
+  if (typeof window === 'undefined') return 'grid'
+  try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
+}
+
 export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const hobby = HOBBY_MAP[hobbyId]
   const [entries, setEntries] = useState<Entry[]>([])
@@ -64,6 +75,8 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() => loadSavedFilters(hobbyId).subtype ?? 'all')
   const [mealTag, setMealTag] = useState<string>(() => loadSavedFilters(hobbyId).mealTag ?? 'all')
   const [search, setSearch] = useState('')
+  const [view, setViewState] = useState<ViewMode>(loadView)
+  const setView = (v: ViewMode) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ } }
   const [rankMode, setRankMode] = useState(false)
   const isRecipe = !!hobby.recipe
   const statusOptions: (EntryStatus | 'all')[] = ['all', ...statusesFor(hobby)]
@@ -193,98 +206,100 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px 32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="mech-skeleton"
-              style={{
-                height: 120,
-                clipPath: 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)',
-                animationDelay: `${i * 120}ms`,
-              }}
-            />
+      <div className="page" aria-busy="true" aria-label="Loading">
+        <div className="cover-grid">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="mech-skeleton" style={{ aspectRatio: '2 / 3', animationDelay: `${i * 80}ms` }} />
           ))}
         </div>
       </div>
     )
   }
 
+  const tab = (active: boolean, color: string): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px',
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: active ? 600 : 500,
+    background: active ? `${color}1f` : 'transparent',
+    border: `1px solid ${active ? color : 'var(--border-dim)'}`,
+    color: active ? color : 'var(--text-mid)', cursor: 'pointer', transition: 'var(--t-fast)',
+  })
+  const tabCount: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }
+  const tool: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, padding: '0 12px',
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+    background: 'var(--bg-card)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', cursor: 'pointer',
+  }
+  const finished = entries.filter((e) => e.status === 'completed').length
+
   return (
-    <div style={{ padding: '32px' }}>
+    <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
-        <div>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 22,
-            fontWeight: 900,
-            color: 'var(--text-hi)',
-            letterSpacing: '0.05em',
-            margin: 0,
-          }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: 0 }}>
             {hobby.pluralLabel.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', marginTop: 4, letterSpacing: '0.05em' }}>
-            {entries.length} entries
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '4px 0 0' }}>
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}{finished > 0 ? `, ${finished} ${statusLabelFor(hobby, 'completed').toLowerCase()}` : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {hobbyId === 'games' && <SteamSync accent={hobby.accent} onSynced={loadEntries} />}
           <button
             onClick={() => setShowModal(true)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              background: `${hobby.accent}22`,
-              border: `1px solid ${hobby.accent}88`,
-              borderLeft: `3px solid ${hobby.accent}`,
-              color: hobby.accent,
-              fontFamily: 'var(--font-body)',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              cursor: 'pointer',
-              transition: 'var(--t-fast)',
+              display: 'inline-flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px',
+              background: `${hobby.accent}22`, border: `1px solid ${hobby.accent}88`, borderLeft: `3px solid ${hobby.accent}`,
+              color: hobby.accent, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = `${hobby.accent}44`; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${hobby.accent}44)` }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = `${hobby.accent}22`; e.currentTarget.style.filter = 'none' }}
           >
-            <Plus size={13} />
+            <Plus size={16} aria-hidden="true" />
             Add {hobby.label}
           </button>
         </div>
       </div>
 
-      {/* Book sub-type pills */}
-      {hobbyId === 'books' && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[{ id: 'all' as const, label: 'All', count: entries.length },
-            ...BOOK_SUBTYPES.map((s) => ({
-              id: s.id, label: s.label,
-              count: entries.filter((e) => e.book_subtype === s.id).length,
-            })).filter((s) => s.count > 0),
-          ].map((s) => {
-            const active = subtypeFilter === s.id
+      {/* Status tabs, each with how many it holds */}
+      <div className="tab-row" role="tablist" aria-label="Filter by status" style={{ marginBottom: 10 }}>
+        {statusOptions.map((s) => {
+          const active = statusFilter === s
+          const color = s === 'all' ? hobby.accent : STATUS_COLORS[s]
+          const count = s === 'all' ? entries.length : entries.filter((e) => e.status === s).length
+          return (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                setStatusFilter(s)
+                if (s === 'backlog') { setSortBy('rank'); setSortDir('asc') }
+                else { setRankMode(false); if (sortBy === 'rank') handleSortChange('recent') }
+              }}
+              style={tab(active, color)}
+            >
+              {s === 'all' ? 'All' : statusLabelFor(hobby, s)}
+              <span style={tabCount}>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Book sub-types */}
+      {hobbyId === 'books' && entries.length > 0 && (
+        <div className="tab-row" role="tablist" aria-label="Filter by type" style={{ marginBottom: 10 }}>
+          {[{ id: 'all' as const, label: 'All types', count: entries.length },
+            ...BOOK_SUBTYPES.map((st) => ({
+              id: st.id, label: st.label,
+              count: entries.filter((e) => e.book_subtype === st.id).length,
+            })).filter((st) => st.count > 0),
+          ].map((st) => {
+            const active = subtypeFilter === st.id
             return (
-              <button
-                key={s.id}
-                onClick={() => setSubtypeFilter(s.id === 'all' ? 'all' : active ? 'all' : s.id)}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 14,
-                  letterSpacing: '0.05em',
-                  background: active ? `${hobby.accent}22` : 'transparent',
-                  border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
-                  color: active ? hobby.accent : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'var(--t-fast)',
-                }}
-              >
-                {s.label} ({s.count})
+              <button key={st.id} role="tab" aria-selected={active}
+                onClick={() => setSubtypeFilter(st.id === 'all' ? 'all' : active ? 'all' : st.id)}
+                style={tab(active, hobby.accent)}>
+                {st.label}
+                <span style={tabCount}>{st.count}</span>
               </button>
             )
           })}
@@ -293,8 +308,8 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
 
       {/* Meal / course tabs */}
       {isRecipe && entries.length > 0 && (
-        <div role="tablist" aria-label="Meal or course" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[{ id: 'all', label: 'All', count: entries.length },
+        <div className="tab-row" role="tablist" aria-label="Filter by meal or course" style={{ marginBottom: 10 }}>
+          {[{ id: 'all', label: 'All meals', count: entries.length },
             ...MEAL_TAGS.map((t) => ({
               id: t.id, label: t.label,
               count: entries.filter((e) => mealTagsOf.get(e.id)?.includes(t.id)).length,
@@ -302,142 +317,81 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           ].map((t) => {
             const active = mealTag === t.id
             return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={active}
+              <button key={t.id} role="tab" aria-selected={active}
                 onClick={() => setMealTag(active ? 'all' : t.id)}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 14,
-                  letterSpacing: '0.05em',
-                  background: active ? `${hobby.accent}22` : 'transparent',
-                  border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
-                  color: active ? hobby.accent : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'var(--t-fast)',
-                }}
-              >
-                {t.label} ({t.count})
+                style={tab(active, hobby.accent)}>
+                {t.label}
+                <span style={tabCount}>{t.count}</span>
               </button>
             )
           })}
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', width: 240 }}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${hobby.pluralLabel}…`}
-            style={inp}
-          />
-        </div>
+      {/* Toolbar: search, sort, view, bulk tools */}
+      <div style={{ display: 'flex', gap: 8, margin: '6px 0 22px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${hobby.pluralLabel}…`}
+          aria-label={`Search ${hobby.pluralLabel}`}
+          autoComplete="off"
+          style={{ ...inp, flex: '1 1 200px', maxWidth: 340, width: 'auto', height: 38, padding: '0 14px' }}
+        />
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {statusOptions.map((s) => {
-            const active = statusFilter === s
-            const color = s === 'all' ? hobby.accent : STATUS_COLORS[s]
-            return (
-              <button
-                key={s}
-                onClick={() => {
-                  setStatusFilter(s)
-                  if (s === 'backlog') { setSortBy('rank'); setSortDir('asc') }
-                  else { setRankMode(false); if (sortBy === 'rank') handleSortChange('recent') }
-                }}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 14,
-                  letterSpacing: '0.05em',
-                  background: active ? `${color}22` : 'transparent',
-                  border: `1px solid ${active ? color : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${color}` : '1px solid var(--border-dim)',
-                  color: active ? color : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'var(--t-fast)',
-                }}
-              >
-                {s === 'all' ? 'All' : statusLabelFor(hobby, s)}
-              </button>
-            )
-          })}
-        </div>
+        <select
+          value={sortBy}
+          aria-label="Sort by"
+          onChange={(e) => handleSortChange(e.target.value as SortOption)}
+          style={{ ...tool, padding: '0 10px' }}
+        >
+          {sortOptions.map((o) => (
+            <option key={o.id} value={o.id}>Sort: {o.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          aria-label={sortDir === 'asc' ? 'Sorted ascending. Switch to descending' : 'Sorted descending. Switch to ascending'}
+          title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+          style={{ ...tool, width: 38, padding: 0 }}
+        >
+          {sortDir === 'asc' ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+        </button>
 
-        {/* Sort controls */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <select
-            value={sortBy}
-            onChange={(e) => handleSortChange(e.target.value as SortOption)}
-            style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14,
-              letterSpacing: '0.05em', padding: '6px 10px', cursor: 'pointer', outline: 'none',
-            }}
-          >
-            {sortOptions.map((o) => (
-              <option key={o.id} value={o.id}>Sort: {o.label}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-            title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 32, height: 32,
-              background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', cursor: 'pointer', transition: 'var(--t-fast)',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-hi)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-mid)')}
-          >
-            {sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        </div>
+        {!rankMode && (
+          <div role="group" aria-label="View" style={{ display: 'inline-flex' }}>
+            {([['grid', LayoutGrid, 'Covers'], ['list', List, 'List']] as const).map(([id, Icon, label]) => {
+              const active = view === id
+              return (
+                <button key={id} onClick={() => setView(id)} aria-pressed={active} aria-label={`${label} view`} title={`${label} view`}
+                  style={{ ...tool, width: 38, padding: 0, marginLeft: id === 'list' ? -1 : 0, background: active ? `${hobby.accent}22` : 'var(--bg-card)', borderColor: active ? hobby.accent : 'var(--border-dim)', color: active ? hobby.accent : 'var(--text-mid)', position: 'relative', zIndex: active ? 1 : 0 }}>
+                  <Icon size={16} aria-hidden="true" />
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <span style={{ flex: 1 }} />
 
         {statusFilter === 'backlog' && (
           <button
-            onClick={() => setRankMode((r) => !r)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginLeft: 'auto',
-              padding: '8px 18px',
-              fontFamily: 'var(--font-body)',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              background: rankMode ? '#d97706' : '#d9770622',
-              border: '1px solid #d97706',
-              borderLeft: '3px solid #d97706',
-              color: rankMode ? 'var(--bg-base)' : '#d97706',
-              cursor: 'pointer',
-              transition: 'var(--t-fast)',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.filter = 'drop-shadow(0 0 6px #d9770666)')}
-            onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            onClick={() => setRankMode((v) => !v)}
+            aria-pressed={rankMode}
+            style={{ ...tool, fontWeight: 600, background: rankMode ? '#d97706' : '#d9770622', borderColor: '#d97706', color: rankMode ? 'var(--bg-base)' : '#f59e0b' }}
           >
-            <ListOrdered size={14} />
+            <ListOrdered size={16} aria-hidden="true" />
             {rankMode ? 'Done Ranking' : isRecipe ? 'Rank To-Try List' : 'Rank Backlog'}
           </button>
         )}
-        {!rankMode && (
+        {!rankMode && entries.length > 0 && (
           <button
             onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginLeft: statusFilter === 'backlog' ? 8 : 'auto',
-              padding: '8px 18px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em',
-              background: selectMode ? hobby.accent : `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, borderLeft: `3px solid ${hobby.accent}`,
-              color: selectMode ? 'var(--bg-base)' : hobby.accent, cursor: 'pointer', transition: 'var(--t-fast)',
-            }}
+            aria-pressed={selectMode}
+            style={{ ...tool, fontWeight: 600, background: selectMode ? hobby.accent : 'var(--bg-card)', borderColor: selectMode ? hobby.accent : 'var(--border-dim)', color: selectMode ? 'var(--bg-base)' : 'var(--text-mid)' }}
           >
-            <CheckSquare size={14} />
+            <CheckSquare size={16} aria-hidden="true" />
             {selectMode ? 'Done' : 'Select'}
           </button>
         )}
@@ -545,39 +499,19 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           </div>
         )
       ) : /* Grid */ filtered.length === 0 ? (
-        <div
-          style={{
-            padding: '64px 32px',
-            textAlign: 'center',
-            border: `1px solid ${hobby.accent}33`,
-            borderLeft: `3px solid ${hobby.accent}`,
-            background: 'var(--bg-card)',
-          }}
-        >
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: hobby.accent, letterSpacing: '0.08em', marginBottom: 8 }}>
-            Nothing here yet
+        <div style={{ padding: '56px 24px', textAlign: 'center', border: '1px dashed var(--border-dim)', background: 'var(--bg-card)' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 600, color: 'var(--text-hi)', margin: '0 0 6px' }}>
+            {entries.length === 0 ? `Nothing in ${hobby.pluralLabel} yet` : 'No matches'}
           </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 4 }}>
-            {entries.length === 0 ? `${hobby.pluralLabel} Library Empty` : 'No matches'}
-          </p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.05em', marginBottom: 20 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', margin: 0 }}>
             {entries.length === 0 ? 'Add your first one to get started.' : 'Try a different search or filter.'}
           </p>
           {entries.length === 0 && (
             <button
               onClick={() => setShowModal(true)}
-              style={{
-                padding: '8px 20px',
-                background: `${hobby.accent}22`,
-                border: `1px solid ${hobby.accent}`,
-                color: hobby.accent,
-                fontFamily: 'var(--font-body)',
-                fontSize: 14,
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
-              }}
+              style={{ marginTop: 20, display: 'inline-flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', background: `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, color: hobby.accent, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
-              Add Your First Entry
+              <Plus size={16} aria-hidden="true" /> Add {hobby.label}
             </button>
           )}
         </div>
@@ -604,12 +538,24 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
               </div>
             )
           })()}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-            {display.map((entry, i) => (
-              <EntryCard key={entry.id} entry={entry} index={i}
-                selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
-            ))}
-          </div>
+          {view === 'list' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 12 }}>
+              {display.map((entry, i) => (
+                <EntryCard key={entry.id} entry={entry} index={i} showType={hobbyId === 'books'}
+                  selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
+              ))}
+            </div>
+          ) : statusFilter === 'completed' && sortBy === 'recent' && !selectMode && !isRecipe ? (
+            // Finished things get the shelf: by year, newest first.
+            <ShelfWall entries={display} />
+          ) : (
+            <div className="cover-grid">
+              {display.map((entry) => (
+                <CoverTile key={entry.id} entry={entry} showStatus={statusFilter === 'all'}
+                  selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
+              ))}
+            </div>
+          )}
         </>
       )}
 

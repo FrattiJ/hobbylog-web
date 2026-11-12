@@ -194,6 +194,44 @@ p { text-wrap: pretty; }
   animation: scan-line 1.6s ease-in-out infinite;
 }
 
+/* ── Page frame ─────────────────────────────────────────────────────────────── */
+.page { padding: 32px; }
+@media (max-width: 768px) { .page { padding: 20px 16px 32px; } }
+
+/* ── Cover grid and tiles ───────────────────────────────────────────────────── */
+/* Posters at a size where the art reads: five or six across on a laptop, three
+   on a phone. */
+.cover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 22px 18px;
+}
+@media (max-width: 520px) {
+  .cover-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
+}
+.tile { transition: transform 0.15s ease; }
+.tile .tile-frame { transition: background-color 0.15s ease, filter 0.15s ease; }
+@media (hover: hover) {
+  .tile:hover { transform: translateY(-3px); }
+  .tile:hover .tile-frame { filter: brightness(1.12) saturate(1.1); }
+  button.tile:hover { filter: none; }
+}
+
+/* A single row of tabs that scrolls sideways on a narrow screen instead of
+   wrapping into a wall of chips above the content. */
+.tab-row {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -4px; padding: 4px;
+}
+.tab-row::-webkit-scrollbar { display: none; }
+.tab-row > * { flex-shrink: 0; }
+
+/* Readable by screen readers, not shown. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 /* ── Scroll without a scrollbar ─────────────────────────────────────────────── */
 /* For strips that are meant to be swiped rather than scrolled deliberately: the
    fitness tab bar and the consistency heatmap. The bar is pure noise there on a
