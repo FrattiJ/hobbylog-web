@@ -16,6 +16,7 @@ import StatCard from '../StatCard'
 import GoalsPanel from './GoalsPanel'
 import { Select, Label, Rule, Empty, Button, ACCENT } from './ui'
 import { WeighInModal } from './WeighIn'
+import { formatDay } from '@/lib/format'
 
 export default function ProgressTab() {
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -136,7 +137,7 @@ function Heatmap({ dates }: { dates: string[] }) {
               {week.map((d) => (
                 <div
                   key={d.date}
-                  title={`${d.date} — ${d.count} workout${d.count === 1 ? '' : 's'}`}
+                  title={`${formatDay(d.date)}: ${d.count} workout${d.count === 1 ? '' : 's'}`}
                   style={{
                     width: CELL, height: CELL, background: shade(d.count),
                     border: '1px solid var(--border-dim)',
@@ -302,7 +303,7 @@ function ExerciseProgress({ exercises }: { exercises: Exercise[] }) {
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, color: 'var(--text-hi)', marginTop: 4 }}>
                 {fmtPrValue(r.kind, r.value)}
               </div>
-              {r.date && <Label style={{ marginTop: 2, fontSize: 12 }}>{r.date}</Label>}
+              {r.date && <Label style={{ marginTop: 2, fontSize: 12 }}>{formatDay(r.date)}</Label>}
             </div>
           ))}
         </div>

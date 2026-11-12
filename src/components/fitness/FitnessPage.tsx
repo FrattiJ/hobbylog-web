@@ -41,35 +41,32 @@ export default function FitnessPage() {
   }
 
   return (
-    <div style={{ padding: 'clamp(16px, 4vw, 32px)', maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <Dumbbell size={20} style={{ color: ACCENT }} />
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900,
-          letterSpacing: '0.05em', color: 'var(--text-hi)',
-        }}>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Dumbbell size={22} aria-hidden="true" style={{ color: ACCENT, flexShrink: 0 }} />
           FITNESS
         </h1>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '4px 0 0' }}>
+          Build routines, log sets and track records
+        </p>
       </div>
-      <p style={{
-        fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em',
-        color: 'var(--text-dim)', marginBottom: 18,
-      }}>
-        Build routines, log sets and track records
-      </p>
 
-      <div className="scroll-hide" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 18, overflowX: 'auto' }}>
+      {/* One row that scrolls sideways if it has to; each tab is a full-height target. */}
+      <div className="scroll-hide" role="tablist" aria-label="Fitness sections" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 20, overflowX: 'auto' }}>
         {TABS.map((t) => {
           const active = tab === t.id
           return (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={active}
               onClick={() => select(t.id)}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: '10px 16px',
-                fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: active ? 700 : 400,
-                letterSpacing: '0.05em', whiteSpace: 'nowrap',
-                color: active ? ACCENT : 'var(--text-dim)',
+                background: 'none', border: 'none', cursor: 'pointer', minHeight: 44, padding: '0 18px',
+                fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: active ? 600 : 500,
+                whiteSpace: 'nowrap',
+                color: active ? ACCENT : 'var(--text-mid)',
                 borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`,
                 marginBottom: -1, transition: 'var(--t-fast)',
               }}

@@ -7,6 +7,7 @@ import { isoDay } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import { Button, Input, Label, Modal, ACCENT } from './ui'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { formatDay } from '@/lib/format'
 
 const BLUE = '#099bbe'
 
@@ -96,8 +97,10 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
             placeholder={todays ? String(todays.weight) : previous ? String(previous.weight) : 'lbs'}
             inputMode="decimal"
             autoFocus={editing}
-            style={{ flex: '1 1 110px', minWidth: 0 }}
+            aria-label="Today's weight in pounds"
+            style={{ flex: '0 1 150px', minWidth: 0 }}
           />
+          <Label>lbs</Label>
           <Button variant="solid" accent={BLUE} onClick={save} disabled={saving}>
             <Check size={12} /> {saving ? 'Saving…' : 'Log'}
           </Button>
@@ -124,7 +127,7 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
 
       {showInput && !todays && previous && (
         <Label style={{ marginTop: 7, color: 'var(--text-dim)' }}>
-          Last Reading {previous.weight} lbs on {previous.date}
+          Last reading: {previous.weight} lbs on {formatDay(previous.date)}
         </Label>
       )}
     </div>

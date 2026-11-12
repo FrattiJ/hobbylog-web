@@ -261,6 +261,9 @@ p { text-wrap: pretty; }
   .sg-actions > * { flex: 1 1 0; }
 }
 
+/* ── Fitness: exercise cards on the Today tab ───────────────────────────────── */
+.fit-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+
 /* ── Scroll without a scrollbar ─────────────────────────────────────────────── */
 /* For strips that are meant to be swiped rather than scrolled deliberately: the
    fitness tab bar and the consistency heatmap. The bar is pure noise there on a

@@ -90,7 +90,9 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
   onChange: (sets: DraftSet[]) => void
 }) {
   const cols = COLUMNS[exercise.tracking_type]
-  const grid = `28px ${cols.map(() => '1fr').join(' ')} 34px 30px`
+  // Number fields: wide enough for "1:23:45" and a thumb, no wider. On a
+  // desktop card 1fr columns stretched each one to 400px.
+  const grid = `28px ${cols.map(() => 'minmax(64px, 150px)').join(' ')} 44px 34px`
 
   const update = (key: string, patch: Partial<DraftSet>) =>
     onChange(sets.map((s) => (s.key === key ? { ...s, ...patch } : s)))
@@ -99,12 +101,12 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
     <div>
       <div style={{
         display: 'grid', gridTemplateColumns: grid, gap: 6, padding: '0 0 5px',
-        fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em',
+        fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
         color: 'var(--text-dim)', borderBottom: '1px solid var(--border-dim)', marginBottom: 7,
       }}>
         <span style={{ textAlign: 'center' }}>#</span>
         {cols.map((c) => <span key={c.key}>{c.label}</span>)}
-        <span style={{ textAlign: 'center' }} title="Warm-up sets are excluded from records">W/U</span>
+        <span style={{ textAlign: 'center' }} title="Warm-up sets are excluded from records">Warm</span>
         <span />
       </div>
 

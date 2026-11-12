@@ -284,28 +284,31 @@ export default function TodayTab() {
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.02em' }}>
             {(routineName ?? 'Freestyle')}
           </div>
-          <Label style={{ marginTop: 3 }}>{loggedSets.length} Sets Logged</Label>
+          <Label style={{ marginTop: 3 }}>{loggedSets.length} {loggedSets.length === 1 ? 'set' : 'sets'} logged</Label>
         </div>
         <Button variant="quiet" onClick={reset} title="Discard this session">
           <RotateCcw size={12} /> Discard
         </Button>
       </div>
 
+      {/* Two exercises side by side where the screen allows; the set grid inside
+          each is only as wide as its numbers need. */}
+      <div className="fit-cards">
       {draft.map((d, i) => (
         <div key={d.exercise.id} style={{
           border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`,
-          background: 'var(--bg-card)', padding: 14, marginTop: 12,
+          background: 'var(--bg-card)', padding: 14, minWidth: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, color: 'var(--text-hi)', fontWeight: 500 }}>{d.exercise.name}</div>
+              <h3 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, letterSpacing: 0, color: 'var(--text-hi)', margin: 0 }}>{d.exercise.name}</h3>
               <Label style={{ marginTop: 3 }}>{grayLegend(d)}</Label>
             </div>
             <button
               onClick={() => setDraft(draft.filter((_, j) => j !== i))}
               title="Remove exercise"
-              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 2 }}
- aria-label="Remove exercise">
+              aria-label="Remove exercise"
+              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 8, margin: -6 }}>
               <X size={15} />
             </button>
           </div>
@@ -354,6 +357,7 @@ export default function TodayTab() {
           </div>
         </div>
       ))}
+      </div>
 
       <Button variant="ghost" style={{ width: '100%', marginTop: 12 }} onClick={() => setPicking(true)}>
         <Plus size={13} /> Add Exercise
@@ -379,7 +383,7 @@ export default function TodayTab() {
         variant="solid" style={{ width: '100%', marginTop: 16, padding: '13px' }}
         onClick={save} disabled={saving || loggedSets.length === 0}
       >
-        <Save size={14} /> {saving ? 'Saving…' : `Finish Workout (${loggedSets.length} Sets)`}
+        <Save size={14} /> {saving ? 'Saving…' : `Finish Workout (${loggedSets.length} ${loggedSets.length === 1 ? 'set' : 'sets'})`}
       </Button>
 
       {picking && <ExercisePicker mine={allExercises} onPick={addExercise} onClose={() => setPicking(false)} />}
@@ -391,13 +395,13 @@ export default function TodayTab() {
 // one; otherwise it's the routine's target, which is what stops a freshly loaded
 // routine from looking empty.
 function grayLegend(d: DraftExercise): string {
-  if (d.lastSets.length > 0) return `Greyed Values = ${formatNoteDate(d.lastSets[0].date)}`
+  if (d.lastSets.length > 0) return `Greyed values are from ${formatNoteDate(d.lastSets[0].date)}`
   if (d.targets && (d.targets.reps != null || d.targets.seconds != null)) return 'Greyed values are the routine target'
   return TRACKING_LABELS[d.exercise.tracking_type]
 }
 
 function formatNoteDate(date: string): string {
-  if (!date) return 'Last Time'
+  if (!date) return 'last time'
   const [y, m, d] = date.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }

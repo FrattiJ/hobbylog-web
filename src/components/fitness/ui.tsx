@@ -11,7 +11,7 @@ export const ACCENT = '#f25b0c' // matches HOBBY_MAP.fitness.accent
 export function Label({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.08em',
+      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
       color: 'var(--text-dim)', ...style,
     }}>
       {children}
@@ -21,9 +21,10 @@ export function Label({ children, style }: { children: React.ReactNode; style?: 
 
 export function Rule({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px' }}>
-      <Label>{children}</Label>
-      <span style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
+    // A section heading, not a caption: these divide a tab into its parts.
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '28px 0 12px' }}>
+      <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, letterSpacing: 0, color: 'var(--text-hi)', margin: 0, whiteSpace: 'nowrap' }}>{children}</h2>
+      <span aria-hidden="true" style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
     </div>
   )
 }
@@ -90,8 +91,8 @@ export function Button({
   const [hover, setHover] = useState(false)
   const base: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
-    padding: '9px 14px', cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600,
+    minHeight: 38, padding: '0 14px', cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.45 : 1, transition: 'var(--t-fast)', whiteSpace: 'nowrap',
   }
   const variants: Record<string, React.CSSProperties> = {
@@ -196,11 +197,11 @@ export function Empty({ title, hint, action }: { title: string; hint?: string; a
       border: '1px dashed var(--border-dim)', padding: '40px 24px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
     }}>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)', letterSpacing: '0.05em' }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 600, color: 'var(--text-hi)' }}>
         {title}
       </div>
       {hint && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', maxWidth: 420, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', maxWidth: 440, lineHeight: 1.55 }}>
           {hint}
         </div>
       )}

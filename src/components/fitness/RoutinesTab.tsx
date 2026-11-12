@@ -157,7 +157,7 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
     <>
       <Rule>Your Exercises</Rule>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <Label>{exercises.length} In Your Library</Label>
+        <Label>{exercises.length} in your library</Label>
         <Button variant="ghost" onClick={() => setOpen(!open)}>
           {open ? 'Hide' : 'Manage'}
         </Button>

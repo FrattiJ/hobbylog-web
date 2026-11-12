@@ -33,13 +33,13 @@ export const PR_KINDS: Record<TrackingType, PrKind[]> = {
 }
 
 export const PR_LABELS: Record<PrKind, string> = {
-  weight: 'HEAVIEST',
-  e1rm: 'EST. 1RM',
-  volume: 'BEST SET VOLUME',
-  reps: 'MOST REPS',
-  seconds: 'LONGEST',
-  distance: 'FARTHEST',
-  pace: 'BEST PACE',
+  weight: 'Heaviest',
+  e1rm: 'Est. 1RM',
+  volume: 'Best set volume',
+  reps: 'Most reps',
+  seconds: 'Longest',
+  distance: 'Farthest',
+  pace: 'Best pace',
 }
 
 // Pace is the one record where a smaller number is the better number.

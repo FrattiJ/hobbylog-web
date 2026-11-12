@@ -104,7 +104,7 @@ export default function HistoryTab() {
                 <Label style={{ marginTop: 3 }}>
                   {[
                     formatDate(w.date),
-                    `${w.sets.length} Sets`,
+                    `${w.sets.length} ${w.sets.length === 1 ? 'set' : 'sets'}`,
                     volume > 0 ? `${Math.round(volume).toLocaleString()} lbs` : null,
                     w.duration_minutes ? `${w.duration_minutes} min` : null,
                     weights.get(w.date) ? `${weights.get(w.date)} lbs BW` : null,
