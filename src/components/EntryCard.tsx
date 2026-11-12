@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Star, Check } from 'lucide-react'
+import { Star, Check, Clock } from 'lucide-react'
 import MechCard from './MechCard'
 import type { Entry } from '@/types/database'
-import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusLabelFor } from '@/lib/hobbies'
+import { readRecipe, formatCookTime, DIFFICULTIES, MEAL_TAG_LABEL } from '@/lib/recipe'
 
 export default function EntryCard({ entry, index = 0, selectable = false, selected = false, onToggleSelect }: {
   entry: Entry
@@ -24,6 +25,10 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
   const progressUnit = entry.hobby_category === 'books' && entry.book_subtype
     ? BOOK_SUBTYPE_MAP[entry.book_subtype]?.progressUnit ?? hobby?.progressUnit
     : hobby?.progressUnit
+
+  const recipe = hobby?.recipe ? readRecipe(entry.metadata) : null
+  const recipeDifficulty = recipe ? DIFFICULTIES.find((d) => d.id === recipe.difficulty) : undefined
+  const recipeTime = recipe ? formatCookTime(recipe.cook_minutes) : null
 
   const effectiveProgressTotal = entry.progress_total
     || (entry.hobby_category === 'games' && entry.metadata?.time_to_beat ? Number(entry.metadata.time_to_beat) : null)
@@ -114,7 +119,7 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
               border: `1px solid ${STATUS_COLORS[entry.status]}44`,
               textTransform: 'uppercase',
             }}>
-              {STATUS_LABELS[entry.status]}
+              {statusLabelFor(hobby, entry.status)}
             </span>
             <span style={{
               fontFamily: 'var(--font-mono)',
@@ -140,8 +145,18 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
             </div>
           )}
 
+          {/* Recipe facts: time, difficulty, meal tags, times made */}
+          {recipe && (recipeTime || recipeDifficulty || recipe.meal_tags.length > 0 || entry.progress_current > 0) && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
+              {recipeTime && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={11} /> {recipeTime}</span>}
+              {recipeDifficulty && <span style={{ color: recipeDifficulty.color }}>{recipeDifficulty.label.toUpperCase()}</span>}
+              {recipe.meal_tags.length > 0 && <span>{recipe.meal_tags.map((t) => MEAL_TAG_LABEL[t] ?? t).join(' · ')}</span>}
+              {entry.progress_current > 0 && <span style={{ color: accent }}>MADE {entry.progress_current}x</span>}
+            </div>
+          )}
+
           {/* Progress bar */}
-          {progress !== null && (
+          {progress !== null && !recipe && (
             <div>
               <div style={{ height: 3, background: 'var(--border-dim)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{

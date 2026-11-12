@@ -9,6 +9,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '0.10.1',
     date: 'Nov 2026',
     items: [
+      'New hobby: Cooking. Save recipes with ingredients, steps, a rating and notes for next time, plus optional difficulty and time to cook',
+      'Tag recipes as breakfast, lunch, dinner, entree, dessert and more, then filter by tag',
+      'Tick off ingredients and steps as you cook, and log each time you make a recipe',
+      'Turn Cooking on under Settings, Tracked Hobbies',
       'Forgot your password? The sign-in screen can now email you a link to choose a new one',
       'Change your password any time from Settings, under Account',
     ],

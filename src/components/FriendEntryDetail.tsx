@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Star, Plus, Check, X } from 'lucide-react'
 import { getPhotosByEntry, type Photo } from '@/lib/db'
-import { HOBBY_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, STATUS_COLORS, statusLabelFor } from '@/lib/hobbies'
+import { readRecipe } from '@/lib/recipe'
+import RecipeView from './RecipeView'
 import { useIsMobile } from '@/lib/useIsMobile'
 import type { Entry } from '@/types/database'
 import type { ChecklistItem } from './ProjectChecklist'
@@ -107,7 +109,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{hobby?.label}</span>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.05em', wordBreak: 'break-word' }}>{entry.title}</h1>
             <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'center', flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-              <span style={{ color: STATUS_COLORS[entry.status], letterSpacing: '0.1em', textTransform: 'uppercase' }}>{STATUS_LABELS[entry.status]}</span>
+              <span style={{ color: STATUS_COLORS[entry.status], letterSpacing: '0.1em', textTransform: 'uppercase' }}>{statusLabelFor(hobby, entry.status)}</span>
               {entry.rating != null && <span style={{ color: accent, display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill={accent} /> {entry.rating}/10</span>}
               {entry.date_completed && <span style={{ color: 'var(--text-dim)' }}>COMPLETED {entry.date_completed}</span>}
             </div>
@@ -140,6 +142,8 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
                 ))}
               </div>
             </div>
+          ) : hobby?.recipe ? (
+            <RecipeView recipe={readRecipe(entry.metadata)} accent={accent} />
           ) : (!isPercent && entry.progress_total ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -155,7 +159,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
           {/* Review */}
           {entry.notes && (
             <div>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 8px' }}>REVIEW</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.18em', margin: '0 0 8px' }}>{hobby?.recipe ? 'NOTES FOR NEXT TIME' : 'REVIEW'}</p>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{entry.notes}</p>
             </div>
           )}

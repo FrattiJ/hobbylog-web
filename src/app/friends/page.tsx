@@ -9,7 +9,7 @@ import {
   getProfile, getFriendsFeed, PROFILE_CHANGED_EVENT,
   type UserRef, type FriendView, type FeedItem,
 } from '@/lib/db'
-import { HOBBY_MAP, STATUS_LABELS } from '@/lib/hobbies'
+import { HOBBY_MAP, statusLabelFor } from '@/lib/hobbies'
 import type { Entry } from '@/types/database'
 import FriendLibrary from '@/components/FriendLibrary'
 
@@ -276,7 +276,7 @@ export default function FriendsPage() {
                         ? <img src={e.cover_url} alt="" style={{ width: 26, height: 38, objectFit: 'cover', flexShrink: 0 }} />
                         : <div style={{ width: 26, height: 38, background: 'var(--bg-base)', flexShrink: 0 }} />}
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{STATUS_LABELS[e.status]}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{statusLabelFor(HOBBY_MAP[e.hobby_category as keyof typeof HOBBY_MAP], e.status)}</span>
                       {e.hobby_category === 'games' && e.status === 'in_progress' && (e.progress_current ?? 0) > 0 && (
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>· {e.progress_current}h</span>
                       )}

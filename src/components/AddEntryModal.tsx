@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, ArrowLeft, Upload, Eye, EyeOff } from 'lucide-react'
-import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, BOOK_SUBTYPE_MAP } from '@/lib/hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPES, BOOK_SUBTYPE_MAP, statusesFor, statusLabelFor } from '@/lib/hobbies'
+import { EMPTY_RECIPE, recipeMetadata, type RecipeData } from '@/lib/recipe'
+import RecipeFields from './RecipeFields'
 import { insertEntry, moveEntryToRank } from '@/lib/db'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails, type CatalogHit } from '@/lib/search'
 import { compressImage } from '@/lib/image'
@@ -35,6 +37,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [volumeTotal, setVolumeTotal] = useState('')
   const [rankInput, setRankInput] = useState('')
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
+  const [recipe, setRecipe] = useState<RecipeData>(EMPTY_RECIPE)
   const [coverUrl, setCoverUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -56,7 +59,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     : hobby.progressUnit
 
   const isGame = hobbyId === 'games'
-  const showTotal = !isGame && !hobby.percentBased
+  const isRecipe = !!hobby.recipe
+  const showTotal = !isGame && !hobby.percentBased && !isRecipe
 
   // Search-as-you-type
   useEffect(() => {
@@ -120,7 +124,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
     const today = new Date().toISOString().split('T')[0]
     // Percent-based projects: a checklist added here sets the initial % + status.
     let effStatus = status
-    let progCurrent = 0
+    // A recipe added as already made has been made once.
+    let progCurrent = isRecipe && status === 'completed' ? 1 : 0
     if (hobby.percentBased && checklist.length > 0) {
       const done = checklist.filter((i) => i.done).length
       progCurrent = Math.round((done / checklist.length) * 100)
@@ -134,7 +139,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
         rating: rating ? parseFloat(rating) : null,
         notes: notes.trim() || null,
         progress_current: progCurrent,
-        progress_total: hobbyId === 'games' ? null : hobby.percentBased ? 100 : (progressTotal ? parseFloat(progressTotal) : null),
+        progress_total: hobbyId === 'games' || isRecipe ? null : hobby.percentBased ? 100 : (progressTotal ? parseFloat(progressTotal) : null),
         cover_url: coverUrl.trim() || null,
         external_id: selected?.external_id ?? null,
         external_source: selected?.external_source ?? null,
@@ -147,6 +152,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             ...(volumeTotal ? { volume_total: parseInt(volumeTotal) } : {}),
           } : {}),
           ...(hobby.percentBased && checklist.length > 0 ? { checklist } : {}),
+          ...(isRecipe ? recipeMetadata(recipe) : {}),
         },
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
         is_private: isPrivate,
@@ -233,21 +239,21 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
 
           <div style={{ marginBottom: 14 }}>
             <p style={label}>TITLE *</p>
-            <input value={title} onChange={(e) => { setTitle(e.target.value); setSelected(null) }} placeholder="Entry title…" style={inp} />
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setSelected(null) }} placeholder={isRecipe ? 'Recipe name…' : 'Entry title…'} style={inp} />
           </div>
 
           <div style={{ marginBottom: 14 }}>
             <p style={label}>STATUS</p>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {(Object.keys(STATUS_LABELS) as EntryStatus[]).map((s) => (
-                <button key={s} onClick={() => setStatus(s)} style={pill(status === s, accent)}>{STATUS_LABELS[s]}</button>
+              {statusesFor(hobby).map((s) => (
+                <button key={s} onClick={() => setStatus(s)} style={pill(status === s, accent)}>{statusLabelFor(hobby, s)}</button>
               ))}
             </div>
           </div>
 
           {status === 'backlog' && (
             <div style={{ marginBottom: 14 }}>
-              <p style={label}>BACKLOG RANK (optional)</p>
+              <p style={label}>{isRecipe ? 'TO-TRY RANK (optional)' : 'BACKLOG RANK (optional)'}</p>
               <input type="number" min={1} value={rankInput} onChange={(e) => setRankInput(e.target.value)} placeholder="added to the bottom" style={inp} />
             </div>
           )}
@@ -301,6 +307,12 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
             </div>
           )}
 
+          {isRecipe && (
+            <div style={{ marginBottom: 14 }}>
+              <RecipeFields value={recipe} onChange={setRecipe} accent={accent} />
+            </div>
+          )}
+
           {hobby.percentBased && (
             <div style={{ marginBottom: 14 }}>
               <ProjectChecklist items={checklist} accent={accent} onChange={setChecklist} />
@@ -308,7 +320,7 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <p style={label}>COVER</p>
+            <p style={label}>{isRecipe ? 'PHOTO' : 'COVER'}</p>
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={coverUrl.startsWith('data:') ? '(uploaded image)' : coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="Paste an image URL…" style={{ ...inp, flex: 1, minWidth: 0 }} />
               {coverUrl.startsWith('data:') && (
@@ -331,8 +343,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <p style={label}>NOTES</p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} spellCheck autoCapitalize="sentences" placeholder="—" style={{ ...inp, resize: 'vertical' }} />
+            <p style={label}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'NOTES'}</p>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : '—'} style={{ ...inp, resize: 'vertical' }} />
           </div>
 
           <button type="button" onClick={() => setIsPrivate((v) => !v)}

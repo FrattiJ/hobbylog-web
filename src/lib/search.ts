@@ -16,7 +16,7 @@ export function searchTypeFor(hobby: string): string | null {
   if (hobby === 'movies') return 'movie'
   if (hobby === 'tv') return 'tv'
   if (hobby === 'books') return 'books'
-  return null // gundams, fitness, art — manual only
+  return null // gundams, fitness, art, cooking — manual only
 }
 
 // Every upstream here treats case and run-together spacing as noise, but a CDN

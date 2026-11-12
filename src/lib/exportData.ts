@@ -3,7 +3,8 @@ import { currentUserId } from './currentUser'
 import { getAllEntries } from './db'
 import { getWorkoutNotes, listBodyweight, listExercises, listWorkouts } from './fitness/db'
 import { fmtDuration } from './fitness/calc'
-import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS } from './hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPE_MAP, statusLabelFor } from './hobbies'
+import { readRecipe, MEAL_TAG_LABEL } from './recipe'
 import type { HobbyCategory } from '@/types/database'
 import type { CellValue, Sheet } from './xlsx'
 
@@ -37,6 +38,8 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
     // Season and episode only mean something for TV; sub-type only for books.
     const isTv = hobby === 'tv'
     const isBooks = hobby === 'books'
+    // A recipe without its ingredients and steps is not much of an export.
+    const isRecipe = !!config.recipe
 
     const headers = [
       'Title',
@@ -46,6 +49,7 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
       config.progressLabel,
       'Total',
       ...(isTv ? ['Season', 'Episode'] : []),
+      ...(isRecipe ? ['Meal Tags', 'Difficulty', 'Cook Minutes', 'Ingredients', 'Steps'] : []),
       'Backlog Rank',
       'Started',
       'Completed',
@@ -59,14 +63,21 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
     sheets.push({
       name: config.pluralLabel,
       headers,
-      rows: rows.map((e) => [
+      rows: rows.map((e) => { const recipe = isRecipe ? readRecipe(e.metadata) : null; return [
         e.title,
         ...(isBooks ? [e.book_subtype ? BOOK_SUBTYPE_MAP[e.book_subtype]?.label ?? e.book_subtype : ''] : []),
-        STATUS_LABELS[e.status] ?? e.status,
+        statusLabelFor(config, e.status),
         e.rating,
         e.progress_current,
         e.progress_total,
         ...(isTv ? [e.current_season, e.current_episode] : []),
+        ...(recipe ? [
+          recipe.meal_tags.map((t) => MEAL_TAG_LABEL[t] ?? t).join(', '),
+          recipe.difficulty ?? '',
+          recipe.cook_minutes,
+          recipe.ingredients.join('\n'),
+          recipe.steps.map((st, i) => `${i + 1}. ${st}`).join('\n'),
+        ] : []),
         e.priority,
         iso(e.date_started),
         iso(e.date_completed),
@@ -75,7 +86,7 @@ async function entrySheets(hobbies: HobbyCategory[]): Promise<Sheet[]> {
         e.external_id ?? '',
         iso(e.created_at),
         iso(e.updated_at),
-      ]),
+      ] }),
     })
   }
 

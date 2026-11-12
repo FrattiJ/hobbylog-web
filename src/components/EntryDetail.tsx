@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff } from 'lucide-react'
-import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
+import { readRecipe, recipeMetadata, type RecipeData } from '@/lib/recipe'
+import RecipeView from './RecipeView'
+import RecipeFields from './RecipeFields'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
 import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
@@ -14,7 +17,6 @@ import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 
 const ACCENT = '#7c3aed'
-const STATUSES = ['backlog', 'in_progress', 'completed', 'dropped']
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function EntryDetail({ entry, onBack, onChanged }: {
@@ -38,6 +40,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [volumeCurrent, setVolumeCurrent] = useState(entry.metadata?.volume_current != null ? String(entry.metadata.volume_current) : '')
   const [volumeTotal, setVolumeTotal] = useState(entry.metadata?.volume_total != null ? String(entry.metadata.volume_total) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
+  const [recipe, setRecipe] = useState<RecipeData>(() => readRecipe(entry.metadata))
+  const [recipeDraft, setRecipeDraft] = useState<RecipeData | null>(null)
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
   const [editingCover, setEditingCover] = useState(false)
   const [coverInput, setCoverInput] = useState('')
@@ -83,7 +87,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     : hobby?.progressUnit) ?? 'prog'
   // Games: a session's time IS the hours played, so no separate progress field.
   // Percent hobbies advance via the checklist; % progress makes no sense to add.
-  const showSessionProgress = !isGameEntry && !hobby?.percentBased && progUnit !== '%'
+  const isRecipe = !!hobby?.recipe
+  const showSessionProgress = !isGameEntry && !hobby?.percentBased && progUnit !== '%' && !isRecipe
   const isPercent = !!hobby?.percentBased
 
   // Checklist changes drive the project's % and status, and save immediately.
@@ -109,6 +114,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     } catch {
       toastError('Could not save your checklist change — try again')
     }
+  }
+
+  async function saveRecipe() {
+    if (!recipeDraft) return
+    setBusy(true)
+    try {
+      // Spread over the existing metadata so only the recipe's own keys change.
+      await updateEntry(entry.id, { metadata: { ...(entry.metadata ?? {}), ...recipeMetadata(recipeDraft) } })
+      setRecipe(recipeDraft); setRecipeDraft(null); onChanged()
+    } catch {
+      toastError('Could not save the recipe. Try again.')
+    }
+    setBusy(false)
   }
 
   const inp: React.CSSProperties = {
@@ -167,6 +185,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
       // Percent-based projects: total is always 100; the checklist (if any) sets
       // the %, otherwise status maps to 0 / 100.
       let progressTotalValue: number | null = progressTotal ? parseFloat(progressTotal) : null
+      // A recipe marked Made has been made at least once, logged or not.
+      if (isRecipe && status === 'completed' && progressValue < 1) { progressValue = 1; setProgressCurrent('1') }
       if (isPercent) {
         progressTotalValue = 100
         const total = checklist.length, done = checklist.filter((i) => i.done).length
@@ -235,6 +255,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     let prog = sProgress ? parseFloat(sProgress) : null
     if (isGameEntry && dur > 0) prog = Math.round((dur / 60) * 10) / 10
     // Movies and audiobooks count minutes, so a sitting's length is its progress.
+    // Recipes count cooks: every log is one more time it was made.
+    else if (isRecipe) prog = 1
     else if (prog == null && dur > 0 && (entry.hobby_category === 'movies' || (entry.hobby_category === 'books' && entry.book_subtype === 'audiobook'))) prog = dur
     if (!dur && prog == null && !sNotes.trim()) return
     setBusy(true)
@@ -242,7 +264,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
       await insertSession({ entry_id: entry.id, date: new Date().toISOString().split('T')[0], duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
       if (prog && prog > 0) {
         const cur = Math.round(((parseFloat(progressCurrent) || 0) + prog) * 10) / 10
-        setProgressCurrent(String(cur)); await updateEntry(entry.id, { progress_current: cur })
+        setProgressCurrent(String(cur))
+        // Cooking a recipe that was still on the to-try list means it is made.
+        const firstCook = isRecipe && status !== 'completed'
+        const today = new Date().toISOString().split('T')[0]
+        await updateEntry(entry.id, { progress_current: cur, ...(firstCook ? { status: 'completed', date_completed: entry.date_completed ?? today } : {}) })
+        if (firstCook) { setStatus('completed'); await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory) }
       }
       setSHours(''); setSMinutes(''); setSProgress(''); setSNotes(''); loadExtras(); onChanged()
     } catch { /* noop */ }
@@ -321,9 +348,32 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.06em' }}>{entry.title}</h1>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>
               {entry.date_started && <span>STARTED {entry.date_started}</span>}
-              {entry.date_completed && <span>COMPLETED {entry.date_completed}</span>}
+              {entry.date_completed && <span>{isRecipe ? 'FIRST MADE' : 'COMPLETED'} {entry.date_completed}</span>}
+              {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>MADE {progressCurrent}x</span>}
             </div>
           </div>
+
+          {/* The recipe itself: read view, with an edit mode of its own */}
+          {isRecipe && (
+            <div style={{ padding: '1px', clipPath: CLIP_SM, background: `${accent}55` }}>
+              <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>RECIPE</h2>
+                  {recipeDraft ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setRecipeDraft(null)} disabled={busy} style={{ padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
+                      <button onClick={saveRecipe} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: busy ? 'wait' : 'pointer' }}><Save size={11} /> SAVE RECIPE</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setRecipeDraft(recipe)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}><Pencil size={11} /> EDIT</button>
+                  )}
+                </div>
+                {recipeDraft
+                  ? <RecipeFields value={recipeDraft} onChange={setRecipeDraft} accent={accent} />
+                  : <RecipeView recipe={recipe} accent={accent} />}
+              </div>
+            </div>
+          )}
 
           {/* Review card when completed */}
           {isCompleted && (
@@ -331,10 +381,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <FileText size={14} style={{ color: '#22c55e' }} />
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>FIELD REPORT</h2>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'FIELD REPORT'}</h2>
                   {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
                 </div>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder="How was it? (remember to Save)" style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
               </div>
             </div>
           )}
@@ -347,9 +397,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               <div>
                 <p style={label}>STATUS</p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {STATUSES.map((s) => {
+                  {statusesFor(hobby).map((s) => {
                     const active = status === s
-                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{STATUS_LABELS[s]}</button>
+                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{statusLabelFor(hobby, s)}</button>
                   })}
                 </div>
               </div>
@@ -389,7 +439,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   {!hobby?.hideRating && (
                     <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
                   )}
-                  {!isPercent && (
+                  {!isPercent && !isRecipe && (
                     <>
                       <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
                       <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
@@ -426,8 +476,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
               {!isCompleted && (
                 <div>
-                  <p style={label}>NOTES</p>
-                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder="Notes…" style={{ ...inp, resize: 'vertical' }} />
+                  <p style={label}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'NOTES'}</p>
+                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
                 </div>
               )}
 
@@ -444,9 +494,11 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
           {/* Session log */}
           <div>
-            <p style={{ ...label, marginBottom: 4 }}>LOG A SESSION</p>
+            <p style={{ ...label, marginBottom: 4 }}>{isRecipe ? 'LOG A COOK' : 'LOG A SESSION'}</p>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
-              {isGameEntry
+              {isRecipe
+                ? 'Each log counts as one more time you made it. Time and notes are optional.'
+                : isGameEntry
                 ? 'How long you played — added to your hours.'
                 : `How long you spent${showSessionProgress ? `, and how much ${progUnit} you got through` : ''}.`}
             </p>
@@ -471,9 +523,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   )}
                   <div style={{ flex: '1 1 140px' }}>
                     <span style={miniLabel}>Notes</span>
-                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder="What did you do? (optional)" style={{ ...inp, width: '100%' }} />
+                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} />
                   </div>
-                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>LOG</button>
+                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I MADE THIS' : 'LOG'}</button>
                 </div>
               )
             })()}
@@ -481,7 +533,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 6 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
+                  {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged && !isRecipe ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
                 </span>
                 <button onClick={async () => { await deleteSession(s.id); loadExtras() }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
               </div>

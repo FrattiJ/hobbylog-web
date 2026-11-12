@@ -7,10 +7,10 @@ import AddEntryModal from './AddEntryModal'
 import SteamSync from './SteamSync'
 import { useToast } from './Toast'
 import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
-import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
+import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
+import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
 import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 
-const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'backlog', 'in_progress', 'completed', 'dropped']
 
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
 
@@ -45,6 +45,7 @@ function sortValue(e: Entry, by: SortOption): string | number | null {
 interface SavedFilters {
   status?: EntryStatus | 'all'
   subtype?: BookSubtype | 'all'
+  mealTag?: string
   sortBy?: SortOption
   sortDir?: 'asc' | 'desc'
 }
@@ -61,10 +62,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [showModal, setShowModal] = useState(false)
   const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() => loadSavedFilters(hobbyId).status ?? 'all')
   const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() => loadSavedFilters(hobbyId).subtype ?? 'all')
+  const [mealTag, setMealTag] = useState<string>(() => loadSavedFilters(hobbyId).mealTag ?? 'all')
   const [search, setSearch] = useState('')
   const [rankMode, setRankMode] = useState(false)
-  // Time-to-Beat only makes sense for games.
-  const sortOptions = SORT_OPTIONS.filter((o) => o.id !== 'ttb' || hobbyId === 'games')
+  const isRecipe = !!hobby.recipe
+  const statusOptions: (EntryStatus | 'all')[] = ['all', ...statusesFor(hobby)]
+  // Time-to-Beat only makes sense for games, and a recipe has no release date.
+  const sortOptions = SORT_OPTIONS.filter((o) => (o.id !== 'ttb' || hobbyId === 'games') && !(isRecipe && o.id === 'release'))
   const savedSort = loadSavedFilters(hobbyId).sortBy
   const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && hobbyId !== 'games' ? 'recent' : savedSort) ?? 'recent')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => loadSavedFilters(hobbyId).sortDir ?? 'desc')
@@ -86,9 +90,9 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   useEffect(() => {
     sessionStorage.setItem(
       `hobby-filters:${hobbyId}`,
-      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, sortBy, sortDir })
+      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, sortBy, sortDir })
     )
-  }, [hobbyId, statusFilter, subtypeFilter, sortBy, sortDir])
+  }, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir])
 
   // Refresh when entries change anywhere (sidebar quick add, quick log, etc.)
   useEffect(() => {
@@ -111,16 +115,20 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   async function bulkStatus(ids: string[], status: EntryStatus) {
     if (ids.length === 0 || bulkBusy) return
     setBulkBusy(true)
-    try { await bulkSetStatus(ids, status); toastSuccess(`Moved ${ids.length} to ${STATUS_LABELS[status]}`); exitSelect(); loadEntries() }
+    try { await bulkSetStatus(ids, status); toastSuccess(`Moved ${ids.length} to ${statusLabelFor(hobby, status)}`); exitSelect(); loadEntries() }
     catch { toastError('Could not update — try again') }
     setBulkBusy(false)
   }
 
   const byPriority = (a: Entry, b: Entry) => (a.priority ?? 1e9) - (b.priority ?? 1e9)
 
+  // Parsed once per render rather than once per entry per pill.
+  const mealTagsOf = new Map(isRecipe ? entries.map((e) => [e.id, readRecipe(e.metadata).meal_tags]) : [])
+
   const filtered = entries.filter((e) => {
     if (statusFilter !== 'all' && e.status !== statusFilter) return false
     if (hobbyId === 'books' && subtypeFilter !== 'all' && e.book_subtype !== subtypeFilter) return false
+    if (isRecipe && mealTag !== 'all' && !mealTagsOf.get(e.id)?.includes(mealTag)) return false
     if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -287,6 +295,43 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
         </div>
       )}
 
+      {/* Meal / course tabs */}
+      {isRecipe && entries.length > 0 && (
+        <div role="tablist" aria-label="Meal or course" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {[{ id: 'all', label: 'All', count: entries.length },
+            ...MEAL_TAGS.map((t) => ({
+              id: t.id, label: t.label,
+              count: entries.filter((e) => mealTagsOf.get(e.id)?.includes(t.id)).length,
+            })).filter((t) => t.count > 0 || t.id === mealTag),
+          ].map((t) => {
+            const active = mealTag === t.id
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setMealTag(active ? 'all' : t.id)}
+                style={{
+                  padding: '5px 12px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 14,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  background: active ? `${hobby.accent}22` : 'transparent',
+                  border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
+                  borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
+                  color: active ? hobby.accent : 'var(--text-dim)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {t.label} ({t.count})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', width: 240 }}>
@@ -300,7 +345,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {STATUS_OPTIONS.map((s) => {
+          {statusOptions.map((s) => {
             const active = statusFilter === s
             const color = s === 'all' ? hobby.accent : STATUS_COLORS[s]
             return (
@@ -325,7 +370,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {s === 'all' ? 'ALL' : STATUS_LABELS[s]}
+                {s === 'all' ? 'ALL' : statusLabelFor(hobby, s)}
               </button>
             )
           })}
@@ -384,7 +429,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
           >
             <ListOrdered size={14} />
-            {rankMode ? 'DONE RANKING' : 'RANK BACKLOG'}
+            {rankMode ? 'DONE RANKING' : isRecipe ? 'RANK TO-TRY LIST' : 'RANK BACKLOG'}
           </button>
         )}
         {!rankMode && (
@@ -557,9 +602,9 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 </button>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
                 <span style={{ flex: 1 }} />
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'in_progress')} style={barBtn(STATUS_COLORS.in_progress)}>→ {STATUS_LABELS.in_progress}</button>
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'completed')} style={barBtn(STATUS_COLORS.completed)}>→ {STATUS_LABELS.completed}</button>
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, 'backlog')} style={barBtn(STATUS_COLORS.backlog)}>→ {STATUS_LABELS.backlog}</button>
+                {(['in_progress', 'completed', 'backlog'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
+                  <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
+                ))}
                 <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> DELETE</button>
                 <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
               </div>
