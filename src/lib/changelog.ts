@@ -16,6 +16,11 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Status tabs now show how many entries each one holds',
       'Pinch-to-zoom works on phones, keyboard focus is visible everywhere, and reduced-motion settings are respected',
       'A new front page for visitors who are not signed in',
+      'What Next and Fitness are laid out for both phones and wide screens: suggestion cards two across, larger tabs, compact set grids',
+      'Filters, tabs and sort order are part of the page address, so a view can be bookmarked, shared or reloaded',
+      'Deleting asks in a proper dialog that says what goes with it, including sessions, photos, friends and goals that used to vanish at once',
+      'Big libraries open faster: entries load in batches as you scroll',
+      'The light theme now has readable accent colors',
     ],
   },
   {
