@@ -22,7 +22,7 @@ export default function GettingStarted() {
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${ACCENT}`, padding: '18px 20px', marginBottom: 24, position: 'relative' }}>
-      <button onClick={dismiss} title="Dismiss" style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={15} /></button>
+      <button onClick={dismiss} title="Dismiss" style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} aria-label="Dismiss"><X size={15} /></button>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: ACCENT, letterSpacing: '0.08em', margin: '0 0 4px' }}>Welcome</p>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: '0 0 16px' }}>GETTING STARTED</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>

@@ -304,8 +304,8 @@ export default function TodayTab() {
             <button
               onClick={() => setDraft(draft.filter((_, j) => j !== i))}
               title="Remove exercise"
-              style={{ background: 'none', border: 'none', color: 'var(--text-mute)', cursor: 'pointer', padding: 2 }}
-            >
+              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 2 }}
+ aria-label="Remove exercise">
               <X size={15} />
             </button>
           </div>

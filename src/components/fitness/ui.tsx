@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useEscape } from '@/lib/useEscape'
 
 // Shared bits for the fitness screens. The rest of the app styles inline against
 // the theme vars; these just stop every tab from restating the same 12 rules.
@@ -114,7 +115,7 @@ export function Button({
       type={type} onClick={onClick} disabled={disabled} title={title}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ ...base, ...variants[variant], ...style }}
-    >
+ aria-label={title}>
       {children}
     </button>
   )
@@ -127,10 +128,13 @@ export function Modal({ title, onClose, children, width = 620 }: {
   children: React.ReactNode
   width?: number
 }) {
+  useEscape(onClose)
   return (
     <div
       onClick={onClose}
+      role="dialog" aria-modal="true" aria-label={title}
       style={{
+        overscrollBehavior: 'contain',
         position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         padding: '24px 16px', overflowY: 'auto',

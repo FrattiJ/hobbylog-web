@@ -41,7 +41,7 @@ export default function RecipeFields({ value, onChange, accent }: {
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 200px' }}>
-          <p style={label}>DIFFICULTY (optional)</p>
+          <p style={label}>Difficulty (optional)</p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {DIFFICULTIES.map((d) => (
               <button type="button" key={d.id} aria-pressed={value.difficulty === d.id}
@@ -51,7 +51,7 @@ export default function RecipeFields({ value, onChange, accent }: {
           </div>
         </div>
         <div style={{ flex: '1 1 120px' }}>
-          <p style={label}>TIME TO COOK (min, optional)</p>
+          <p style={label}>Time to Cook (min, optional)</p>
           <input type="number" min={0} value={value.cook_minutes ?? ''} placeholder="—" aria-label="Time to cook in minutes"
             onChange={(e) => { const n = parseFloat(e.target.value); onChange({ ...value, cook_minutes: Number.isFinite(n) && n > 0 ? n : null }) }}
             style={inp} />
@@ -59,7 +59,7 @@ export default function RecipeFields({ value, onChange, accent }: {
       </div>
 
       <div>
-        <p style={label}>INGREDIENTS (one per line)</p>
+        <p style={label}>Ingredients (one per line)</p>
         <textarea value={ingredientsText} rows={6} spellCheck aria-label="Ingredients, one per line"
           placeholder={'2 cups flour\n1 tsp salt\n…'}
           onChange={(e) => { setIngredientsText(e.target.value); onChange({ ...value, ingredients: linesToList(e.target.value) }) }}
@@ -67,7 +67,7 @@ export default function RecipeFields({ value, onChange, accent }: {
       </div>
 
       <div>
-        <p style={label}>STEPS (one per line)</p>
+        <p style={label}>Steps (one per line)</p>
         <textarea value={stepsText} rows={6} spellCheck autoCapitalize="sentences" aria-label="Steps, one per line"
           placeholder={'Preheat the oven to 400°F\nMix the dry ingredients\n…'}
           onChange={(e) => { setStepsText(e.target.value); onChange({ ...value, steps: linesToList(e.target.value) }) }}

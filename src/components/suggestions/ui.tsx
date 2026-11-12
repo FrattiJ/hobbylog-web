@@ -95,7 +95,7 @@ export function ScoreBar({ score, accent }: { score: number; accent: string }) {
       <div style={{ flex: 1, height: 4, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
         <div style={{ height: '100%', width: `${Math.round(score * 100)}%`, background: accent, transition: 'width 0.4s ease' }} />
       </div>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', width: 30, textAlign: 'right' }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', width: 30, textAlign: 'right' }}>
         {Math.round(score * 100)}
       </span>
     </div>
@@ -104,7 +104,7 @@ export function ScoreBar({ score, accent }: { score: number; accent: string }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', textAlign: 'center', padding: '28px 12px', margin: 0, lineHeight: 1.7 }}>
+    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', textAlign: 'center', padding: '28px 12px', margin: 0, lineHeight: 1.7 }}>
       {children}
     </p>
   )
@@ -117,7 +117,7 @@ export function Cover({ url, title, accent, size = 'md' }: { url: string | null;
     <div style={{ width: w, height: h, flexShrink: 0, background: 'var(--bg-base)', border: `1px solid ${accent}33`, overflow: 'hidden', position: 'relative' }}>
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
       ) : (
         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 900, color: `${accent}88` }}>
           {title[0]}

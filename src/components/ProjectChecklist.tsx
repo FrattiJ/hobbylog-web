@@ -83,7 +83,7 @@ export default function ProjectChecklist({ items, accent, onChange }: {
         <input value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add() }}
           placeholder="Add a step…" spellCheck autoCapitalize="sentences"
-          style={{ flex: 1, minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${accent}66`, padding: '8px 10px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }} />
+          style={{ flex: 1, minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${accent}66`, padding: '8px 10px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }} aria-label="Add a step" />
         <button onClick={add} disabled={!text.trim()}
           style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: text.trim() ? 'pointer' : 'not-allowed', opacity: text.trim() ? 1 : 0.5 }}>
           <Plus size={13} /> Add

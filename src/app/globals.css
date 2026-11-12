@@ -134,6 +134,10 @@ select, option { background-color: var(--bg-card); color: var(--text-hi); }
 
 /* Page headings */
 h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.04em; text-wrap: balance; }
+/* Headings set in the display face are the one place capitals stay: page and
+   section titles. Keyed on the font so that a heading in the body face, or one
+   that opts out (an entry's own title), keeps the case it was written in. */
+h1[style*='--font-display'], h2[style*='--font-display'], h3[style*='--font-display'] { text-transform: uppercase; }
 p { text-wrap: pretty; }
 
 /* Monospace labels */

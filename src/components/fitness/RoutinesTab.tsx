@@ -369,7 +369,7 @@ function RoutineEditor({ routine, allExercises, onExerciseCreated, onDone }: {
                 color: on ? ACCENT : 'var(--text-dim)',
                 transition: 'var(--t-fast)',
               }}
-            >
+ aria-label={on ? `Unschedule from ${DAY_FULL[i]}` : `Schedule for ${DAY_FULL[i]}`}>
               {d}
             </button>
           )

@@ -314,7 +314,7 @@ function WorkoutEditor({ workout, groups, notes, onCancel, onSaved }: {
           or the Progress tab for any past date. Repeating the field here would
           be a second way to write one value, and blanking it would have to mean
           deleting a weigh-in you may have recorded that morning independently. */}
-      <Label style={{ marginTop: 10, color: 'var(--text-mute)' }}>
+      <Label style={{ marginTop: 10, color: 'var(--text-dim)' }}>
         Bodyweight is logged separately. Use the weigh-in card on Today, or Progress for an older day.
       </Label>
 

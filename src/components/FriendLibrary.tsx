@@ -111,7 +111,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
         <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${GREEN}66`, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {avatarUrl
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
             : <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: '#fff' }}>{(username || 'O')[0].toUpperCase()}</span>}
         </div>
         <div>
@@ -138,7 +138,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
         ))}
         <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 2px' }} />
         <button onClick={() => setCommonOnly((v) => !v)} style={chip(commonOnly, '#d97706')}>In Common</button>
-        <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
+        <select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
           style={{ marginLeft: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '6px 10px', cursor: 'pointer', outline: 'none' }}>
           <option value="recent">Sort: Recent</option>
           <option value="rating">Sort: Rating</option>
@@ -162,14 +162,14 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
               style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${hobby.accent}66`, cursor: 'pointer' }}>
               {e.cover_url
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={e.cover_url} alt="" style={{ width: 46, height: 66, objectFit: 'cover', flexShrink: 0 }} />
+                ? <img src={e.cover_url} alt="" style={{ width: 46, height: 66, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                 : <div style={{ width: 46, height: 66, background: 'var(--bg-base)', flexShrink: 0 }} />}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                   <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
                   {have
                     ? <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', letterSpacing: '0.05em', border: '1px solid #d9770655', padding: '1px 5px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3 }}><Check size={9} /> In Log</span>
-                    : <button onClick={(ev) => { ev.stopPropagation(); add(e) }} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }}><Plus size={9} /> Add</button>}
+                    : <button onClick={(ev) => { ev.stopPropagation(); add(e) }} title="Add to my backlog" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: hobby.accent, background: `${hobby.accent}18`, border: `1px solid ${hobby.accent}66`, padding: '2px 6px', cursor: 'pointer' }} aria-label="Add to my backlog"><Plus size={9} /> Add</button>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: STATUS_COLORS[e.status], letterSpacing: '0.02em' }}>{statusLabelFor(HOBBY_MAP[e.hobby_category], e.status)}</span>

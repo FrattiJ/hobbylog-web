@@ -6,7 +6,7 @@ export default function ComingSoon({ title, note }: { title: string; note: strin
       </div>
       <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--border-dim)', borderLeft: '3px solid #955ff0', background: 'var(--bg-card)' }}>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 10 }}>Coming soon</p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mute)', letterSpacing: '0.05em', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>{note}</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', letterSpacing: '0.05em', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>{note}</p>
       </div>
     </div>
   )

@@ -218,7 +218,7 @@ export default function ImportPage() {
               </p>
               <button onClick={connectSteam}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', color: STEAM_CYAN, background: `${STEAM_CYAN}22`, border: `1px solid ${STEAM_CYAN}`, borderLeft: `3px solid ${STEAM_CYAN}`, cursor: 'pointer' }}>
-                ▶ CONNECT STEAM
+                Connect Steam
               </button>
             </>
           )}
@@ -234,7 +234,7 @@ export default function ImportPage() {
           {tab === 'mal' && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 16 }}>
               <input type="checkbox" checked={enrich} onChange={(e) => setEnrich(e.target.checked)} style={{ accentColor: active.accent, width: 14, height: 14 }} />
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>FETCH COVER ART FROM MYANIMELIST (slower)</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>Fetch cover art from MyAnimeList (slower)</span>
             </label>
           )}
           <input ref={fileRef} type="file" accept={active.accept} style={{ display: 'none' }}

@@ -30,7 +30,7 @@ function ToolButton({ onExec, title, children }: { onExec: () => void; title: st
       }}
       onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; e.currentTarget.style.borderColor = ACCENT }}
       onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border-dim)' }}
-    >
+ aria-label={title}>
       {children}
     </button>
   )
@@ -110,6 +110,7 @@ export default function NotesPage() {
         <span style={{ width: 1, height: 20, background: 'var(--border-dim)', margin: '0 4px' }} />
         <ToolButton title="Bullet list" onExec={() => exec('insertUnorderedList')}><List size={14} /></ToolButton>
         <select
+          aria-label="Font size"
           title="Font size"
           defaultValue="3"
           onMouseDown={(e) => e.stopPropagation()}

@@ -130,7 +130,7 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
           <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #955ff066', flexShrink: 0 }}>
             {profile?.avatar_url
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               : <span style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, color: '#fff' }}>{(profile?.username ?? 'O')[0].toUpperCase()}</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

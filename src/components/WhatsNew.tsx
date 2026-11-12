@@ -3,20 +3,23 @@
 import { Sparkles, X } from 'lucide-react'
 import { CHANGELOG, markChangelogSeen } from '@/lib/changelog'
 import { CLIP } from './MechCard'
+import { useEscape } from '@/lib/useEscape'
 
 const ACCENT = '#955ff0'
 
 export default function WhatsNew({ onClose }: { onClose: () => void }) {
   function close() { markChangelogSeen(); onClose() }
+  useEscape(close)
   const latest = CHANGELOG[0]
 
   return (
     <div onClick={(e) => { if (e.currentTarget === e.target) close() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'var(--overlay)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}>
+      role="dialog" aria-modal="true" aria-label="What's new"
+      style={{ overscrollBehavior: 'contain', position: 'fixed', inset: 0, zIndex: 90, background: 'var(--overlay)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px', overflowY: 'auto' }}>
       <div style={{ width: '100%', maxWidth: 460, padding: '1px', clipPath: CLIP, background: `${ACCENT}66` }}>
         <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 24, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: ACCENT, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-          <button onClick={close} style={{ position: 'absolute', top: 16, right: 16, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+          <button aria-label="Close" onClick={close} style={{ position: 'absolute', top: 16, right: 16, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
             <Sparkles size={16} style={{ color: ACCENT }} />

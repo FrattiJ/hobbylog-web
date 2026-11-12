@@ -83,7 +83,7 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: showInput ? 9 : 6 }}>
         <Scale size={13} style={{ color: BLUE, flexShrink: 0 }} />
-        <Label>TODAY&apos;S WEIGH-IN</Label>
+        <Label>Today&apos;s Weigh-In</Label>
       </div>
 
       {showInput ? (
@@ -112,7 +112,7 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
             </span>
             <Label>lbs</Label>
             {previous && (
-              <Label style={{ color: 'var(--text-mute)' }}>{fmtDelta(todays!.weight, previous.weight)}</Label>
+              <Label style={{ color: 'var(--text-dim)' }}>{fmtDelta(todays!.weight, previous.weight)}</Label>
             )}
           </div>
           <Button variant="quiet" onClick={() => { setEditing(true); setText(String(todays!.weight)) }}>
@@ -122,7 +122,7 @@ export default function WeighInCard({ onLogged }: { onLogged?: () => void }) {
       )}
 
       {showInput && !todays && previous && (
-        <Label style={{ marginTop: 7, color: 'var(--text-mute)' }}>
+        <Label style={{ marginTop: 7, color: 'var(--text-dim)' }}>
           Last Reading {previous.weight} lbs on {previous.date}
         </Label>
       )}

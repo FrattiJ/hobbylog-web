@@ -6,8 +6,10 @@ import { getAllEntries, insertSession, updateEntry, normalizeBacklogPriorities }
 import { HOBBY_MAP } from '@/lib/hobbies'
 import { CLIP } from './MechCard'
 import type { Entry } from '@/types/database'
+import { useEscape } from '@/lib/useEscape'
 
 export default function QuickLogModal({ onClose, onLogged }: { onClose: () => void; onLogged?: () => void }) {
+  useEscape(onClose)
   const [entries, setEntries] = useState<Entry[]>([])
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Entry | null>(null)
@@ -60,7 +62,8 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
 
   return (
     <div onClick={(e) => { if (e.currentTarget === e.target) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}>
+      role="dialog" aria-modal="true" aria-label="Log a session"
+      style={{ overscrollBehavior: 'contain', position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}>
       <div style={{ width: '100%', maxWidth: 460, padding: '1px', clipPath: CLIP, background: '#0891b255' }}>
         <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 22, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#0891b2', clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
@@ -69,7 +72,7 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>Quick log</p>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>LOG SESSION</h2>
             </div>
-            <button onClick={onClose} style={{ color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+            <button aria-label="Close" onClick={onClose} style={{ color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
           </div>
 
           {done ? (
@@ -77,7 +80,7 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
           ) : !selected ? (
             <>
               <p style={label}>Find Entry</p>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your library…" style={inp} autoFocus />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your library…" style={inp} autoFocus aria-label="Find Entry" />
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {matches.map((e) => {
                   const h = HOBBY_MAP[e.hobby_category]
@@ -96,12 +99,12 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '0 0 4px' }}>{selected.title}</p>
               <button onClick={() => setSelected(null)} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#0891b2', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 14 }}>← pick another</button>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}><p style={label}>hrs</p><input type="number" min={0} value={hours} onChange={(e) => setHours(e.target.value)} placeholder="0" style={inp} /></div>
-                <div style={{ flex: 1 }}><p style={label}>min</p><input type="number" min={0} value={minutes} onChange={(e) => setMinutes(e.target.value)} placeholder="0" style={inp} /></div>
-                <div style={{ flex: 1 }}><p style={label}>+{HOBBY_MAP[selected.hobby_category]?.progressUnit ?? 'progress'}</p><input type="number" min={0} value={progress} onChange={(e) => setProgress(e.target.value)} placeholder="0" style={inp} /></div>
+                <div style={{ flex: 1 }}><p style={label}>hrs</p><input type="number" min={0} value={hours} onChange={(e) => setHours(e.target.value)} placeholder="0" style={inp} aria-label="hrs" /></div>
+                <div style={{ flex: 1 }}><p style={label}>min</p><input type="number" min={0} value={minutes} onChange={(e) => setMinutes(e.target.value)} placeholder="0" style={inp} aria-label="min" /></div>
+                <div style={{ flex: 1 }}><p style={label}>+{HOBBY_MAP[selected.hobby_category]?.progressUnit ?? 'progress'}</p><input type="number" min={0} aria-label="Progress made" value={progress} onChange={(e) => setProgress(e.target.value)} placeholder="0" style={inp} /></div>
               </div>
               <p style={label}>Notes</p>
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="—" style={{ ...inp, marginBottom: 16 }} />
+              <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="—" style={{ ...inp, marginBottom: 16 }} aria-label="Notes" />
               <button onClick={log} disabled={busy}
                 style={{ width: '100%', padding: '11px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
                 {busy ? '…' : 'Log Session'}

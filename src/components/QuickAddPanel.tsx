@@ -6,8 +6,10 @@ import { CLIP } from './MechCard'
 import { HOBBY_ICON_MAP } from './hobbyIcons'
 import { useHobbies } from './HobbyContext'
 import type { HobbyCategory } from '@/types/database'
+import { useEscape } from '@/lib/useEscape'
 
 export default function QuickAddPanel({ onClose, onAdded }: { onClose: () => void; onAdded?: () => void }) {
+  useEscape(onClose)
   const [selected, setSelected] = useState<HobbyCategory | null>(null)
   const { enabledHobbies } = useHobbies()
 
@@ -17,7 +19,8 @@ export default function QuickAddPanel({ onClose, onAdded }: { onClose: () => voi
 
   return (
     <div onClick={(e) => { if (e.currentTarget === e.target) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      role="dialog" aria-modal="true" aria-label="Quick add"
+      style={{ overscrollBehavior: 'contain', position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ width: '100%', maxWidth: 440, padding: '1px', clipPath: CLIP, background: '#955ff055' }}>
         <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 22, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#955ff0', clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />

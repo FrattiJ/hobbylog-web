@@ -41,7 +41,7 @@ function Avatar({ url, name, size = 30 }: { url: string | null; name: string; si
     <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #955ff055' }}>
       {url
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
         : <span style={{ fontFamily: 'var(--font-body)', fontSize: size * 0.45, fontWeight: 700, color: '#fff' }}>{(name || 'O')[0].toUpperCase()}</span>}
     </div>
   )
@@ -163,9 +163,9 @@ export default function FriendsPage() {
 
       {/* Find people */}
       <div style={card}>
-        <h2 style={h2}>FIND OPERATORS</h2>
+        <h2 style={h2}>FIND PEOPLE</h2>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by username, or browse below…" spellCheck={false}
-          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${GREEN}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${GREEN}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} aria-label="Search by username, or browse below" />
         {msg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#f59e0b', margin: '10px 0 0' }}>{msg}</p>}
         <div style={{ marginTop: 10 }}>
           {searching && results.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>Searching…</p>}
@@ -194,7 +194,7 @@ export default function FriendsPage() {
 
       {/* Your network — friends + requests combined */}
       <div style={card}>
-        <h2 style={h2}>YOUR NETWORK <span style={{ color: GREEN }}>({friends.length})</span></h2>
+        <h2 style={h2}>YOUR FRIENDS <span style={{ color: GREEN }}>({friends.length})</span></h2>
 
         {/* Incoming requests */}
         {incoming.length > 0 && (
@@ -244,7 +244,7 @@ export default function FriendsPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>Pending</span>
-                  <button onClick={() => unsend(r)} style={smallBtn('#f59e0b')} title="Take this request back">
+                  <button onClick={() => unsend(r)} style={smallBtn('#f59e0b')} title="Take this request back" aria-label="Take this request back">
                     <Undo2 size={12} /> Unsend
                   </button>
                 </div>
@@ -273,7 +273,7 @@ export default function FriendsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
                       {e.cover_url
                         // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={e.cover_url} alt="" style={{ width: 26, height: 38, objectFit: 'cover', flexShrink: 0 }} />
+                        ? <img src={e.cover_url} alt="" style={{ width: 26, height: 38, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         : <div style={{ width: 26, height: 38, background: 'var(--bg-base)', flexShrink: 0 }} />}
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
                       <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{statusLabelFor(HOBBY_MAP[e.hobby_category as keyof typeof HOBBY_MAP], e.status)}</span>

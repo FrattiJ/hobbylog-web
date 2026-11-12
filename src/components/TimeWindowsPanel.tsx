@@ -126,20 +126,20 @@ export default function TimeWindowsPanel() {
               <div key={w.id}
                 style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${w.active ? ACCENT : 'var(--border-dim)'}`, padding: '10px 12px', opacity: w.active ? 1 : 0.55 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select value={w.day_of_week} onChange={(e) => patch(w.id, { day_of_week: Number(e.target.value) })}
+                  <select aria-label="Day" value={w.day_of_week} onChange={(e) => patch(w.id, { day_of_week: Number(e.target.value) })}
                     style={{ ...field, cursor: 'pointer', width: 72 }}>
                     {DAY_SHORT.map((d, i) => <option key={d} value={i}>{d}</option>)}
                   </select>
 
-                  <input type="time" value={toTimeValue(w.start_min)} step={900}
+                  <input type="time" aria-label="Start time" value={toTimeValue(w.start_min)} step={900}
                     onChange={(e) => {
                       const start = fromTimeValue(e.target.value)
                       if (start == null) return
                       patch(w.id, { start_min: start, end_min: resolveEnd(start, w.end_min % 1440) })
                     }}
                     style={{ ...field, width: 108 }} />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)' }}>to</span>
-                  <input type="time" value={toTimeValue(w.end_min)} step={900}
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>to</span>
+                  <input type="time" aria-label="End time" value={toTimeValue(w.end_min)} step={900}
                     onChange={(e) => {
                       const end = fromTimeValue(e.target.value)
                       if (end == null) return
@@ -154,15 +154,15 @@ export default function TimeWindowsPanel() {
                   <input value={w.label ?? ''} placeholder="label (optional)" maxLength={40}
                     onChange={(e) => setRows((cur) => (cur ?? []).map((x) => (x.id === w.id ? { ...x, label: e.target.value } : x)))}
                     onBlur={(e) => patch(w.id, { label: e.target.value })}
-                    style={{ ...field, flex: '1 1 130px', minWidth: 0 }} />
+                    style={{ ...field, flex: '1 1 130px', minWidth: 0 }} aria-label="label (optional)" />
 
                   <button onClick={() => patch(w.id, { active: !w.active })}
                     title={w.active ? 'Pause this window (keeps it for later)' : 'Use this window again'}
-                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }} aria-label={w.active ? 'Pause this window (keeps it for later)' : 'Use this window again'}>
                     {w.active ? <Eye size={13} /> : <EyeOff size={13} />}
                   </button>
                   <button onClick={() => removeRow(w.id)} title="Delete this window"
-                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid #ef444455', color: '#f87171', cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid #ef444455', color: '#f87171', cursor: 'pointer' }} aria-label="Delete this window">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -179,7 +179,7 @@ export default function TimeWindowsPanel() {
                       </button>
                     )
                   })}
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.02em' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.02em' }}>
                     {hobby === span
                       ? `${fmtDuration(span)} of hobby time`
                       : `≈ ${fmtDuration(hobby)} of ${fmtDuration(span)} — the rest shared with everything else`}
@@ -199,7 +199,7 @@ export default function TimeWindowsPanel() {
         {list.some((w) => w.active) && (
           <button onClick={exportIcs}
             title="Download these blocks as a weekly-recurring .ics for your own calendar"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }} aria-label="Download these blocks as a weekly-recurring .ics for your own calendar">
             <CalendarArrowDown size={13} /> Export .ics
           </button>
         )}

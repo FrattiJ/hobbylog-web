@@ -52,7 +52,9 @@ export default function SearchPage() {
   ) {
     return (
       <button
+        key={label}
         onClick={onClick}
+        aria-pressed={active}
         style={{
           padding: '4px 12px',
           fontFamily: 'var(--font-body)',
@@ -94,7 +96,7 @@ export default function SearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search Titles…"
+          placeholder="Search titles…"
           autoFocus
           style={{
             width: '100%',
@@ -109,7 +111,7 @@ export default function SearchPage() {
             outline: 'none',
             boxSizing: 'border-box',
           }}
-        />
+ aria-label="Search titles" />
       </div>
 
       {/* Filters row */}
@@ -125,7 +127,7 @@ export default function SearchPage() {
       }}>
         {/* Category */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
             Category
           </span>
           {pill('All', hobbyFilter === 'all', () => setHobbyFilter('all'))}
@@ -136,7 +138,7 @@ export default function SearchPage() {
 
         {/* Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
             Status
           </span>
           {STATUS_OPTIONS.map((s) => {
@@ -148,11 +150,12 @@ export default function SearchPage() {
 
         {/* Min rating */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
             Min Score
           </span>
           <input
             type="number" min={1} max={10} step={0.5}
+            aria-label="Minimum rating"
             value={minRating}
             onChange={(e) => setMinRating(e.target.value)}
             placeholder="—"
@@ -184,7 +187,7 @@ export default function SearchPage() {
 
         {/* Sort */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, borderTop: '1px solid var(--border-dim)', paddingTop: 10, marginTop: 2 }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', width: 64, flexShrink: 0 }}>
             Sort
           </span>
           {pill('Recent',     sort === 'recent', () => setSort('recent'))}
@@ -196,7 +199,7 @@ export default function SearchPage() {
 
       {/* Result count */}
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 14 }}>
-        {filtered.length} Record{filtered.length !== 1 ? 'S' : ''} Found
+        {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'} found
       </p>
 
       {/* Results */}

@@ -15,6 +15,7 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
+import { formatDay } from '@/lib/format'
 
 const ACCENT = '#955ff0'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
@@ -296,7 +297,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   return (
     <div className="page" style={{ maxWidth: 1000, margin: '0 auto' }}>
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
-        <ArrowLeft size={14} /> Back To {(hobby?.pluralLabel ?? '')}
+        <ArrowLeft size={14} /> Back to {(hobby?.pluralLabel ?? '')}
       </button>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? 20 : 32 }}>
@@ -305,13 +306,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           <div style={{ aspectRatio: '2/3', width: '100%', maxWidth: isMobile ? 200 : undefined, margin: isMobile ? '0 auto 8px' : '0 0 8px', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {coverUrl
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-body)' }}>{entry.title[0]}</span>}
           </div>
 
           {editingCover ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              <input autoFocus value={coverInput} onChange={(e) => setCoverInput(e.target.value)} placeholder="Paste image URL…" style={inp} />
+              <input autoFocus value={coverInput} onChange={(e) => setCoverInput(e.target.value)} placeholder="Paste image URL…" style={inp} aria-label="Paste image URL" />
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>Save</button>
                 <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>Upload</button>
@@ -327,9 +328,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
                   {coverResults.map((r) => (
                     <button key={`${r.external_source}-${r.external_id}`} onClick={() => saveCover(r.cover_url!)} title={r.title}
-                      style={{ padding: 0, border: '1px solid var(--border-dim)', background: 'var(--bg-base)', cursor: 'pointer', aspectRatio: '2/3', overflow: 'hidden' }}>
+                      style={{ padding: 0, border: '1px solid var(--border-dim)', background: 'var(--bg-base)', cursor: 'pointer', aspectRatio: '2/3', overflow: 'hidden' }} aria-label={r.title}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.cover_url!} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={r.cover_url!} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -348,7 +349,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             <div style={{ background: 'var(--bg-card)', border: `1px solid ${accent}33`, borderLeft: `3px solid ${accent}`, padding: 12 }}>
               {metaRows.map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 8 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: 0 }}>{k.replace(/_/g, ' ')}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</p>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{typeof v === 'number' && k === 'rating' ? `${v.toFixed(1)}/10` : String(v)}</p>
                 </div>
               ))}
@@ -360,10 +361,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.05em' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em' }}>{entry.title}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em', textTransform: 'none' }}>{entry.title}</h1>
             <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>
-              {entry.date_started && <span>Started {entry.date_started}</span>}
-              {entry.date_completed && <span>{isRecipe ? 'First Made' : 'Completed'} {entry.date_completed}</span>}
+              {entry.date_started && <span>Started {formatDay(entry.date_started)}</span>}
+              {entry.date_completed && <span>{isRecipe ? 'First made' : 'Completed'} {formatDay(entry.date_completed)}</span>}
               {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>Made {progressCurrent}x</span>}
             </div>
           </div>
@@ -414,7 +415,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>{isRecipe ? 'Notes for Next Time' : 'YOUR REVIEW'}</h2>
                   {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
                 </div>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
+                <textarea aria-label={isRecipe ? 'Notes for next time' : 'Your review'} value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
               </div>
             </div>
           )}
@@ -438,7 +439,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <p style={label}>Visibility</p>
                 <button onClick={togglePrivate}
                   title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }} aria-label={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}>
                   {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
                   <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
@@ -448,8 +449,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               {isTV && (
                 <div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>Season</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} /></div>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>Episode</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Season</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} aria-label="Season" /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Episode</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} aria-label="Episode" /></div>
                   </div>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
                     {tmdbId ? 'Saving converts season + episode into total episodes watched automatically.' : 'Add this show via search to auto-convert; otherwise set Progress below by hand.'}
@@ -459,20 +460,20 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
               {isManga && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volume</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} /></div>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volumes Total</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volume</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} aria-label="Volume" /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volumes Total</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} aria-label="Volumes Total" /></div>
                 </div>
               )}
 
               {(!hobby?.hideRating || !isPercent) && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {!hobby?.hideRating && (
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>Rating /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Rating /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} aria-label="Rating /10" /></div>
                   )}
                   {!isPercent && !isRecipe && (
                     <>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>Progress ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>Total</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Progress ({progUnit})</p><input type="number" min={0} aria-label={`Progress in ${progUnit}`} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Total</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} aria-label="Total" /></div>
                     </>
                   )}
                 </div>
@@ -507,7 +508,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               {!isCompleted && (
                 <div>
                   <p style={label}>{isRecipe ? 'Notes for Next Time' : 'Notes'}</p>
-                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
+                  <textarea aria-label={isRecipe ? 'Notes for next time' : 'Notes'} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
                 </div>
               )}
 
@@ -553,7 +554,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   )}
                   <div style={{ flex: '1 1 140px' }}>
                     <span style={miniLabel}>Notes</span>
-                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} />
+                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} aria-label="Notes" />
                   </div>
                   <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I Made This' : 'Log'}</button>
                 </div>
@@ -561,7 +562,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             })()}
             {sessions.map((s) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 6 }}>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{formatDay(s.date)}</span>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged && !isRecipe ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
                 </span>

@@ -26,7 +26,7 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
         {label}
       </p>
       {items.length === 0 ? (
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.05em' }}>No photos</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>No photos</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
           {items.map((photo) => (
@@ -45,7 +45,7 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${accent}44`; e.currentTarget.style.filter = 'none' }}
               onClick={() => onOpen(photo)}
             >
-              <img src={photo.url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={photo.url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               {photo.caption && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
                   {photo.caption}
@@ -182,7 +182,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
         {pending ? (
           <>
             {/* Preview */}
-            <img src={pending.preview} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} />
+            <img src={pending.preview} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} loading="lazy" decoding="async" />
             {/* Caption written after the photo is taken */}
             <input
               type="text"
@@ -192,7 +192,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
               spellCheck
               autoCapitalize="sentences"
               style={{ ...inp, marginBottom: 12 }}
-            />
+ aria-label="Add a caption or comment" />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={upload} disabled={busy}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '8px 12px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
@@ -235,7 +235,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
               src={lightbox.url}
               alt={lightbox.caption ?? ''}
               style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: `1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)` }}
-            />
+ loading="lazy" decoding="async" />
             {lightbox.caption && (
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', letterSpacing: '0.02em', textAlign: 'center', margin: 0 }}>
                 {lightbox.caption}

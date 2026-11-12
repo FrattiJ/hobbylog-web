@@ -9,6 +9,7 @@ import RecipeView from './RecipeView'
 import { useIsMobile } from '@/lib/useIsMobile'
 import type { Entry } from '@/types/database'
 import type { ChecklistItem } from './ProjectChecklist'
+import { formatDay } from '@/lib/format'
 
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
@@ -53,7 +54,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
             <button key={p.id} onClick={() => setLightbox(p)}
               style={{ position: 'relative', aspectRatio: '4/3', padding: 0, background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', cursor: 'pointer' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={p.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={p.url} alt={p.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               {p.caption && (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '3px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 12, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>{p.caption}</div>
               )}
@@ -67,7 +68,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
   return (
     <div>
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 12, marginBottom: 20, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
-        <ArrowLeft size={14} /> Back To {username}
+        <ArrowLeft size={14} /> Back to {username}
       </button>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 260px) 1fr', gap: isMobile ? 18 : 28, alignItems: 'start' }}>
@@ -76,7 +77,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
           <div style={{ aspectRatio: '2/3', width: '100%', maxWidth: isMobile ? 190 : undefined, margin: isMobile ? '0 auto 12px' : '0 0 12px', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {entry.cover_url
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={entry.cover_url} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={entry.cover_url} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-body)' }}>{entry.title[0]}</span>}
           </div>
 
@@ -95,7 +96,7 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
             <div style={{ background: 'var(--bg-card)', border: `1px solid ${accent}33`, borderLeft: `3px solid ${accent}`, padding: 12 }}>
               {metaRows.map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 8 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: 0 }}>{k.replace(/_/g, ' ')}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</p>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{String(v)}</p>
                 </div>
               ))}
@@ -107,17 +108,17 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.05em' }}>{hobby?.label}</span>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em', wordBreak: 'break-word' }}>{entry.title}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em', textTransform: 'none', wordBreak: 'break-word' }}>{entry.title}</h1>
             <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'center', flexWrap: 'wrap', fontFamily: 'var(--font-body)', fontSize: 12 }}>
               <span style={{ color: STATUS_COLORS[entry.status], letterSpacing: '0.05em' }}>{statusLabelFor(hobby, entry.status)}</span>
               {entry.rating != null && <span style={{ color: accent, display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill={accent} /> {entry.rating}/10</span>}
-              {entry.date_completed && <span style={{ color: 'var(--text-dim)' }}>Completed {entry.date_completed}</span>}
+              {entry.date_completed && <span style={{ color: 'var(--text-dim)' }}>Completed {formatDay(entry.date_completed)}</span>}
             </div>
             {myRating != null && entry.rating != null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '6px 12px', border: '1px solid var(--border-dim)', fontFamily: 'var(--font-body)', fontSize: 12 }}>
                 <span style={{ color: 'var(--text-dim)', letterSpacing: '0.05em' }}>Head to head</span>
                 <span style={{ color: 'var(--text-hi)' }}>You {myRating}</span>
-                <span style={{ color: 'var(--text-mute)' }}>·</span>
+                <span style={{ color: 'var(--text-dim)' }}>·</span>
                 <span style={{ color: accent }}>{username} {entry.rating}</span>
               </div>
             )}
@@ -178,10 +179,10 @@ export default function FriendEntryDetail({ entry, username, iHave, myRating, on
       {/* Lightbox */}
       {lightbox && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'var(--overlay)' }} onClick={() => setLightbox(null)}>
-          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} /></button>
+          <button aria-label="Close" onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 16, right: 16, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} /></button>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800, width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox.url} alt={lightbox.caption ?? ''} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: '1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)' }} />
+            <img src={lightbox.url} alt={lightbox.caption ?? ''} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: '1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)' }} loading="lazy" decoding="async" />
             {lightbox.caption && <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center', margin: 0 }}>{lightbox.caption}</p>}
           </div>
         </div>

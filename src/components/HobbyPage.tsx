@@ -400,7 +400,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
       {/* Rank mode — ordered backlog list with reorder controls */}
       {rankMode && statusFilter === 'backlog' ? (
         ranked.length === 0 ? (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.08em', textAlign: 'center', padding: 32 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', textAlign: 'center', padding: 32 }}>
             Your backlog is empty, so there is nothing to rank yet.
           </p>
         ) : (
@@ -441,7 +441,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                   } as React.CSSProperties
                 })()}
               >
-                <GripVertical size={14} style={{ color: 'var(--text-mute)', flexShrink: 0 }} />
+                <GripVertical size={14} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
                 <input
                   type="number"
                   min={1}
@@ -464,7 +464,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                   }}
                 />
                 {e.cover_url && (
-                  <img src={e.cover_url} alt="" draggable={false} style={{ width: 32, height: 44, objectFit: 'cover', flexShrink: 0, border: `1px solid ${hobby.accent}33` }} />
+                  <img src={e.cover_url} alt="" draggable={false} style={{ width: 32, height: 44, objectFit: 'cover', flexShrink: 0, border: `1px solid ${hobby.accent}33` }} loading="lazy" decoding="async" />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

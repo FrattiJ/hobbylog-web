@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw } from 'lucide-react'
+import { Moon, Sun, Check, Trash2, Camera, Download, MessageSquare, Inbox, RefreshCw, Bug, Lightbulb } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { clearAllData, getProfile, setUsername, setAvatar, submitFeedback, deleteMyAccount, isAdminUser, getFeedbackInbox, type FeedbackItem } from '@/lib/db'
 import { cropSquareAvatarBlob } from '@/lib/image'
@@ -127,7 +127,7 @@ export default function SettingsPage() {
           <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {avatar
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               : <span style={{ fontFamily: 'var(--font-body)', fontSize: 26, fontWeight: 700, color: '#fff' }}>{(username || email || 'O')[0]?.toUpperCase()}</span>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -145,7 +145,7 @@ export default function SettingsPage() {
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }}>Username</p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: usernameMsg ? 8 : 16, flexWrap: 'wrap' }}>
           <input value={username} onChange={(e) => setUsernameState(e.target.value)} placeholder="pick_a_handle" spellCheck={false}
-            style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} />
+            style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `2px solid ${ACCENT}66`, padding: '9px 12px', color: 'var(--text-hi)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }} aria-label="pick_a_handle" />
           <button onClick={saveUsername} disabled={savingName}
             style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: ACCENT, background: `${ACCENT}22`, border: `1px solid ${ACCENT}`, cursor: savingName ? 'wait' : 'pointer', opacity: savingName ? 0.6 : 1 }}>Save</button>
         </div>
@@ -189,12 +189,13 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           {(['bug', 'feature'] as const).map((k) => (
             <button key={k} onClick={() => setFbKind(k)}
-              style={{ padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
-              {k === 'bug' ? '🐛 Bug' : '✦ Idea'}
+              aria-pressed={fbKind === k}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
+              {k === 'bug' ? <><Bug size={13} /> Bug</> : <><Lightbulb size={13} /> Idea</>}
             </button>
           ))}
         </div>
-        <textarea value={fbText} onChange={(e) => setFbText(e.target.value)} rows={3}
+        <textarea aria-label="Your feedback" value={fbText} onChange={(e) => setFbText(e.target.value)} rows={3}
           placeholder={fbKind === 'bug' ? 'What happened, and what did you expect?' : 'What would you like to see?'}
           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #0891b266', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
         <button onClick={sendFeedback} disabled={fbBusy || !fbText.trim()}
@@ -213,7 +214,7 @@ export default function SettingsPage() {
               {inbox && <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>· {inbox.length}</span>}
             </h2>
             <button onClick={loadInbox} disabled={inboxBusy} title="Refresh"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: '#d97706', background: 'transparent', border: '1px solid #d9770666', cursor: inboxBusy ? 'wait' : 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: '#d97706', background: 'transparent', border: '1px solid #d9770666', cursor: inboxBusy ? 'wait' : 'pointer' }} aria-label="Refresh">
               <RefreshCw size={12} /> {inboxBusy ? '…' : 'Refresh'}
             </button>
           </div>
@@ -224,12 +225,12 @@ export default function SettingsPage() {
             {(inbox ?? []).map((f) => (
               <div key={f.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${f.kind === 'bug' ? '#ef4444' : '#0891b2'}`, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? '🐛 Bug' : '✦ Idea'}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? 'Bug' : 'Idea'}</span>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-hi)' }}>{f.username || f.email || 'unknown'}</span>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(f.created_at).toLocaleString()}</span>
                 </div>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{f.message}</p>
-                {f.page && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: '6px 0 0' }}>on {f.page}</p>}
+                {f.page && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '6px 0 0' }}>on {f.page}</p>}
               </div>
             ))}
           </div>

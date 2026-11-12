@@ -167,14 +167,14 @@ export default function StatsPage() {
                     <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', width: 120, flexShrink: 0 }}>{m.label}</span>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 28, flexShrink: 0, letterSpacing: '0.05em' }}>You</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 28, flexShrink: 0, letterSpacing: '0.05em' }}>You</span>
                         <div style={{ flex: 1, height: 8, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                           <div style={{ height: '100%', width: `${(m.mine / max) * 100}%`, background: m.accent, transition: 'width 0.4s ease' }} />
                         </div>
                         <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-hi)', fontWeight: 700, width: 52, textAlign: 'right' }}>{fmt(m.mine)}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 28, flexShrink: 0, letterSpacing: '0.05em' }}>Avg</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 28, flexShrink: 0, letterSpacing: '0.05em' }}>Avg</span>
                         <div style={{ flex: 1, height: 8, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                           <div style={{ height: '100%', width: `${(m.avg / max) * 100}%`, background: 'var(--text-dim)', opacity: 0.6, transition: 'width 0.4s ease' }} />
                         </div>
@@ -203,7 +203,7 @@ export default function StatsPage() {
               ENTRIES BY CATEGORY
             </h2>
             {categoryData.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={categoryData} margin={{ left: -20, right: 10 }}>
@@ -228,7 +228,7 @@ export default function StatsPage() {
               STATUS DISTRIBUTION
             </h2>
             {statusDist.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                 <ResponsiveContainer width="55%" height={180}>
@@ -264,7 +264,7 @@ export default function StatsPage() {
               COMPLETION RATE
             </h2>
             {completionByCategory.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: 24, margin: 0 }}>No data yet</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {completionByCategory.map((c) => (
@@ -277,7 +277,7 @@ export default function StatsPage() {
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.02em' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.02em' }}>
                           {c.done}/{c.total}
                         </span>
                         <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: c.pct >= 50 ? c.accent : 'var(--text-dim)', fontWeight: 700, width: 36, textAlign: 'right' }}>
@@ -309,7 +309,7 @@ export default function StatsPage() {
               TOP RATED
             </h2>
             {topRated.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', textAlign: 'center', padding: 24, margin: 0 }}>No rated entries</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: 24, margin: 0 }}>No rated entries</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {topRated.map((e, i) => {
@@ -320,7 +320,7 @@ export default function StatsPage() {
                         #{i + 1}
                       </span>
                       {e.cover_url && (
-                        <img src={e.cover_url} alt="" style={{ width: 28, height: 38, objectFit: 'cover', flexShrink: 0, border: `1px solid color-mix(in srgb, var(--text-dim) 20%, transparent)` }} />
+                        <img src={e.cover_url} alt="" style={{ width: 28, height: 38, objectFit: 'cover', flexShrink: 0, border: `1px solid color-mix(in srgb, var(--text-dim) 20%, transparent)` }} loading="lazy" decoding="async" />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-hi)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

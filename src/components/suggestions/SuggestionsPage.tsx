@@ -333,7 +333,7 @@ export default function SuggestionsPage() {
               )
             })}
             <span style={{ flex: 1 }} />
-            <select value={category} onChange={(e) => { setCategory(e.target.value as HobbyCategory | 'all'); setCandidates(null) }}
+            <select aria-label="Filter by hobby" value={category} onChange={(e) => { setCategory(e.target.value as HobbyCategory | 'all'); setCandidates(null) }}
               style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', padding: '6px 9px', cursor: 'pointer', outline: 'none' }}>
               <option value="all">All Categories</option>
               {entryHobbies.map((h) => <option key={h.id} value={h.id}>{h.pluralLabel}</option>)}
@@ -401,7 +401,7 @@ export default function SuggestionsPage() {
               {chosen == null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>I Have</span>
-                  <input type="number" min={0.25} max={24} step={0.25} value={manualHours}
+                  <input type="number" min={0.25} max={24} step={0.25} value={manualHours} aria-label="Hours I have"
                     onChange={(e) => setManualHours(Math.max(0.25, Math.min(24, Number(e.target.value) || 0.25)))}
                     style={{ width: 86, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #d9770666', padding: '7px 9px', color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }} />
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>Hours</span>
@@ -574,7 +574,7 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 22, color: 'var(--text-hi)', lineHeight: 1, margin: '0 0 5px', textTransform: 'capitalize' }}>
               {c.value}
             </p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.05em', margin: 0 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', margin: 0 }}>
               {c.sub}
             </p>
           </div>
@@ -605,7 +605,7 @@ function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
   const h = entryHours(e)
   return (
     <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', width: 20, flexShrink: 0, paddingTop: 2 }}>
         {index + 1}
       </span>
       <Cover url={e.cover_url} title={e.title} accent={accent} />
@@ -728,13 +728,13 @@ function DiscoverRow({ pick, index, busy, onAdd }: {
   const accent = HOBBY_MAP[c.category]?.accent ?? '#22c55e'
   return (
     <Row accent={accent}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mute)', width: 20, flexShrink: 0, paddingTop: 2 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', width: 20, flexShrink: 0, paddingTop: 2 }}>
         {index + 1}
       </span>
       <Cover url={c.cover_url} title={c.title} accent={accent} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', margin: '0 0 7px', letterSpacing: '0.02em' }}>
-          {c.title} {c.year ? <span style={{ color: 'var(--text-mute)', fontWeight: 400 }}>({c.year})</span> : null}
+          {c.title} {c.year ? <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({c.year})</span> : null}
         </p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           <Tag color={accent}>{HOBBY_MAP[c.category]?.label}</Tag>
@@ -792,11 +792,11 @@ function WhyPanel({ profile, category, entryHobbies }: {
                   : `Only ${t.sample} decided ${t.sample === 1 ? 'item' : 'items'} — not enough to be confident yet`}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 22 }}>
                   <div>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
                       Genre Affinity
                     </p>
                     {top.length === 0 ? (
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0 }}>No genre data yet.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>No genre data yet.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {[...top, ...bottom.filter((b) => !top.includes(b))].map((g) => (
@@ -814,7 +814,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
                                 background: g.score >= 0 ? accent : '#ef4444',
                               }} />
                             </div>
-                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 44, textAlign: 'right', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 44, textAlign: 'right', flexShrink: 0 }}>
                               {g.finished}✓ {g.abandoned}✕
                             </span>
                           </div>
@@ -824,11 +824,11 @@ function WhyPanel({ profile, category, entryHobbies }: {
                   </div>
 
                   <div>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 10px' }}>
                       Finish Rate by Length
                     </p>
                     {buckets.length === 0 ? (
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0 }}>No length data yet.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>No length data yet.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {buckets.map((b) => {
@@ -840,21 +840,21 @@ function WhyPanel({ profile, category, entryHobbies }: {
                               <div style={{ flex: 1, height: 5, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                                 <div style={{ height: '100%', width: `${Math.round(rate * 100)}%`, background: rate >= 0.5 ? accent : '#ef4444' }} />
                               </div>
-                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', width: 56, textAlign: 'right', flexShrink: 0 }}>
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 56, textAlign: 'right', flexShrink: 0 }}>
                                 {Math.round(rate * 100)}% of {n}
                               </span>
                             </div>
                           )
                         })}
                         {t.medianFinishedHours != null && (
-                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: '4px 0 0', letterSpacing: '0.02em', lineHeight: 1.6 }}>
+                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0', letterSpacing: '0.02em', lineHeight: 1.6 }}>
                             Median finished: {hrs(t.medianFinishedHours)}
                             {t.longestFinishedHours != null && ` · longest: ${hrs(t.longestFinishedHours)}`}
                             {t.abandonedMedianHours != null && ` · median abandoned: ${hrs(t.abandonedMedianHours)}`}
                           </p>
                         )}
                         {t.ongoing && t.ongoing.finished + t.ongoing.abandoned > 0 && (
-                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.02em' }}>
+                          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.02em' }}>
                             Still-airing shows: finished {t.ongoing.finished} of {t.ongoing.finished + t.ongoing.abandoned}
                           </p>
                         )}
@@ -866,7 +866,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
             )
           })}
           {profile.ratingBaseline && profile.ratingBaseline.count >= 5 && (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mute)', margin: 0, letterSpacing: '0.02em', lineHeight: 1.7 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, letterSpacing: '0.02em', lineHeight: 1.7 }}>
               Your ratings average {Math.round(profile.ratingBaseline.mean * 10) / 10}/10 across{' '}
               {profile.ratingBaseline.count} items (spread ±{Math.round(profile.ratingBaseline.sd * 10) / 10}).
               Scores are read against your own scale, not against 10 — an 8 from someone who rates

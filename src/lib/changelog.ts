@@ -1,10 +1,23 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.10.1'
+export const APP_VERSION = '0.11.0'
 
 export interface ChangelogEntry { version: string; date: string; items: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.11.0',
+    date: 'Nov 2026',
+    items: [
+      'A cleaner, easier-to-read look: a new typeface for everything you read, larger text and plainer wording throughout',
+      'Your library as covers: hobby pages open as a wall of cover art, with a toggle back to the compact list',
+      'New Shelf page: everything you have finished, grouped by year, with your ratings',
+      'Wishlist: a new status for games, books and projects you do not have yet. They stay out of your backlog ranking and What Next until you move them',
+      'Status tabs now show how many entries each one holds',
+      'Pinch-to-zoom works on phones, keyboard focus is visible everywhere, and reduced-motion settings are respected',
+      'A new front page for visitors who are not signed in',
+    ],
+  },
   {
     version: '0.10.1',
     date: 'Nov 2026',

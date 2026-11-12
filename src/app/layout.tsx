@@ -61,7 +61,10 @@ const noFlash = `try{var t=localStorage.getItem('hobbylog-theme');if(t==='light'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${orbitron.variable} ${shareTechMono.variable} ${barlow.variable}`}>
+    // The inline script below sets the theme and display size on <html> before
+    // React hydrates, on purpose, so those two attributes are expected to differ
+    // from the server's markup.
+    <html lang="en" suppressHydrationWarning className={`${orbitron.variable} ${shareTechMono.variable} ${barlow.variable}`}>
       <body>
         <script dangerouslySetInnerHTML={{ __html: noFlash }} />
         <ToastProvider>
