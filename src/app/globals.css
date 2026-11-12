@@ -39,7 +39,7 @@
   --text-hi:     #10161d;
   --text-mid:    #3e4c5c;
   --text-dim:    #44607c;
-  --text-mute:   #5f758c;
+  --text-mute:   #50667c;
   --overlay:     rgba(221, 228, 236, 0.92);
   --focus:       #5b21b6;
   color-scheme: light;
@@ -287,7 +287,7 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
 .landing-cta {
   white-space: nowrap; min-height: 48px; padding: 0 22px; cursor: pointer;
   font-family: var(--font-body); font-size: 16px; font-weight: 700; color: #fff;
-  background: #6d3fd6; border: 1px solid #955ff0;
+  background: #6d3fd6; border: 1px solid #a577f2;
   clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
   transition: var(--t-fast);
 }
@@ -351,7 +351,7 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
 .landing-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .landing-rank li {
   display: flex; align-items: center; gap: 14px; padding: 12px 14px;
-  background: var(--bg-base); border: 1px solid var(--border-dim); border-left: 3px solid #955ff0;
+  background: var(--bg-base); border: 1px solid var(--border-dim); border-left: 3px solid #a577f2;
 }
 .landing-rank li:first-child { border-left-color: #d97706; }
 .landing-rank-num { width: 28px; text-align: center; font-family: var(--font-mono); font-size: 20px; color: var(--text-mid); flex-shrink: 0; }
@@ -397,3 +397,54 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
    sample tiles arrive in sequence, once. */
 @keyframes landing-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .landing-enter { animation: landing-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ── Light theme: accent-coloured text ──────────────────────────────────────── */
+/* Accent and status colours are tuned to read as text on the dark theme, and no
+   single shade clears 4.5:1 on both a near-black and a near-white surface.
+   Components set these colours inline, so rather than thread the theme through
+   every one of them, the light theme swaps each for a darker shade of the same
+   hue wherever it is used as a text colour. The match is on the inline `color`
+   property only (at the start of the style, or after a semicolon), so borders,
+   backgrounds and fills that share the hue are left alone. Each replacement
+   holds 4.7:1 against the light base tinted with its own accent, which is the
+   darkest surface accent text sits on. Generated; edit the list, not the rules. */
+:root[data-theme='light'] [style^="color: rgb(165, 119, 242)"],
+:root[data-theme='light'] [style*="; color: rgb(165, 119, 242)"] { color: #6e23ea !important; }
+:root[data-theme='light'] [style^="color: rgb(9, 155, 190)"],
+:root[data-theme='light'] [style*="; color: rgb(9, 155, 190)"] { color: #066177 !important; }
+:root[data-theme='light'] [style^="color: rgb(217, 119, 6)"],
+:root[data-theme='light'] [style*="; color: rgb(217, 119, 6)"] { color: #874a04 !important; }
+:root[data-theme='light'] [style^="color: rgb(34, 197, 94)"],
+:root[data-theme='light'] [style*="; color: rgb(34, 197, 94)"] { color: #126a32 !important; }
+:root[data-theme='light'] [style^="color: rgb(241, 89, 89)"],
+:root[data-theme='light'] [style*="; color: rgb(241, 89, 89)"] { color: #b40f0f !important; }
+:root[data-theme='light'] [style^="color: rgb(248, 113, 113)"],
+:root[data-theme='light'] [style*="; color: rgb(248, 113, 113)"] { color: #b80909 !important; }
+:root[data-theme='light'] [style^="color: rgb(245, 158, 11)"],
+:root[data-theme='light'] [style*="; color: rgb(245, 158, 11)"] { color: #805305 !important; }
+:root[data-theme='light'] [style^="color: rgb(234, 179, 8)"],
+:root[data-theme='light'] [style*="; color: rgb(234, 179, 8)"] { color: #765a04 !important; }
+:root[data-theme='light'] [style^="color: rgb(237, 83, 159)"],
+:root[data-theme='light'] [style*="; color: rgb(237, 83, 159)"] { color: #ac125e !important; }
+:root[data-theme='light'] [style^="color: rgb(242, 91, 12)"],
+:root[data-theme='light'] [style*="; color: rgb(242, 91, 12)"] { color: #9b3a08 !important; }
+:root[data-theme='light'] [style^="color: rgb(95, 141, 241)"],
+:root[data-theme='light'] [style*="; color: rgb(95, 141, 241)"] { color: #124fd2 !important; }
+:root[data-theme='light'] [style^="color: rgb(230, 101, 101)"],
+:root[data-theme='light'] [style*="; color: rgb(230, 101, 101)"] { color: #af1c1c !important; }
+:root[data-theme='light'] [style^="color: rgb(134, 145, 161)"],
+:root[data-theme='light'] [style*="; color: rgb(134, 145, 161)"] { color: #525c6a !important; }
+:root[data-theme='light'] [style^="color: rgb(129, 131, 244)"],
+:root[data-theme='light'] [style*="; color: rgb(129, 131, 244)"] { color: #383bee !important; }
+:root[data-theme='light'] [style^="color: rgb(79, 142, 247)"],
+:root[data-theme='light'] [style*="; color: rgb(79, 142, 247)"] { color: #0952ca !important; }
+:root[data-theme='light'] [style^="color: rgb(14, 161, 148)"],
+:root[data-theme='light'] [style*="; color: rgb(14, 161, 148)"] { color: #09645c !important; }
+:root[data-theme='light'] [style^="color: rgb(5, 162, 113)"],
+:root[data-theme='light'] [style*="; color: rgb(5, 162, 113)"] { color: #036748 !important; }
+:root[data-theme='light'] [style^="color: rgb(0, 192, 48)"],
+:root[data-theme='light'] [style*="; color: rgb(0, 192, 48)"] { color: #00691a !important; }
+:root[data-theme='light'] [style^="color: rgb(252, 165, 165)"],
+:root[data-theme='light'] [style*="; color: rgb(252, 165, 165)"] { color: #bf0606 !important; }
+:root[data-theme='light'] [style^="color: rgb(134, 239, 172)"],
+:root[data-theme='light'] [style*="; color: rgb(134, 239, 172)"] { color: #0f6f32 !important; }

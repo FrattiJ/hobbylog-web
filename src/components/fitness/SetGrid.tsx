@@ -150,7 +150,7 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
               onClick={() => onChange(sets.filter((x) => x.key !== s.key))}
               title="Remove set"
               style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 4 }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#f15959' }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-mute)' }}
  aria-label="Remove set">
               <Trash2 size={13} />

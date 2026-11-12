@@ -3,7 +3,7 @@
 // The frame and field styles shared by the signed-out screens: sign in, request
 // a reset link, and choose a new password.
 
-export const AUTH_ACCENT = '#955ff0'
+export const AUTH_ACCENT = '#a577f2'
 const CLIP = 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)'
 
 const gridBg: React.CSSProperties = {
@@ -33,7 +33,7 @@ export function authPrimaryButton(busy: boolean, disabled: boolean): React.CSSPr
   return {
     flex: 1, padding: '12px', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700,
     color: '#fff', background: '#6d3fd6',
-    border: '1px solid #955ff0',
+    border: '1px solid #a577f2',
     cursor: busy ? 'wait' : 'pointer', opacity: disabled ? 0.5 : 1,
   }
 }
@@ -42,7 +42,7 @@ export function AuthMessage({ message }: { message: { kind: 'error' | 'info'; te
   if (!message) return null
   return (
     <p role={message.kind === 'error' ? 'alert' : 'status'}
-      style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.5, margin: '0 0 16px', padding: '10px 12px', color: message.kind === 'error' ? '#fca5a5' : '#86efac', background: message.kind === 'error' ? '#ef444418' : '#22c55e14', borderLeft: `3px solid ${message.kind === 'error' ? '#ef4444' : '#22c55e'}` }}>
+      style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.5, margin: '0 0 16px', padding: '10px 12px', color: message.kind === 'error' ? '#fca5a5' : '#86efac', background: message.kind === 'error' ? '#f1595918' : '#22c55e14', borderLeft: `3px solid ${message.kind === 'error' ? '#f15959' : '#22c55e'}` }}>
       {message.text}
     </p>
   )

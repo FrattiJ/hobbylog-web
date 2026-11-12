@@ -108,7 +108,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${GREEN}66`, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${GREEN}66`, background: 'linear-gradient(135deg, #a577f2, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {avatarUrl
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
@@ -123,7 +123,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: 20, padding: '14px 18px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${GREEN}` }}>
         {stat(entries.length, 'Tracked', 'var(--text-hi)')}
         {stat(completed, 'Completed', GREEN)}
-        {stat(inProgress, 'In Progress', '#0891b2')}
+        {stat(inProgress, 'In Progress', '#099bbe')}
         {stat(backlog, 'Backlog', 'var(--text-mid)')}
         {stat(commonCount, 'In Common', '#d97706')}
       </div>

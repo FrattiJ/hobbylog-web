@@ -159,8 +159,8 @@ export default function DashboardPage() {
 
       {/* ── Clickable stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <StatFilterCard label="All Entries"    value={entries.length}    accent="#955ff0" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
-        <StatFilterCard label="In Progress"    value={inProgress.length} accent="#0891b2" index={1} active={activeFilter === 'in_progress'} onClick={() => handleStatClick('in_progress')} />
+        <StatFilterCard label="All Entries"    value={entries.length}    accent="#a577f2" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
+        <StatFilterCard label="In Progress"    value={inProgress.length} accent="#099bbe" index={1} active={activeFilter === 'in_progress'} onClick={() => handleStatClick('in_progress')} />
         <StatFilterCard label="Completed"      value={completed.length}  accent="#22c55e" index={2} active={activeFilter === 'completed'}   onClick={() => handleStatClick('completed')} />
         <StatFilterCard label="Backlog"        value={backlog.length}    accent="var(--text-dim)" index={3} active={activeFilter === 'backlog'}     onClick={() => handleStatClick('backlog')} />
       </div>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <StatCard label="Hours Left in Backlog" sub="Estimated from the length of each item" value={Math.round(backlogHours * 10) / 10} accent="var(--text-dim)" index={4} />
-          <StatCard label="Hours Spent" sub="On everything in progress or completed" value={Math.round(activeHours * 10) / 10} accent="#0891b2" index={5} />
+          <StatCard label="Hours Spent" sub="On everything in progress or completed" value={Math.round(activeHours * 10) / 10} accent="#099bbe" index={5} />
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export default function DashboardPage() {
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-dim)',
-            borderTop: `2px solid ${activeFilter === 'in_progress' ? '#0891b2' : activeFilter === 'completed' ? '#22c55e' : activeFilter === 'backlog' ? 'var(--text-dim)' : '#955ff0'}`,
+            borderTop: `2px solid ${activeFilter === 'in_progress' ? '#099bbe' : activeFilter === 'completed' ? '#22c55e' : activeFilter === 'backlog' ? 'var(--text-dim)' : '#a577f2'}`,
           }}>
             {/* Panel header */}
             <div style={{
@@ -284,7 +284,7 @@ export default function DashboardPage() {
             </p>
             <button
               onClick={() => router.push('/games')}
-              style={{ height: 40, padding: '0 18px', background: '#955ff022', border: '1px solid #955ff0', color: '#955ff0', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+              style={{ height: 40, padding: '0 18px', background: '#a577f222', border: '1px solid #a577f2', color: '#a577f2', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
               Open Video Games
             </button>

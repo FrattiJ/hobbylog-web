@@ -21,9 +21,9 @@ export function useToast(): ToastApi {
 }
 
 const KINDS: Record<ToastKind, { color: string; Icon: typeof Info }> = {
-  error: { color: '#ef4444', Icon: AlertTriangle },
+  error: { color: '#f15959', Icon: AlertTriangle },
   success: { color: '#22c55e', Icon: CheckCircle2 },
-  info: { color: '#0891b2', Icon: Info },
+  info: { color: '#099bbe', Icon: Info },
 }
 
 function ToastRow({ t, onClose }: { t: Toast; onClose: () => void }) {

@@ -29,7 +29,7 @@ interface StatCardProps {
   index?: number
 }
 
-export default function StatCard({ label, value, accent = '#955ff0', sub, index = 0 }: StatCardProps) {
+export default function StatCard({ label, value, accent = '#a577f2', sub, index = 0 }: StatCardProps) {
   const numericValue = typeof value === 'number' ? value : (parseFloat(String(value)) || 0)
   const isNumeric = typeof value === 'number' || (!isNaN(parseFloat(String(value))) && value !== '—')
   const animated = useCountUp(isNumeric ? numericValue : 0)

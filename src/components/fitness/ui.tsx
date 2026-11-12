@@ -6,7 +6,7 @@ import { useEscape } from '@/lib/useEscape'
 // Shared bits for the fitness screens. The rest of the app styles inline against
 // the theme vars; these just stop every tab from restating the same 12 rules.
 
-export const ACCENT = '#ea580c' // matches HOBBY_MAP.fitness.accent
+export const ACCENT = '#f25b0c' // matches HOBBY_MAP.fitness.accent
 
 export function Label({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -180,7 +180,7 @@ export function Confirm({ title, body, confirmLabel = 'Delete', onConfirm, onCan
       <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6 }}>{body}</p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
         <Button variant="quiet" onClick={onCancel}>Cancel</Button>
-        <Button variant="solid" accent="#ef4444" onClick={onConfirm}>{confirmLabel}</Button>
+        <Button variant="solid" accent="#f15959" onClick={onConfirm}>{confirmLabel}</Button>
       </div>
     </Modal>
   )

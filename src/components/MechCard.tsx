@@ -18,7 +18,7 @@ interface MechCardProps {
 
 export default function MechCard({
   children,
-  accent = '#955ff0',
+  accent = '#a577f2',
   index = 0,
   panelNum,
   className = '',

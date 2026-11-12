@@ -7,7 +7,7 @@ import { isoDay } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import { Button, Input, Label, Modal, ACCENT } from './ui'
 
-const BLUE = '#0891b2'
+const BLUE = '#099bbe'
 
 // Logging a weigh-in can complete a bodyweight goal exactly as finishing a
 // workout can, so every save re-checks them and reports what it hit.

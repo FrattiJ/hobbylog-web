@@ -49,7 +49,7 @@ export default function CoverTile({ entry, context = 'library', showStatus = tru
   onToggleSelect?: (id: string) => void
 }) {
   const hobby = HOBBY_MAP[entry.hobby_category]
-  const accent = hobby?.accent ?? '#955ff0'
+  const accent = hobby?.accent ?? '#a577f2'
   const total = entry.progress_total
     || (entry.hobby_category === 'games' && entry.metadata?.time_to_beat ? Number(entry.metadata.time_to_beat) : null)
   const pct = total && !hobby?.recipe ? Math.min(100, Math.round((entry.progress_current / total) * 100)) : null

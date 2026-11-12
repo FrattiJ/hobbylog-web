@@ -31,7 +31,7 @@ export const MEAL_TAG_LABEL: Record<string, string> = Object.fromEntries(MEAL_TA
 export const DIFFICULTIES: { id: Difficulty; label: string; color: string }[] = [
   { id: 'easy',   label: 'Easy',   color: '#22c55e' },
   { id: 'medium', label: 'Medium', color: '#d97706' },
-  { id: 'hard',   label: 'Hard',   color: '#ef4444' },
+  { id: 'hard',   label: 'Hard',   color: '#f15959' },
 ]
 
 export const EMPTY_RECIPE: RecipeData = { ingredients: [], steps: [], meal_tags: [], difficulty: null, cook_minutes: null }

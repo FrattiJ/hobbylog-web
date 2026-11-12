@@ -102,13 +102,13 @@ function Wordmark({ size = 15 }: { size?: number }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
       <svg width={size * 1.8} height={size * 1.8} viewBox="0 0 400 400" aria-hidden="true" style={{ flexShrink: 0 }}>
         <polygon points="52,0 400,0 400,348 348,400 0,400 0,52" fill="#0d1117" />
-        <polygon points="0,0 52,0 0,52" fill="#955ff0" />
-        <polygon points="52,0 400,0 400,348 348,400 0,400 0,52" fill="none" stroke="#955ff0" strokeWidth="8" />
+        <polygon points="0,0 52,0 0,52" fill="#a577f2" />
+        <polygon points="52,0 400,0 400,348 348,400 0,400 0,52" fill="none" stroke="#a577f2" strokeWidth="8" />
         <rect x="54" y="72" width="80" height="272" fill="#e2e8f0" />
         <rect x="54" y="200" width="218" height="38" fill="#e2e8f0" />
-        <rect x="148" y="302" width="62" height="42" fill="#955ff0" />
-        <rect x="220" y="200" width="62" height="144" fill="#955ff0" />
-        <rect x="292" y="72" width="68" height="272" fill="#955ff0" />
+        <rect x="148" y="302" width="62" height="42" fill="#a577f2" />
+        <rect x="220" y="200" width="62" height="144" fill="#a577f2" />
+        <rect x="292" y="72" width="68" height="272" fill="#a577f2" />
       </svg>
       <span translate="no" style={{ fontFamily: 'var(--font-display)', fontSize: size, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em' }}>HOBBYLOG</span>
     </span>

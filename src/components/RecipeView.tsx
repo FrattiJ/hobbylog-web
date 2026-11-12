@@ -23,7 +23,7 @@ export default function RecipeView({ recipe, accent }: { recipe: RecipeData; acc
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {(time || difficulty || recipe.meal_tags.length > 0) && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {time && <span style={chip('#0891b2')}><Clock size={11} /> {time}</span>}
+          {time && <span style={chip('#099bbe')}><Clock size={11} /> {time}</span>}
           {difficulty && <span style={chip(difficulty.color)}><Gauge size={11} /> {difficulty.label}</span>}
           {recipe.meal_tags.map((t) => <span key={t} style={chip(accent)}>{MEAL_TAG_LABEL[t] ?? t}</span>)}
         </div>

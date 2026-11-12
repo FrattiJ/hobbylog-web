@@ -21,9 +21,9 @@ export default function QuickAddPanel({ onClose, onAdded }: { onClose: () => voi
     <div onClick={(e) => { if (e.currentTarget === e.target) onClose() }}
       role="dialog" aria-modal="true" aria-label="Quick add"
       style={{ overscrollBehavior: 'contain', position: 'fixed', inset: 0, zIndex: 70, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ width: '100%', maxWidth: 440, padding: '1px', clipPath: CLIP, background: '#955ff055' }}>
+      <div style={{ width: '100%', maxWidth: 440, padding: '1px', clipPath: CLIP, background: '#a577f255' }}>
         <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 22, position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#955ff0', clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#a577f2', clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 4px' }}>Quick add</p>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: '0 0 16px' }}>PICK A CATEGORY</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>

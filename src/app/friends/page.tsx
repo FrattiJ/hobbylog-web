@@ -38,7 +38,7 @@ function timeAgo(iso: string): string {
 
 function Avatar({ url, name, size = 30 }: { url: string | null; name: string; size?: number }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #955ff055' }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #a577f2, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #a577f255' }}>
       {url
         // eslint-disable-next-line @next/next/no-img-element
         ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
@@ -199,7 +199,7 @@ export default function FriendsPage() {
         {/* Incoming requests */}
         {incoming.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <p style={subLabel}>Friend Requests <span style={{ color: '#0891b2' }}>({incoming.length})</span></p>
+            <p style={subLabel}>Friend Requests <span style={{ color: '#099bbe' }}>({incoming.length})</span></p>
             {incoming.map((r) => (
               <div key={r.id} style={row}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -208,7 +208,7 @@ export default function FriendsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => respond(r.id, true)} style={smallBtn(GREEN)}><Check size={12} /> Accept</button>
-                  <button onClick={() => respond(r.id, false)} style={smallBtn('#ef4444')}><X size={12} /> Decline</button>
+                  <button onClick={() => respond(r.id, false)} style={smallBtn('#f15959')}><X size={12} /> Decline</button>
                 </div>
               </div>
             ))}
@@ -226,8 +226,8 @@ export default function FriendsPage() {
                 <span style={nameStyle}>{f.username}</span>
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#0891b2')}>View Logs</button>
-                <button onClick={() => unfriend(f.id)} style={smallBtn('#ef4444')}>Remove</button>
+                <button onClick={() => setSelected({ id: f.user_id, username: f.username, avatar_url: f.avatar_url })} style={smallBtn('#099bbe')}>View Logs</button>
+                <button onClick={() => unfriend(f.id)} style={smallBtn('#f15959')}>Remove</button>
               </div>
             </div>
           ))}

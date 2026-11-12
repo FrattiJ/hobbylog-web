@@ -28,9 +28,9 @@ import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover } from './ui'
 type Mode = 'next' | 'time' | 'triage' | 'discover'
 
 const MODES: Array<{ id: Mode; label: string; icon: typeof Sparkles; accent: string }> = [
-  { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#955ff0' },
+  { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#a577f2' },
   { id: 'time',     label: 'Time I Have',   icon: CalendarClock, accent: '#d97706' },
-  { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck,   accent: '#0891b2' },
+  { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck,   accent: '#099bbe' },
   { id: 'discover', label: 'Discover',      icon: Compass,       accent: '#22c55e' },
 ]
 
@@ -283,7 +283,7 @@ export default function SuggestionsPage() {
       </div>
 
       {entries.length < 5 ? (
-        <Panel accent="#955ff0" title="Not enough history yet">
+        <Panel accent="#a577f2" title="Not enough history yet">
           <Empty>
             Suggestions are built entirely from your own library — what you finish, what you
             drop, how long things take you.<br />
@@ -484,7 +484,7 @@ export default function SuggestionsPage() {
                 </div>
               )}
               {borrowed.length > 0 && (
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#0891b2', margin: '0 0 14px', letterSpacing: '0.02em', lineHeight: 1.7 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#099bbe', margin: '0 0 14px', letterSpacing: '0.02em', lineHeight: 1.7 }}>
                   You haven&apos;t finished anything in {listCats(borrowed)} yet, so those are
                   matched on the genres you finish everywhere else.
                 </p>
@@ -536,7 +536,7 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
       label: declared > 0 ? 'Hobby Time' : 'Your Pace',
       value: declared > 0 ? `${declared}h` : profile.pace.hoursPerWeek > 0 ? `${profile.pace.hoursPerWeek}h` : '—',
       sub: paceSub,
-      accent: '#0891b2',
+      accent: '#099bbe',
     },
     {
       label: 'Backlog',
@@ -546,13 +546,13 @@ function ProfileStrip({ profile, windows }: { profile: TasteProfile; windows: Ti
       sub: declaredWeeks != null
         ? `${profile.backlogHours}h at ${declared}h a week`
         : profile.backlogMonths != null ? `${profile.backlogHours}h at your pace` : 'estimated hours',
-      accent: (declaredWeeks != null ? declaredWeeks / 4.345 : profile.backlogMonths ?? 0) > 12 ? '#ef4444' : '#d97706',
+      accent: (declaredWeeks != null ? declaredWeeks / 4.345 : profile.backlogMonths ?? 0) > 12 ? '#f15959' : '#d97706',
     },
     {
       label: 'Evidence',
       value: String(profile.totalEvidence),
       sub: 'finished or abandoned',
-      accent: '#955ff0',
+      accent: '#a577f2',
     },
     {
       label: 'Strongest Taste',
@@ -601,7 +601,7 @@ function NextUpRow({ pick, index, busy, plan, onStart, onOpen }: {
   onStart: () => void; onOpen: () => void
 }) {
   const e = pick.entry
-  const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
+  const accent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
   const h = entryHours(e)
   return (
     <Row accent={accent}>
@@ -658,7 +658,7 @@ function FitRow({ pick, busy, onStart, onOpen }: {
   pick: FitPick; busy: boolean; onStart: () => void; onOpen: () => void
 }) {
   const e = pick.entry
-  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
+  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
   const fitColor = pick.fit === 'finish' ? '#22c55e' : pick.fit === 'dent' ? '#d97706' : 'var(--text-dim)'
   return (
     <Row accent={fitColor}>
@@ -692,8 +692,8 @@ function TriageRow({ item, busy, onDone, onDrop, onOpen }: {
   onDone: () => void; onDrop: () => void; onOpen: () => void
 }) {
   const e = item.entry
-  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#955ff0'
-  const verdictColor = item.verdict === 'finish' ? '#22c55e' : item.verdict === 'drop' ? '#ef4444' : 'var(--text-dim)'
+  const hobbyAccent = HOBBY_MAP[e.hobby_category]?.accent ?? '#a577f2'
+  const verdictColor = item.verdict === 'finish' ? '#22c55e' : item.verdict === 'drop' ? '#f15959' : 'var(--text-dim)'
   return (
     <Row accent={verdictColor}>
       <Cover url={e.cover_url} title={e.title} accent={hobbyAccent} size="sm" />
@@ -714,7 +714,7 @@ function TriageRow({ item, busy, onDone, onDrop, onOpen }: {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
         <Btn color="#22c55e" filled={item.verdict === 'finish'} onClick={onDone} disabled={busy}>Finished</Btn>
-        <Btn color="#ef4444" filled={item.verdict === 'drop'} onClick={onDrop} disabled={busy}>Drop</Btn>
+        <Btn color="#f15959" filled={item.verdict === 'drop'} onClick={onDrop} disabled={busy}>Drop</Btn>
         <Btn onClick={onOpen}>Open</Btn>
       </div>
     </Row>
@@ -811,7 +811,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
                                 position: 'absolute', top: 0, bottom: 0,
                                 left: g.score >= 0 ? '50%' : `${50 + Math.max(-50, g.score * 100)}%`,
                                 width: `${Math.min(50, Math.abs(g.score) * 100)}%`,
-                                background: g.score >= 0 ? accent : '#ef4444',
+                                background: g.score >= 0 ? accent : '#f15959',
                               }} />
                             </div>
                             <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 44, textAlign: 'right', flexShrink: 0 }}>
@@ -838,7 +838,7 @@ function WhyPanel({ profile, category, entryHobbies }: {
                             <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 62, flexShrink: 0 }}>{b.label}</span>
                               <div style={{ flex: 1, height: 5, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
-                                <div style={{ height: '100%', width: `${Math.round(rate * 100)}%`, background: rate >= 0.5 ? accent : '#ef4444' }} />
+                                <div style={{ height: '100%', width: `${Math.round(rate * 100)}%`, background: rate >= 0.5 ? accent : '#f15959' }} />
                               </div>
                               <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 56, textAlign: 'right', flexShrink: 0 }}>
                                 {Math.round(rate * 100)}% of {n}

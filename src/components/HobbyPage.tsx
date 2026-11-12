@@ -533,7 +533,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 {(['in_progress', 'completed', 'backlog', 'wishlist'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
                   <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
                 ))}
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> Delete</button>
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#f15959')}><Trash2 size={12} /> Delete</button>
                 <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
               </div>
             )

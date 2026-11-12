@@ -79,11 +79,11 @@ export default function StatsPage() {
   })).filter((d) => d.count > 0)
 
   const statusDist = [
-    { name: 'Wishlist',    value: entries.filter((e) => e.status === 'wishlist').length,    color: '#ec4899' },
-    { name: 'Backlog',     value: entries.filter((e) => e.status === 'backlog').length,     color: '#955ff0' },
-    { name: 'In Progress', value: entries.filter((e) => e.status === 'in_progress').length, color: '#0891b2' },
+    { name: 'Wishlist',    value: entries.filter((e) => e.status === 'wishlist').length,    color: '#ed539f' },
+    { name: 'Backlog',     value: entries.filter((e) => e.status === 'backlog').length,     color: '#a577f2' },
+    { name: 'In Progress', value: entries.filter((e) => e.status === 'in_progress').length, color: '#099bbe' },
     { name: 'Completed',   value: entries.filter((e) => e.status === 'completed').length,   color: '#22c55e' },
-    { name: 'Dropped',     value: entries.filter((e) => e.status === 'dropped').length,     color: '#ef4444' },
+    { name: 'Dropped',     value: entries.filter((e) => e.status === 'dropped').length,     color: '#f15959' },
   ].filter((d) => d.value > 0)
 
   const completionByCategory = entryHobbies.map((h) => {
@@ -119,9 +119,9 @@ export default function StatsPage() {
 
       {/* ── Stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
-        <StatCard label="Backlog Hours"   value={backlogHours}                              accent="#955ff0" sub="estimated time remaining" index={0} />
-        <StatCard label="Hours Finished"  value={finishedHours}                             accent="#0891b2" sub={workoutHours > 0 ? `incl. ${workoutHours}h training` : 'across completed entries'}  index={1} />
-        <StatCard label="Total Entries"   value={entries.length}                            accent="#4379ee" index={2} />
+        <StatCard label="Backlog Hours"   value={backlogHours}                              accent="#a577f2" sub="estimated time remaining" index={0} />
+        <StatCard label="Hours Finished"  value={finishedHours}                             accent="#099bbe" sub={workoutHours > 0 ? `incl. ${workoutHours}h training` : 'across completed entries'}  index={1} />
+        <StatCard label="Total Entries"   value={entries.length}                            accent="#5f8df1" index={2} />
         <StatCard label="Avg Rating"      value={avgRating ? avgRating.toFixed(1) : '—'}   accent="#d97706" sub="out of 10" index={3} />
       </div>
 
@@ -156,7 +156,7 @@ export default function StatsPage() {
             ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
-                { label: 'Hours Finished', mine: finishedEntryHours, avg: compareSource?.avg_finished_hours ?? 0, unit: 'h', accent: '#0891b2' },
+                { label: 'Hours Finished', mine: finishedEntryHours, avg: compareSource?.avg_finished_hours ?? 0, unit: 'h', accent: '#099bbe' },
                 { label: 'Completed', mine: completed.length, avg: compareSource?.avg_completed ?? 0, unit: '', accent: '#22c55e' },
               ].map((m) => {
                 const max = Math.max(m.mine, m.avg, 0.001)
@@ -181,7 +181,7 @@ export default function StatsPage() {
                         <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 52, textAlign: 'right' }}>{fmt(m.avg)}</span>
                       </div>
                     </div>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, width: 56, textAlign: 'right', flexShrink: 0, color: delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : 'var(--text-dim)' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, width: 56, textAlign: 'right', flexShrink: 0, color: delta > 0 ? '#22c55e' : delta < 0 ? '#f15959' : 'var(--text-dim)' }}>
                       {delta > 0 ? '+' : ''}{fmt(delta)}
                     </span>
                   </div>
@@ -196,9 +196,9 @@ export default function StatsPage() {
       {/* ── Row 2: Category bar + Status donut ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginBottom: 24 }}>
         {/* Entries by category */}
-        <div style={{ padding: '1px', clipPath: CLIP, background: '#955ff055' }}>
+        <div style={{ padding: '1px', clipPath: CLIP, background: '#a577f255' }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, width: '100%', padding: 20, position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#955ff0', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#a577f2', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, marginBottom: 16, letterSpacing: '0.05em' }}>
               ENTRIES BY CATEGORY
             </h2>
@@ -221,9 +221,9 @@ export default function StatsPage() {
         </div>
 
         {/* Status distribution */}
-        <div style={{ padding: '1px', clipPath: CLIP, background: '#0891b255' }}>
+        <div style={{ padding: '1px', clipPath: CLIP, background: '#099bbe55' }}>
           <div style={{ background: 'var(--bg-card)', clipPath: CLIP, width: '100%', padding: 20, position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#0891b2', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: '#099bbe', clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, marginBottom: 16, letterSpacing: '0.05em' }}>
               STATUS DISTRIBUTION
             </h2>

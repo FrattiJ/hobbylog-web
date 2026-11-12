@@ -14,7 +14,7 @@ const gridBg: React.CSSProperties = {
 }
 
 const IMPORT_SOURCES = [
-  { label: 'Steam', blurb: 'Games + playtime', accent: '#0891b2' },
+  { label: 'Steam', blurb: 'Games + playtime', accent: '#099bbe' },
   { label: 'MyAnimeList', blurb: 'Anime & manga', accent: '#2e51a2' },
   { label: 'Goodreads', blurb: 'Books', accent: '#d97706' },
   { label: 'Letterboxd', blurb: 'Films', accent: '#00c030' },
@@ -37,7 +37,7 @@ export default function OnboardingSelector({ onComplete }: { onComplete: (ids: H
 
   const primaryBtn: React.CSSProperties = {
     padding: '13px 36px', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, letterSpacing: '0.05em',
-    color: '#955ff0', background: '#955ff022', border: '1px solid #955ff0', borderLeft: '3px solid #955ff0', cursor: 'pointer',
+    color: '#a577f2', background: '#a577f222', border: '1px solid #a577f2', borderLeft: '3px solid #a577f2', cursor: 'pointer',
   }
 
   return (

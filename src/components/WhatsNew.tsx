@@ -5,7 +5,7 @@ import { CHANGELOG, markChangelogSeen } from '@/lib/changelog'
 import { CLIP } from './MechCard'
 import { useEscape } from '@/lib/useEscape'
 
-const ACCENT = '#955ff0'
+const ACCENT = '#a577f2'
 
 export default function WhatsNew({ onClose }: { onClose: () => void }) {
   function close() { markChangelogSeen(); onClose() }

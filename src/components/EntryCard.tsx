@@ -18,7 +18,7 @@ export default function EntryCard({ entry, index = 0, showType = true, selectabl
   onToggleSelect?: (id: string) => void
 }) {
   const hobby  = HOBBY_MAP[entry.hobby_category]
-  const accent = hobby?.accent ?? '#955ff0'
+  const accent = hobby?.accent ?? '#a577f2'
 
   const displayLabel = entry.hobby_category === 'books' && entry.book_subtype
     ? BOOK_SUBTYPE_MAP[entry.book_subtype]?.label ?? 'Book'
@@ -63,7 +63,7 @@ export default function EntryCard({ entry, index = 0, showType = true, selectabl
             // eslint-disable-next-line @next/next/no-img-element
             <img src={entry.cover_url} alt="" loading="lazy" decoding="async" width={56} height={84} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{
+            <div aria-hidden="true" style={{
               width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-body)',

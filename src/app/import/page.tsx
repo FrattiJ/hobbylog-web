@@ -9,8 +9,8 @@ import {
   parseMAL, parseLetterboxd, parseGoodreads, enrichMALWithJikan, type PreviewEntry,
 } from '@/lib/importParsers'
 
-const ACCENT = '#955ff0'
-const STEAM_CYAN = '#0891b2'
+const ACCENT = '#a577f2'
+const STEAM_CYAN = '#099bbe'
 
 const STEAM_ERRORS: Record<string, string> = {
   verify: 'Steam sign-in could not be verified. Please try again.',
@@ -247,8 +247,8 @@ export default function ImportPage() {
       )}
 
       {error && (
-        <div style={{ padding: '10px 14px', background: '#ef444410', border: '1px solid #ef4444', borderLeft: '3px solid #ef4444', marginBottom: 16 }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#ef4444', letterSpacing: '0.02em', margin: 0 }}>✗ {error}</p>
+        <div style={{ padding: '10px 14px', background: '#f1595910', border: '1px solid #f15959', borderLeft: '3px solid #f15959', marginBottom: 16 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#f15959', letterSpacing: '0.02em', margin: 0 }}>✗ {error}</p>
         </div>
       )}
 

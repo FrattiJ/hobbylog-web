@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, Search, ListOrdered, Clock, Users } from 'lucide-react'
 
 const KEY = 'hobbylog-tips-dismissed'
-const ACCENT = '#955ff0'
+const ACCENT = '#a577f2'
 
 const TIPS = [
   { icon: Search, title: 'Add anything', text: 'Add Entry or Quick Add — search a title and cover art + details fill in for you.' },

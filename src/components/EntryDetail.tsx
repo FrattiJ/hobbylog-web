@@ -17,7 +17,7 @@ import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 import { formatDay } from '@/lib/format'
 
-const ACCENT = '#955ff0'
+const ACCENT = '#a577f2'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function EntryDetail({ entry, onBack, onChanged }: {
@@ -439,7 +439,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <p style={label}>Visibility</p>
                 <button onClick={togglePrivate}
                   title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }} aria-label={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#f1595914' : 'transparent', border: `1px solid ${isPrivate ? '#f1595966' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #f15959' : '1px solid var(--border-dim)', color: isPrivate ? '#f15959' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }} aria-label={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}>
                   {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
                   <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
@@ -489,7 +489,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill="#d97706" /> {community.avg}/10</span>
                   <span style={{ color: 'var(--text-dim)' }}>· {community.count} other{community.count === 1 ? '' : 's'}</span>
                   {rating && (
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: parseFloat(rating) >= community.avg ? '#22c55e' : '#ef4444' }}>
+                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: parseFloat(rating) >= community.avg ? '#22c55e' : '#f15959' }}>
                       you {parseFloat(rating) - community.avg >= 0 ? '+' : ''}{Math.round((parseFloat(rating) - community.avg) * 10) / 10}
                     </span>
                   )}
@@ -515,7 +515,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               {note && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{note}</p>}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border-dim)', paddingTop: 14 }}>
-                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #ef444455', cursor: 'pointer' }}><Trash2 size={11} /> Delete</button>
+                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #f1595955', cursor: 'pointer' }}><Trash2 size={11} /> Delete</button>
                 <div style={{ flex: 1 }} />
                 {canRefetch && <button onClick={updateDetails} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer' }}><Pencil size={11} /> Update Details</button>}
                 <button onClick={save} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}><Save size={12} /> {busy ? '…' : 'Save'}</button>
@@ -556,7 +556,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                     <span style={miniLabel}>Notes</span>
                     <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} aria-label="Notes" />
                   </div>
-                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I Made This' : 'Log'}</button>
+                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#099bbe', background: '#099bbe22', border: '1px solid #099bbe', borderLeft: '3px solid #099bbe', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I Made This' : 'Log'}</button>
                 </div>
               )
             })()}

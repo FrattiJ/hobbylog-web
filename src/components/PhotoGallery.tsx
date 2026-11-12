@@ -53,7 +53,7 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(photo.id) }}
-                style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: '#ef444455', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: '#f1595955', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
               >

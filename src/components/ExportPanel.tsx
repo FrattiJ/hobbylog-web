@@ -7,7 +7,7 @@ import { HOBBY_ICON_MAP } from './hobbyIcons'
 import { useHobbies } from './HobbyContext'
 import type { HobbyCategory } from '@/types/database'
 
-const ACCENT = '#0891b2'
+const ACCENT = '#099bbe'
 
 type Format = 'xlsx' | 'csv'
 

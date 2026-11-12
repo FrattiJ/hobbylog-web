@@ -59,7 +59,7 @@ export default function ProgressTab() {
             directly below already shows. Volume and time trained are the two
             totals nothing else on the page adds up. */}
         <StatCard label="Volume Lifted" value={Math.round(totals.volume)} sub="lbs" accent="#22c55e" index={2} />
-        <StatCard label="Time Trained" value={timeTrained.value} sub={timeTrained.unit} accent="#0891b2" index={3} />
+        <StatCard label="Time Trained" value={timeTrained.value} sub={timeTrained.unit} accent="#099bbe" index={3} />
       </div>
 
       <Rule>Consistency</Rule>
@@ -210,7 +210,7 @@ function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () =>
                 labelStyle={{ color: 'var(--text-dim)' }}
                 formatter={(v) => [`${v} lbs`, 'Bodyweight']}
               />
-              <Line type="monotone" dataKey="value" stroke="#0891b2" strokeWidth={2} dot={{ r: 3, fill: '#0891b2' }} />
+              <Line type="monotone" dataKey="value" stroke="#099bbe" strokeWidth={2} dot={{ r: 3, fill: '#099bbe' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -222,7 +222,7 @@ function Bodyweight({ points, onLog }: { points: BodyweightPoint[]; onLog: () =>
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{
-      border: '1px solid var(--border-dim)', borderLeft: `3px solid ${color ?? '#0891b2'}`,
+      border: '1px solid var(--border-dim)', borderLeft: `3px solid ${color ?? '#099bbe'}`,
       background: 'var(--bg-card)', padding: '8px 12px', minWidth: 110,
     }}>
       <Label>{label}</Label>

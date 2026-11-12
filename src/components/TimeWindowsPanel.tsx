@@ -10,7 +10,7 @@ import {
   windowsToIcs, MAX_SPAN_MIN, type TimeWindow,
 } from '@/lib/windows'
 
-const ACCENT = '#0891b2'
+const ACCENT = '#099bbe'
 
 // The share presets. A free-form percentage invites false precision about a block
 // you're guessing at anyway; four choices covers "mine", "mostly mine", "split"
@@ -162,7 +162,7 @@ export default function TimeWindowsPanel() {
                     {w.active ? <Eye size={13} /> : <EyeOff size={13} />}
                   </button>
                   <button onClick={() => removeRow(w.id)} title="Delete this window"
-                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid #ef444455', color: '#f87171', cursor: 'pointer' }} aria-label="Delete this window">
+                    style={{ display: 'flex', alignItems: 'center', padding: 6, background: 'transparent', border: '1px solid #f1595955', color: '#f87171', cursor: 'pointer' }} aria-label="Delete this window">
                     <Trash2 size={13} />
                   </button>
                 </div>

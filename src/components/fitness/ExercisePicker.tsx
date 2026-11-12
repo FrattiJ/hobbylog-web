@@ -106,7 +106,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
           {TRACKING_HINTS[custom.tracking]}
         </p>
 
-        {error && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 12 }}>{error}</p>}
+        {error && <p style={{ color: '#f15959', fontSize: 13, marginTop: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
           <Button variant="quiet" onClick={() => setCustom(null)}>Back</Button>
@@ -129,7 +129,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
         />
       </div>
 
-      {error && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>}
+      {error && <p style={{ color: '#f15959', fontSize: 13, marginTop: 10 }}>{error}</p>}
 
       <div style={{ maxHeight: '52vh', overflowY: 'auto', marginTop: 14 }}>
         {mineHits.length > 0 && (

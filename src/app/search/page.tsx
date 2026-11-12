@@ -48,7 +48,7 @@ export default function SearchPage() {
     label: string,
     active: boolean,
     onClick: () => void,
-    accent = '#955ff0',
+    accent = '#a577f2',
   ) {
     return (
       <button
@@ -103,7 +103,7 @@ export default function SearchPage() {
             paddingLeft: 40, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
             background: 'var(--bg-card)',
             border: '1px solid var(--border-dim)',
-            borderLeft: '2px solid #955ff0',
+            borderLeft: '2px solid #a577f2',
             color: 'var(--text-hi)',
             fontFamily: 'var(--font-body)',
             fontSize: 14,
@@ -118,7 +118,7 @@ export default function SearchPage() {
       <div style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-dim)',
-        borderTop: '2px solid #955ff0',
+        borderTop: '2px solid #a577f2',
         padding: '12px 16px',
         marginBottom: 20,
         display: 'flex',
@@ -142,7 +142,7 @@ export default function SearchPage() {
             Status
           </span>
           {STATUS_OPTIONS.map((s) => {
-            const accent = s === 'all' ? '#955ff0' : STATUS_COLORS[s]
+            const accent = s === 'all' ? '#a577f2' : STATUS_COLORS[s]
             const label = s === 'all' ? 'All' : STATUS_LABELS[s]
             return pill(label, statusFilter === s, () => setStatusFilter(s), accent)
           })}
@@ -193,7 +193,7 @@ export default function SearchPage() {
           {pill('Recent',     sort === 'recent', () => setSort('recent'))}
           {pill('Name',       sort === 'name',   () => setSort('name'))}
           {pill('Rating',     sort === 'rating', () => setSort('rating'),  '#d97706')}
-          {pill('Date Added', sort === 'added',  () => setSort('added'),   '#0891b2')}
+          {pill('Date Added', sort === 'added',  () => setSort('added'),   '#099bbe')}
         </div>
       </div>
 
@@ -207,7 +207,7 @@ export default function SearchPage() {
         <div style={{
           padding: '48px 32px', textAlign: 'center',
           border: '1px solid var(--border-dim)',
-          borderLeft: '3px solid #955ff0',
+          borderLeft: '3px solid #a577f2',
           background: 'var(--bg-card)',
         }}>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 6 }}>

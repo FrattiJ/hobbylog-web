@@ -14,7 +14,7 @@ import ExportPanel from '@/components/ExportPanel'
 import TimeWindowsPanel from '@/components/TimeWindowsPanel'
 import NewPasswordForm from '@/components/NewPasswordForm'
 
-const ACCENT = '#955ff0'
+const ACCENT = '#a577f2'
 
 export default function SettingsPage() {
   const { enabledIds, setEnabledIds } = useHobbies()
@@ -124,7 +124,7 @@ export default function SettingsPage() {
         <h2 style={h2}>ACCOUNT</h2>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #955ff0, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${ACCENT}66`, background: 'linear-gradient(135deg, #a577f2, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {avatar
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
@@ -167,13 +167,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Import & sync */}
-      <Link href="/import" style={{ ...card, borderLeftColor: '#0891b2', display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', cursor: 'pointer' }}>
-        <Download size={20} style={{ color: '#0891b2', flexShrink: 0 }} />
+      <Link href="/import" style={{ ...card, borderLeftColor: '#099bbe', display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', cursor: 'pointer' }}>
+        <Download size={20} style={{ color: '#099bbe', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <h2 style={{ ...h2, margin: 0 }}>IMPORT &amp; SYNC</h2>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0', lineHeight: 1.5 }}>Connect Steam, or import from MyAnimeList, Goodreads &amp; Letterboxd.</p>
         </div>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: '#0891b2' }}>→</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: '#099bbe' }}>→</span>
       </Link>
 
       {/* Hobby time windows */}
@@ -183,23 +183,23 @@ export default function SettingsPage() {
       <ExportPanel />
 
       {/* Feedback */}
-      <div style={{ ...card, borderLeftColor: '#0891b2' }}>
-        <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#0891b2' }} /> Feedback</h2>
+      <div style={{ ...card, borderLeftColor: '#099bbe' }}>
+        <h2 style={{ ...h2, display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={15} style={{ color: '#099bbe' }} /> Feedback</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>Found a bug or have an idea? Send it straight to the developer.</p>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           {(['bug', 'feature'] as const).map((k) => (
             <button key={k} onClick={() => setFbKind(k)}
               aria-pressed={fbKind === k}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, background: fbKind === k ? '#0891b222' : 'transparent', border: `1px solid ${fbKind === k ? '#0891b2' : 'var(--border-dim)'}`, color: fbKind === k ? '#0891b2' : 'var(--text-dim)', cursor: 'pointer' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, background: fbKind === k ? '#099bbe22' : 'transparent', border: `1px solid ${fbKind === k ? '#099bbe' : 'var(--border-dim)'}`, color: fbKind === k ? '#099bbe' : 'var(--text-dim)', cursor: 'pointer' }}>
               {k === 'bug' ? <><Bug size={13} /> Bug</> : <><Lightbulb size={13} /> Idea</>}
             </button>
           ))}
         </div>
         <textarea aria-label="Your feedback" value={fbText} onChange={(e) => setFbText(e.target.value)} rows={3}
           placeholder={fbKind === 'bug' ? 'What happened, and what did you expect?' : 'What would you like to see?'}
-          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #0891b266', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: '2px solid #099bbe66', padding: '10px 12px', color: 'var(--text-hi)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', marginBottom: 10 }} />
         <button onClick={sendFeedback} disabled={fbBusy || !fbText.trim()}
-          style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: fbBusy ? 'wait' : 'pointer', opacity: fbBusy || !fbText.trim() ? 0.5 : 1 }}>
+          style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#099bbe', background: '#099bbe22', border: '1px solid #099bbe', borderLeft: '3px solid #099bbe', cursor: fbBusy ? 'wait' : 'pointer', opacity: fbBusy || !fbText.trim() ? 0.5 : 1 }}>
           {fbBusy ? 'Sending…' : 'Send'}
         </button>
         {fbMsg && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: '12px 0 0' }}>{fbMsg}</p>}
@@ -223,9 +223,9 @@ export default function SettingsPage() {
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(inbox ?? []).map((f) => (
-              <div key={f.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${f.kind === 'bug' ? '#ef4444' : '#0891b2'}`, padding: '10px 12px' }}>
+              <div key={f.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${f.kind === 'bug' ? '#f15959' : '#099bbe'}`, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: f.kind === 'bug' ? '#ef4444' : '#0891b2' }}>{f.kind === 'bug' ? 'Bug' : 'Idea'}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: f.kind === 'bug' ? '#f15959' : '#099bbe' }}>{f.kind === 'bug' ? 'Bug' : 'Idea'}</span>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-hi)' }}>{f.username || f.email || 'unknown'}</span>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(f.created_at).toLocaleString()}</span>
                 </div>
@@ -289,18 +289,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Delete account */}
-      <div style={{ ...card, borderLeftColor: '#ef4444' }}>
+      <div style={{ ...card, borderLeftColor: '#f15959' }}>
         <h2 style={h2}>DELETE ACCOUNT</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>
           Clear just your entries, or permanently delete your entire account — profile, logs, friends, everything. Neither can be undone.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={clearData}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'transparent', border: '1px solid #ef444455', cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'transparent', border: '1px solid #f1595955', cursor: 'pointer' }}>
             <Trash2 size={13} /> {clearConfirm ? 'Click Again to Confirm' : 'Clear All Data'}
           </button>
           <button onClick={deleteAccount} disabled={deleteBusy}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#fff', background: '#ef4444', border: '1px solid #ef4444', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#fff', background: '#c62828', border: '1px solid #c62828', cursor: deleteBusy ? 'wait' : 'pointer', opacity: deleteBusy ? 0.6 : 1 }}>
             <Trash2 size={13} /> {deleteBusy ? 'Deleting…' : deleteConfirm ? 'Click Again to Confirm' : 'Delete Account'}
           </button>
         </div>
