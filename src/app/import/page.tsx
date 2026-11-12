@@ -153,7 +153,7 @@ export default function ImportPage() {
   const steamBtn = (filled: boolean): React.CSSProperties => ({ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: STEAM_CYAN, background: filled ? `${STEAM_CYAN}22` : 'transparent', border: `1px solid ${filled ? STEAM_CYAN : STEAM_CYAN + '88'}`, borderLeft: filled ? `3px solid ${STEAM_CYAN}` : `1px solid ${STEAM_CYAN}88`, cursor: steamBusy ? 'wait' : 'pointer', opacity: steamBusy ? 0.6 : 1 })
 
   return (
-    <div style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 860, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>IMPORT</h1>
       </div>

@@ -81,7 +81,7 @@ export default function NotesPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>

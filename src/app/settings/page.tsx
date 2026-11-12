@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const h2: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: '0 0 12px' }
 
   return (
-    <div style={{ padding: 32, maxWidth: 720, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 720, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>SETTINGS</h1>
       </div>

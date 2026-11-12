@@ -130,7 +130,7 @@ export default function FriendsPage() {
 
   if (selected) {
     return (
-      <div style={{ padding: 32, maxWidth: 960, margin: '0 auto' }}>
+      <div className="page" style={{ maxWidth: 960, margin: '0 auto' }}>
         <FriendLibrary friendId={selected.id} username={selected.username} avatarUrl={selected.avatar_url} initialEntryId={selected.entryId} onBack={() => setSelected(null)} />
       </div>
     )
@@ -144,7 +144,7 @@ export default function FriendsPage() {
   const subLabel: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }
 
   return (
-    <div style={{ padding: 32, maxWidth: 760, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 760, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>FRIENDS</h1>
       </div>

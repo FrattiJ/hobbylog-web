@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import EntryCard from '@/components/EntryCard'
+import CoverTile from '@/components/CoverTile'
 import StatCard from '@/components/StatCard'
 import MechCard from '@/components/MechCard'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
@@ -134,7 +135,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px' }}>
+      <div className="page">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="mech-skeleton"
@@ -147,7 +148,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: 1200, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
           DASHBOARD
@@ -158,7 +159,7 @@ export default function DashboardPage() {
 
       {/* ── Clickable stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <StatFilterCard label="Total Records"  value={entries.length}    accent="#955ff0" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
+        <StatFilterCard label="All Entries"    value={entries.length}    accent="#955ff0" index={0} active={activeFilter === 'all'}         onClick={() => handleStatClick('all')} />
         <StatFilterCard label="In Progress"    value={inProgress.length} accent="#0891b2" index={1} active={activeFilter === 'in_progress'} onClick={() => handleStatClick('in_progress')} />
         <StatFilterCard label="Completed"      value={completed.length}  accent="#22c55e" index={2} active={activeFilter === 'completed'}   onClick={() => handleStatClick('completed')} />
         <StatFilterCard label="Backlog"        value={backlog.length}    accent="var(--text-dim)" index={3} active={activeFilter === 'backlog'}     onClick={() => handleStatClick('backlog')} />
@@ -167,8 +168,8 @@ export default function DashboardPage() {
       {/* ── Hours tracking ── */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-          <StatCard label="Backlog Hours" value={Math.round(backlogHours * 10) / 10} accent="var(--text-dim)" index={4} />
-          <StatCard label="In Progress + Completed" value={Math.round(activeHours * 10) / 10} accent="#0891b2" index={5} />
+          <StatCard label="Hours Left in Backlog" sub="Estimated from the length of each item" value={Math.round(backlogHours * 10) / 10} accent="var(--text-dim)" index={4} />
+          <StatCard label="Hours Spent" sub="On everything in progress or completed" value={Math.round(activeHours * 10) / 10} accent="#0891b2" index={5} />
         </div>
       </div>
 
@@ -186,8 +187,9 @@ export default function DashboardPage() {
               padding: '12px 16px', borderBottom: '1px solid var(--border-dim)', flexWrap: 'wrap', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>
-                  {activeFilter === 'all' ? 'All entries' : STATUS_LABELS[activeFilter]} — {expandedEntries.length} entries
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--text-hi)', margin: 0 }}>
+                  {activeFilter === 'all' ? 'All entries' : STATUS_LABELS[activeFilter]}
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 8 }}>{expandedEntries.length}</span>
                 </p>
               </div>
 
@@ -196,6 +198,7 @@ export default function DashboardPage() {
                 <select
                   value={hobbyFilter}
                   onChange={(e) => setHobbyFilter(e.target.value)}
+                  aria-label="Filter by hobby"
                   style={{
                     background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
                     color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 14,
@@ -203,7 +206,7 @@ export default function DashboardPage() {
                     outline: 'none',
                   }}
                 >
-                  <option value="all">All Categories</option>
+                  <option value="all">All hobbies</option>
                   {enabledHobbies.filter((h) => !h.customSection).map((h) => (
                     <option key={h.id} value={h.id}>{h.pluralLabel}</option>
                   ))}
@@ -221,7 +224,7 @@ export default function DashboardPage() {
             {/* Entry grid */}
             <div style={{ padding: 12 }}>
               {expandedEntries.length === 0 ? (
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.08em', textAlign: 'center', padding: '24px 0' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>
                   No entries match this filter
                 </p>
               ) : (
@@ -236,9 +239,7 @@ export default function DashboardPage() {
 
       {/* ── Category index ── */}
       <div style={{ marginBottom: 32 }}>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12 }}>
-          Category Index
-        </p>
+<h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text-hi)', letterSpacing: 0, margin: '0 0 12px' }}>By hobby</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
           {(() => {
             const counts = new Map(enabledHobbies.map((h) => [h.id, countFor(h.id)]))
@@ -251,8 +252,8 @@ export default function DashboardPage() {
             return (
               <MechCard key={h.id} accent={h.accent} index={i + 4} hoverable onClick={() => router.push(HOBBY_PATHS[h.id])}>
                 <div style={{ padding: '14px 10px', textAlign: 'center' }}>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 24, color: h.accent, lineHeight: 1, marginBottom: 4 }}>{count}</p>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em', lineHeight: 1.3 }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 26, color: h.accent, lineHeight: 1, margin: '0 0 6px' }}>{count}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.3, margin: 0 }}>
                     {h.pluralLabel}
                   </p>
                 </div>
@@ -265,28 +266,27 @@ export default function DashboardPage() {
       {/* ── In Progress ── */}
       {inProgress.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={{ width: 8, height: 8, background: '#0891b2', borderRadius: '50%', animation: 'status-blink 2s ease-in-out infinite', flexShrink: 0 }} />
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>In progress now</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-            {inProgress.slice(0, 6).map((e, i) => <EntryCard key={e.id} entry={e} index={i + 11} />)}
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text-hi)', letterSpacing: 0, margin: '0 0 12px' }}>Pick up where you left off</h2>
+          <div className="cover-grid">
+            {inProgress.slice(0, 6).map((e) => <CoverTile key={e.id} entry={e} showStatus={false} showHobby />)}
           </div>
         </div>
       )}
 
       {/* ── Recent ── */}
       <div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12 }}>Recent Activity</p>
+        <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text-hi)', letterSpacing: 0, margin: '0 0 12px' }}>Recent activity</h2>
         {entries.length === 0 ? (
-          <div style={{ padding: '48px 32px', textAlign: 'center', border: '1px solid var(--border-dim)', borderLeft: '3px solid #955ff0', background: 'var(--bg-card)' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 8 }}>No entries found</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 16 }}>Nothing logged yet</p>
+          <div style={{ padding: '48px 24px', textAlign: 'center', border: '1px dashed var(--border-dim)', background: 'var(--bg-card)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 600, color: 'var(--text-hi)', margin: '0 0 6px' }}>Nothing logged yet</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', margin: '0 0 20px' }}>
+              Use Add Entry in the sidebar to start your library with a game, a film, a book or anything else you track.
+            </p>
             <button
               onClick={() => router.push('/games')}
-              style={{ padding: '8px 20px', background: '#955ff022', border: '1px solid #955ff0', color: '#955ff0', fontFamily: 'var(--font-body)', fontSize: 14, letterSpacing: '0.05em', cursor: 'pointer' }}
+              style={{ height: 40, padding: '0 18px', background: '#955ff022', border: '1px solid #955ff0', color: '#955ff0', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
-              Add your first one to get started.
+              Open Video Games
             </button>
           </div>
         ) : (

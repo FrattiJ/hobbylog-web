@@ -262,7 +262,7 @@ export default function SuggestionsPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 32, maxWidth: 1100, margin: '0 auto' }}>
+      <div className="page" style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="mech-skeleton" style={{ height: 96, clipPath: CLIP, animationDelay: `${i * 80}ms` }} />
@@ -275,7 +275,7 @@ export default function SuggestionsPage() {
   const activeMode = MODES.find((m) => m.id === mode)!
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
           WHAT NEXT

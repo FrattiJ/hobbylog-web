@@ -294,7 +294,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const metaRows = META_KEYS.map((k) => [k, entry.metadata?.[k]] as const).filter(([, v]) => v != null && v !== '')
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto' }}>
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
         <ArrowLeft size={14} /> Back To {(hobby?.pluralLabel ?? '')}
       </button>
