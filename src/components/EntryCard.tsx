@@ -184,5 +184,5 @@ export default function EntryCard({ entry, index = 0, showType = true, selectabl
   // A real link when it opens the entry, so it can go in a new tab; in select
   // mode the card itself is the toggle.
   if (selectable) return card
-  return <Link href={`/entry?id=${entry.id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>{card}</Link>
+  return <Link href={`/entry?id=${entry.id}`} className="card-link" style={{ display: 'block', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>{card}</Link>
 }

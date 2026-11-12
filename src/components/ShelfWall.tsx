@@ -3,6 +3,8 @@
 import type { Entry } from '@/types/database'
 import { yearOf } from '@/lib/format'
 import CoverTile from './CoverTile'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from './ListFooter'
 
 // Finished entries as a wall of covers, newest first and grouped by the year
 // they were finished. A finish with no date recorded (older imports, mostly)
@@ -10,7 +12,12 @@ import CoverTile from './CoverTile'
 export default function ShelfWall({ entries, showHobby = false }: { entries: Entry[]; showHobby?: boolean }) {
   const byYear = new Map<number | null, Entry[]>()
   const sorted = [...entries].sort((a, b) => (b.date_completed ?? '').localeCompare(a.date_completed ?? ''))
-  for (const e of sorted) {
+  // Newest first, so the batches arrive in the order the years are read. The
+  // year counts come from the full list: "38 finished" should not grow as you scroll.
+  const paged = useProgressive(sorted.length, entries.map((e) => e.id).join(','))
+  const totals = new Map<number | null, number>()
+  for (const e of sorted) { const y = yearOf(e.date_completed); totals.set(y, (totals.get(y) ?? 0) + 1) }
+  for (const e of sorted.slice(0, paged.shown)) {
     const y = yearOf(e.date_completed)
     const list = byYear.get(y)
     if (list) list.push(e); else byYear.set(y, [e])
@@ -28,7 +35,7 @@ export default function ShelfWall({ entries, showHobby = false }: { entries: Ent
                 {year ?? 'DATE NOT RECORDED'}
               </h2>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)' }}>
-                {list.length} finished
+                {totals.get(year)} finished
               </span>
             </div>
             <div className="cover-grid">
@@ -39,6 +46,7 @@ export default function ShelfWall({ entries, showHobby = false }: { entries: Ent
           </section>
         )
       })}
+      <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={sorted.length} done={paged.done} more={paged.more} noun="finished" />
     </div>
   )
 }

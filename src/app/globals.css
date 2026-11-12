@@ -213,6 +213,12 @@ p { text-wrap: pretty; }
 @media (max-width: 520px) {
   .cover-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
 }
+/* Off-screen tiles and cards keep their place in the document (so find-in-page
+   and the scrollbar stay honest) but skip layout and paint until they are near
+   the viewport. The intrinsic size is a first guess; `auto` remembers the real
+   one once a tile has been drawn. */
+.tile { content-visibility: auto; contain-intrinsic-size: auto 300px; }
+.card-link { content-visibility: auto; contain-intrinsic-size: auto 124px; }
 .tile { transition: transform 0.15s ease; }
 .tile .tile-frame { transition: background-color 0.15s ease, filter 0.15s ease; }
 @media (hover: hover) {

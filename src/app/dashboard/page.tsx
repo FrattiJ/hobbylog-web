@@ -14,6 +14,8 @@ import { useHobbies } from '@/components/HobbyContext'
 import GettingStarted from '@/components/GettingStarted'
 import { calcHours } from '@/lib/hours'
 import { ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from '@/components/ListFooter'
 
 type StatFilter = 'all' | 'in_progress' | 'completed' | 'backlog' | null
 type SortField  = 'title' | 'rating' | 'updated' | 'hobby' | 'priority'
@@ -128,6 +130,8 @@ export default function DashboardPage() {
     })
   }, [activeFilter, entries, sortField, sortDir, hobbyFilter])
 
+  const paged = useProgressive(expandedEntries.length, [activeFilter, hobbyFilter, sortField, sortDir].join('|'))
+
   function toggleSort(field: SortField) {
     if (sortField === field) setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
     else { setSortField(field); setSortDir('asc') }
@@ -229,8 +233,11 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
-                  {expandedEntries.map((e, i) => <EntryCard key={e.id} entry={e} index={i} />)}
+                  {expandedEntries.slice(0, paged.shown).map((e, i) => <EntryCard key={e.id} entry={e} index={i} />)}
                 </div>
+              )}
+              {expandedEntries.length > 0 && (
+                <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={expandedEntries.length} done={paged.done} more={paged.more} />
               )}
             </div>
           </div>

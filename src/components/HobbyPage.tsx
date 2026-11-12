@@ -14,6 +14,8 @@ import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
 import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from '@/components/ListFooter'
 
 
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
@@ -186,6 +188,10 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number)
     return sortDir === 'asc' ? cmp : -cmp
   })
+
+  // Mount the visible list in batches; any change to what is listed restarts it.
+  const paged = useProgressive(display.length, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir, search, view].join('|'))
+  const visible = display.slice(0, paged.shown)
 
   function handleSortChange(by: SortOption) {
     setSortBy(by)
@@ -466,6 +472,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                     borderBottom: edge,
                     borderLeft: `3px solid ${i === 0 ? '#d97706' : hobby.accent}`,
                     opacity: dragIndex === i ? 0.4 : 1,
+                    contentVisibility: 'auto', containIntrinsicSize: 'auto 66px',
                     cursor: 'grab',
                     transition: 'background 0.12s ease, opacity 0.12s ease',
                   } as React.CSSProperties
@@ -570,21 +577,24 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           })()}
           {view === 'list' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 12 }}>
-              {display.map((entry, i) => (
+              {visible.map((entry, i) => (
                 <EntryCard key={entry.id} entry={entry} index={i} showType={hobbyId === 'books'}
                   selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
               ))}
             </div>
           ) : statusFilter === 'completed' && sortBy === 'recent' && !selectMode && !isRecipe ? (
-            // Finished things get the shelf: by year, newest first.
+            // Finished things get the shelf: by year, newest first. It pages itself.
             <ShelfWall entries={display} />
           ) : (
             <div className="cover-grid">
-              {display.map((entry) => (
+              {visible.map((entry) => (
                 <CoverTile key={entry.id} entry={entry} showStatus={statusFilter === 'all'}
                   selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
               ))}
             </div>
+          )}
+          {!(view === 'grid' && statusFilter === 'completed' && sortBy === 'recent' && !selectMode && !isRecipe) && (
+            <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={display.length} done={paged.done} more={paged.more} />
           )}
         </>
       )}

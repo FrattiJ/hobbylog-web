@@ -9,6 +9,8 @@ import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
 import { HOBBIES } from '@/lib/hobbies'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from '@/components/ListFooter'
 
 const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'wishlist', 'backlog', 'in_progress', 'completed', 'dropped']
 
@@ -84,6 +86,8 @@ export default function SearchPage() {
       </button>
     )
   }
+
+  const paged = useProgressive(filtered.length, [query, hobbyFilter, statusFilter, minRating, sort].join('|'))
 
   return (
     <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -230,8 +234,11 @@ export default function SearchPage() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-          {filtered.map((e, i) => <EntryCard key={e.id} entry={e} index={i} />)}
+          {filtered.slice(0, paged.shown).map((e, i) => <EntryCard key={e.id} entry={e} index={i} />)}
         </div>
+      )}
+      {filtered.length > 0 && (
+        <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={filtered.length} done={paged.done} more={paged.more} />
       )}
     </div>
   )

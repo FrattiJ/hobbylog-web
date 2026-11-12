@@ -7,6 +7,8 @@ import { HOBBY_MAP, HOBBIES, STATUS_LABELS, STATUS_COLORS, statusLabelFor } from
 import type { Entry, HobbyCategory } from '@/types/database'
 import FriendEntryDetail from './FriendEntryDetail'
 import { useToast } from './Toast'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from './ListFooter'
 
 const GREEN = '#22c55e'
 
@@ -77,6 +79,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
     if (sort === 'rating') return (b.rating ?? -1) - (a.rating ?? -1)
     return a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0
   })
+  const paged = useProgressive(display.length, [hobbyF, statusF, sort, String(commonOnly)].join('|'))
 
   const chip = (active: boolean, color: string): React.CSSProperties => ({
     padding: '5px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em',
@@ -150,7 +153,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
       {!loading && display.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>Nothing matches those filters.</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-        {display.map((e) => {
+        {display.slice(0, paged.shown).map((e) => {
           const hobby = HOBBY_MAP[e.hobby_category]
           const mineRating = myRatingFor(e)
           const have = iHave(e)
@@ -188,6 +191,7 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
           )
         })}
       </div>
+      <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={display.length} done={paged.done} more={paged.more} />
     </div>
   )
 }
