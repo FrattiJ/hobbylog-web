@@ -16,24 +16,24 @@ const gridBg: React.CSSProperties = {
 export const authInput: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
   borderLeft: `2px solid ${AUTH_ACCENT}66`, padding: '11px 13px', color: 'var(--text-hi)',
-  fontSize: 15, fontFamily: 'var(--font-body)', letterSpacing: '0.02em', outline: 'none',
+  fontSize: 16, fontFamily: 'var(--font-body)',
 }
 
 export const authLabel: React.CSSProperties = {
-  fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
-  letterSpacing: '0.08em', margin: '0 0 6px',
+  fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--text-mid)',
+  margin: '0 0 6px',
 }
 
 export const authLink: React.CSSProperties = {
-  fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.02em',
+  fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)',
   background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline',
 }
 
 export function authPrimaryButton(busy: boolean, disabled: boolean): React.CSSProperties {
   return {
-    flex: 1, padding: '12px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
-    letterSpacing: '0.05em', color: AUTH_ACCENT, background: `${AUTH_ACCENT}22`,
-    border: `1px solid ${AUTH_ACCENT}`, borderLeft: `3px solid ${AUTH_ACCENT}`,
+    flex: 1, padding: '12px', fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700,
+    color: '#fff', background: '#6d3fd6',
+    border: '1px solid #955ff0',
     cursor: busy ? 'wait' : 'pointer', opacity: disabled ? 0.5 : 1,
   }
 }
@@ -42,34 +42,39 @@ export function AuthMessage({ message }: { message: { kind: 'error' | 'info'; te
   if (!message) return null
   return (
     <p role={message.kind === 'error' ? 'alert' : 'status'}
-      style={{ fontFamily: 'var(--font-body)', fontSize: 12, lineHeight: 1.6, margin: '0 0 16px', color: message.kind === 'error' ? '#f87171' : '#22c55e' }}>
-      {message.kind === 'error' ? '✗ ' : '✓ '}{message.text}
+      style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.5, margin: '0 0 16px', padding: '10px 12px', color: message.kind === 'error' ? '#fca5a5' : '#86efac', background: message.kind === 'error' ? '#ef444418' : '#22c55e14', borderLeft: `3px solid ${message.kind === 'error' ? '#ef4444' : '#22c55e'}` }}>
+      {message.text}
     </p>
   )
 }
 
+// The chamfered panel the auth forms sit in, on its own so the landing page can
+// place a form without the full-screen shell around it.
+export function AuthCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ padding: '1px', clipPath: CLIP, background: `${AUTH_ACCENT}55` }}>
+      <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 24, position: 'relative' }}>
+        <div aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: AUTH_ACCENT, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Full-screen frame for an auth step that stands alone (choosing a new password
+// after a reset link).
 export default function AuthShell({ tagline, children }: { tagline: string; children: React.ReactNode }) {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
-      <div style={gridBg} />
+      <div aria-hidden="true" style={gridBg} />
       <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}>
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: AUTH_ACCENT, letterSpacing: '0.08em', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'status-blink 1.5s ease-in-out infinite' }} />
-            System / Access
-          </p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 34, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>HOBBYLOG</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.7 }}>
+          <h1 translate="no" style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 900, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>HOBBYLOG</h1>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-mid)', margin: '8px 0 0', lineHeight: 1.5 }}>
             {tagline}
           </p>
         </div>
-
-        <div style={{ padding: '1px', clipPath: CLIP, background: `${AUTH_ACCENT}55` }}>
-          <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 24, position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: AUTH_ACCENT, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-            {children}
-          </div>
-        </div>
+        <AuthCard>{children}</AuthCard>
       </div>
     </main>
   )

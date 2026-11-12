@@ -7,7 +7,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase, arrivedViaRecoveryLink } from '@/lib/supabaseClient'
 import { useIsMobile } from '@/lib/useIsMobile'
 import Sidebar from './Sidebar'
-import LoginScreen from './LoginScreen'
+import Landing from './Landing'
 import ResetPasswordScreen from './ResetPasswordScreen'
 import OnboardingSelector from './OnboardingSelector'
 import WhatsNew from './WhatsNew'
@@ -87,7 +87,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   )
 
   if (!ready) return loading
-  if (!session) return <LoginScreen />
+  if (!session) return <Landing />
   if (recovering) return <ResetPasswordScreen onDone={() => setRecovering(false)} />
   if (!profileReady) return loading
   if (profile && !profile.onboarded) return <OnboardingSelector onComplete={handleOnboardingComplete} />

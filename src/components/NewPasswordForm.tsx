@@ -20,7 +20,8 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
   const incomplete = !password || !confirm
 
   async function save() {
-    if (busy || incomplete) return
+    if (busy) return
+    if (incomplete) { setError('Enter the new password twice.'); return }
     if (password.length < MIN_LENGTH) { setError(`Use at least ${MIN_LENGTH} characters.`); return }
     if (password !== confirm) { setError('The two passwords do not match.'); return }
     setBusy(true); setError(null)
@@ -31,22 +32,20 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
     onDone()
   }
 
-  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter') save() }
-
   return (
-    <>
-      <p style={authLabel}>New Password</p>
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter}
-        placeholder="••••••••" autoComplete="new-password" aria-label="New password" style={{ ...authInput, marginBottom: 16 }} />
-      <p style={authLabel}>Confirm Password</p>
-      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} onKeyDown={onEnter}
-        placeholder="••••••••" autoComplete="new-password" aria-label="Confirm password" style={{ ...authInput, marginBottom: 20 }} />
+    <form onSubmit={(e) => { e.preventDefault(); save() }}>
+      <label htmlFor="new-password" style={{ ...authLabel, display: 'block' }}>New password</label>
+      <input id="new-password" name="new-password" type="password" required minLength={MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password" style={{ ...authInput, marginBottom: 16 }} />
+      <label htmlFor="confirm-password" style={{ ...authLabel, display: 'block' }}>Confirm password</label>
+      <input id="confirm-password" name="confirm-password" type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)}
+        autoComplete="new-password" style={{ ...authInput, marginBottom: 20 }} />
       <AuthMessage message={error ? { kind: 'error', text: error } : null} />
       <div style={{ display: 'flex' }}>
-        <button onClick={save} disabled={busy || incomplete} style={authPrimaryButton(busy, busy || incomplete)}>
-          {busy ? '…' : submitLabel}
+        <button type="submit" aria-busy={busy} style={authPrimaryButton(busy, false)}>
+          {busy ? 'Saving…' : submitLabel}
         </button>
       </div>
-    </>
+    </form>
   )
 }

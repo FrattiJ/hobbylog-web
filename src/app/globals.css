@@ -94,7 +94,7 @@ button:not(:disabled):active { transform: translateY(1px); }
 
 /* First stop for keyboard users: jumps past the sidebar. Hidden until focused. */
 .skip-link {
-  position: fixed; top: 8px; left: 8px; z-index: 200;
+  display: block; position: fixed; top: 8px; left: 8px; z-index: 200;
   padding: 10px 14px; background: var(--bg-card); color: var(--text-hi);
   border: 1px solid var(--focus); font-weight: 600; text-decoration: none;
   transform: translateY(-200%);
@@ -253,3 +253,143 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
 .recharts-text { fill: var(--text-dim); font-size: 12px; font-family: var(--font-body); }
 .recharts-legend-item-text { color: var(--text-mid) !important; font-family: var(--font-body) !important; font-size: 12px !important; }
 .recharts-tooltip-wrapper { font-family: var(--font-body) !important; }
+
+/* ── Landing (signed-out) ───────────────────────────────────────────────────── */
+.landing { position: relative; min-height: 100vh; background: var(--bg-base); color: var(--text-hi); }
+.landing > :not(.skip-link) { position: relative; z-index: 1; }
+.landing-grid {
+  position: fixed !important; inset: 0; z-index: 0 !important; pointer-events: none; opacity: 0.2;
+  background-image:
+    linear-gradient(var(--border-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-dim) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+.landing-nav, .landing main > *, .landing-footer {
+  width: min(1120px, 100% - 48px); margin-inline: auto;
+}
+@media (max-width: 520px) {
+  .landing-nav, .landing main > *, .landing-footer { width: calc(100% - 32px); }
+}
+.landing-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 0; }
+.landing h1, .landing h2 { margin: 0; color: var(--text-hi); }
+.landing p { margin: 0; color: var(--text-mid); }
+
+.landing-link {
+  white-space: nowrap; min-height: 40px; padding: 0 12px; background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 15px; font-weight: 600; color: var(--text-mid);
+}
+.landing-link:hover { color: var(--text-hi); filter: none; }
+.landing-cta {
+  white-space: nowrap; min-height: 48px; padding: 0 22px; cursor: pointer;
+  font-family: var(--font-body); font-size: 16px; font-weight: 700; color: #fff;
+  background: #6d3fd6; border: 1px solid #955ff0;
+  clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+  transition: var(--t-fast);
+}
+.landing-cta-small { min-height: 40px; padding: 0 16px; font-size: 15px; }
+
+.landing-hero {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); gap: 56px; align-items: center;
+  padding: clamp(28px, 6vh, 72px) 0 clamp(32px, 6vh, 64px);
+}
+.landing-pitch h1 {
+  font-size: clamp(30px, 4.3vw, 50px); font-weight: 900; line-height: 1.12; letter-spacing: 0.01em;
+}
+.landing-pitch p { margin-top: 20px; max-width: 54ch; font-size: 18px; line-height: 1.55; }
+.landing-hero-actions { margin-top: 28px; }
+@media (max-width: 900px) {
+  .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 12px; }
+  .landing-pitch p { font-size: 16px; margin-top: 14px; }
+  /* The form is right below on a phone, so the button would only point at it. */
+  .landing-hero-actions { display: none; }
+}
+
+.landing-strip {
+  display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 14px;
+  padding-bottom: clamp(48px, 9vh, 96px);
+}
+@media (max-width: 900px) {
+  .landing-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .landing-strip > :nth-child(n + 7) { display: none; }
+}
+@media (max-width: 520px) {
+  .landing-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .landing-strip > :nth-child(n + 4) { display: none; }
+  /* The form sits right under the pitch on a phone; one way in is enough. */
+  .landing-nav .landing-link { display: none; }
+}
+
+.landing-row {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center;
+  padding: clamp(48px, 9vh, 96px) 0; border-top: 1px solid var(--border-dim);
+}
+.landing-row-flip .landing-copy { order: 2; }
+.landing-copy h2, .landing-track h2, .landing-faq h2, .landing-close h2 {
+  font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; line-height: 1.2; letter-spacing: 0.01em;
+}
+.landing-copy p { margin-top: 14px; font-size: 17px; line-height: 1.6; max-width: 46ch; }
+.landing-demo { background: var(--bg-card); border: 1px solid var(--border-dim); padding: 22px; }
+.landing-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.landing-tiles-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .landing-row { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .landing-row-flip .landing-copy { order: 0; }
+}
+@media (max-width: 520px) {
+  .landing-demo { padding: 14px; }
+  .landing-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .landing-tiles > :nth-child(n + 4) { display: none; }
+  .landing-tiles-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-tiles-4 > :nth-child(n + 4) { display: block; }
+}
+
+.landing-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.landing-rank li {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  background: var(--bg-base); border: 1px solid var(--border-dim); border-left: 3px solid #955ff0;
+}
+.landing-rank li:first-child { border-left-color: #d97706; }
+.landing-rank-num { width: 28px; text-align: center; font-family: var(--font-mono); font-size: 20px; color: var(--text-mid); flex-shrink: 0; }
+.landing-rank li:first-child .landing-rank-num { color: #f59e0b; }
+.landing-rank-title { display: block; font-family: var(--font-body); font-size: 16px; font-weight: 600; color: var(--text-hi); }
+.landing-rank-why { display: block; font-family: var(--font-body); font-size: 14px; color: var(--text-dim); }
+.landing-rank-next { margin-left: auto; flex-shrink: 0; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: #f59e0b; }
+
+.landing-track { padding: clamp(48px, 9vh, 96px) 0; border-top: 1px solid var(--border-dim); }
+.landing-track p { margin-top: 12px; font-size: 17px; line-height: 1.6; max-width: 60ch; }
+.landing-track ul { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.landing-track li {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px;
+  font-family: var(--font-body); font-size: 16px; font-weight: 500; color: var(--text-hi);
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+}
+
+.landing-faq { padding: clamp(48px, 9vh, 96px) 0; border-top: 1px solid var(--border-dim); }
+.landing-faq h2 { margin-bottom: 16px; }
+.landing-faq details { border-bottom: 1px solid var(--border-dim); max-width: 760px; }
+.landing-faq summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 0; cursor: pointer; list-style: none;
+  font-family: var(--font-body); font-size: 17px; font-weight: 600; color: var(--text-hi);
+}
+.landing-faq summary::-webkit-details-marker { display: none; }
+.landing-faq summary::after { content: '+'; font-family: var(--font-mono); font-size: 20px; color: var(--text-dim); }
+.landing-faq details[open] summary::after { content: '\2212'; }
+.landing-faq details p { padding: 0 0 18px; font-size: 16px; line-height: 1.6; max-width: 62ch; }
+
+.landing-close {
+  padding: clamp(56px, 10vh, 104px) 0; border-top: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+}
+.landing-close h2 { max-width: 22ch; }
+
+.landing-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 24px 0 40px; border-top: 1px solid var(--border-dim);
+}
+
+/* The page's one piece of load-time motion: the pitch, the form and the
+   sample tiles arrive in sequence, once. */
+@keyframes landing-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.landing-enter { animation: landing-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
