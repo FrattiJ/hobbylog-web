@@ -15,7 +15,7 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
-import { formatDay } from '@/lib/format'
+import { formatDay, todayIso, isoDayOf, dayToTimestamp } from '@/lib/format'
 import { useConfirm } from '@/components/ConfirmDialog'
 
 const ACCENT = '#a577f2'
@@ -43,6 +43,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [volumeCurrent, setVolumeCurrent] = useState(entry.metadata?.volume_current != null ? String(entry.metadata.volume_current) : '')
   const [volumeTotal, setVolumeTotal] = useState(entry.metadata?.volume_total != null ? String(entry.metadata.volume_total) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
+  // The three dates an entry carries. "Added" is the row's created_at shown as
+  // a day; the other two are plain dates. All three can be corrected by hand,
+  // which matters most for anything imported or logged after the fact.
+  const [dateAdded, setDateAdded] = useState(() => isoDayOf(entry.created_at))
+  const [dateStarted, setDateStarted] = useState(entry.date_started ?? '')
+  const [dateCompleted, setDateCompleted] = useState(entry.date_completed ?? '')
   const [recipe, setRecipe] = useState<RecipeData>(() => readRecipe(entry.metadata))
   const [recipeDraft, setRecipeDraft] = useState<RecipeData | null>(null)
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
@@ -104,7 +110,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
       newStatus = done === total ? 'completed' : done > 0 ? 'in_progress' : 'backlog'
       setStatus(newStatus); setProgressCurrent(String(pct))
     }
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayIso()
     try {
       await updateEntry(entry.id, {
         metadata: { ...(entry.metadata ?? {}), checklist: items },
@@ -176,8 +182,21 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   }
 
   async function save() {
-    setBusy(true); setNote(null)
-    const today = new Date().toISOString().split('T')[0]
+    setNote(null)
+    const today = todayIso()
+    // A date left blank is filled in when the status implies it: finishing
+    // today, or starting today. A date that was typed is always kept.
+    const started = dateStarted || (status === 'in_progress' ? today : '')
+    const completed = dateCompleted || (status === 'completed' ? today : '')
+    if (started && completed && completed < started) {
+      setNote('The finish date is before the start date. Fix one of them and save again.')
+      return
+    }
+    if ([dateAdded, started, completed].some((d) => d && d > today)) {
+      setNote('Dates cannot be in the future.')
+      return
+    }
+    setBusy(true)
     try {
       let progressValue = progressCurrent ? parseFloat(progressCurrent) : 0
       const tvFields: { current_season?: number | null; current_episode?: number | null } = {}
@@ -225,9 +244,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         progress_total: progressTotalValue,
         ...tvFields,
         ...mangaFields,
-        date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
-        date_started: status === 'in_progress' && !entry.date_started ? today : entry.date_started,
+        date_completed: completed || null,
+        date_started: started || null,
+        // Only when the day actually changed, so the original time of day survives.
+        ...(dateAdded && dateAdded !== isoDayOf(entry.created_at) ? { created_at: dayToTimestamp(dateAdded) } : {}),
       })
+      setDateStarted(started); setDateCompleted(completed)
       // Status change into/out of backlog — renumber that hobby's backlog so ranks stay 1..N.
       if (status !== entry.status) await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
       setNote('Saved.'); onChanged()
@@ -297,13 +319,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     if (!dur && prog == null && !sNotes.trim()) return
     setBusy(true)
     try {
-      await insertSession({ entry_id: entry.id, date: new Date().toISOString().split('T')[0], duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
+      await insertSession({ entry_id: entry.id, date: todayIso(), duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
       if (prog && prog > 0) {
         const cur = Math.round(((parseFloat(progressCurrent) || 0) + prog) * 10) / 10
         setProgressCurrent(String(cur))
         // Cooking a recipe that was still on the to-try list means it is made.
         const firstCook = isRecipe && status !== 'completed'
-        const today = new Date().toISOString().split('T')[0]
+        const today = todayIso()
         await updateEntry(entry.id, { progress_current: cur, ...(firstCook ? { status: 'completed', date_completed: entry.date_completed ?? today } : {}) })
         if (firstCook) { setStatus('completed'); await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory) }
       }
@@ -382,7 +404,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           <div>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.05em' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em', textTransform: 'none' }}>{entry.title}</h1>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>
+            <div style={{ display: 'flex', gap: '4px 16px', flexWrap: 'wrap', marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)' }}>
+              <span>Added {formatDay(isoDayOf(entry.created_at))}</span>
               {entry.date_started && <span>Started {formatDay(entry.date_started)}</span>}
               {entry.date_completed && <span>{isRecipe ? 'First made' : 'Completed'} {formatDay(entry.date_completed)}</span>}
               {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>Made {progressCurrent}x</span>}
@@ -464,6 +487,24 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
                 </button>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {([
+                    ['Added', dateAdded, setDateAdded, 'date-added'],
+                    ['Started', dateStarted, setDateStarted, 'date-started'],
+                    [isRecipe ? 'First made' : statusLabelFor(hobby, 'completed'), dateCompleted, setDateCompleted, 'date-completed'],
+                  ] as const).map(([text, value, set, id]) => (
+                    <div key={id} style={{ flex: '1 1 140px' }}>
+                      <label htmlFor={id} style={{ ...label, display: 'block' }}>{text}</label>
+                      <input id={id} type="date" value={value} max={todayIso()} onChange={(e) => set(e.target.value)} style={inp} />
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  Left blank, the start and finish dates fill in with today when the status changes. Set them by hand for anything you finished earlier.
+                </p>
               </div>
 
               {isTV && (

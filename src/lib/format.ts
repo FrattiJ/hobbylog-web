@@ -28,3 +28,23 @@ export function yearOf(iso: string | null | undefined): number | null {
   const d = localDay(iso)
   return d ? d.getFullYear() : null
 }
+
+/** Today as 'YYYY-MM-DD' in the viewer's own time zone (not UTC). */
+export function todayIso(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** The local calendar day of a timestamp, as 'YYYY-MM-DD'. */
+export function isoDayOf(timestamp: string | null | undefined): string {
+  if (!timestamp) return ''
+  const d = new Date(timestamp)
+  if (isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** A day as a timestamp at local noon, so it stays on that day in any nearby time zone. */
+export function dayToTimestamp(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d, 12).toISOString()
+}

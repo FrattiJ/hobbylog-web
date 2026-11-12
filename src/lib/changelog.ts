@@ -21,6 +21,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Deleting asks in a proper dialog that says what goes with it, including sessions, photos, friends and goals that used to vanish at once',
       'Big libraries open faster: entries load in batches as you scroll',
       'The light theme now has readable accent colors',
+      'Dates you can set: every entry shows when it was added, started and finished, and all three can be edited. Set them when adding something you finished earlier',
+      'Missing finish dates can be filled in for many entries at once: on a hobby page choose Completed, then Select, then Set Finish Date. You can also sort by finish date',
     ],
   },
   {

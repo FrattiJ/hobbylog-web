@@ -11,14 +11,15 @@ import { useToast } from './Toast'
 import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
 import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
-import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, bulkSetCompletedDate, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { todayIso, formatDay } from '@/lib/format'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
 import { useProgressive } from '@/lib/useProgressive'
 import ListFooter from '@/components/ListFooter'
 
 
-type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
+type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added' | 'finished'
 
 const SORT_OPTIONS: { id: SortOption; label: string; defaultDir: 'asc' | 'desc' }[] = [
   { id: 'recent',  label: 'Recent',       defaultDir: 'desc' },
@@ -27,6 +28,7 @@ const SORT_OPTIONS: { id: SortOption; label: string; defaultDir: 'asc' | 'desc' 
   { id: 'ttb',     label: 'Time to Beat', defaultDir: 'asc'  },
   { id: 'rank',    label: 'Rank',         defaultDir: 'asc'  },
   { id: 'added',   label: 'Date Added',   defaultDir: 'asc'  },
+  { id: 'finished', label: 'Date Finished', defaultDir: 'desc' },
 ]
 
 function sortValue(e: Entry, by: SortOption): string | number | null {
@@ -44,6 +46,7 @@ function sortValue(e: Entry, by: SortOption): string | number | null {
   }
   if (by === 'rank') return e.priority
   if (by === 'added') return e.created_at
+  if (by === 'finished') return e.date_completed
   return e.updated_at // recent
 }
 
@@ -155,6 +158,19 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     setBulkBusy(true)
     try { await bulkDeleteEntries(ids); toastSuccess(`Deleted ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`); exitSelect(); loadEntries() }
     catch { toastError('Could not delete — try again') }
+    setBulkBusy(false)
+  }
+  // Imports and older logs often mark things completed with no date, which
+  // leaves them undated on the Shelf. This fills the date in for a selection.
+  const [bulkDate, setBulkDate] = useState('')
+  async function bulkFinishDate(ids: string[]) {
+    if (ids.length === 0 || !bulkDate || bulkBusy) return
+    setBulkBusy(true)
+    try {
+      await bulkSetCompletedDate(ids, bulkDate)
+      toastSuccess(`Finish date set to ${formatDay(bulkDate)} for ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`)
+      exitSelect(); loadEntries()
+    } catch { toastError('Could not set the date. Try again.') }
     setBulkBusy(false)
   }
   async function bulkStatus(ids: string[], status: EntryStatus) {
@@ -570,6 +586,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                 {(['in_progress', 'completed', 'backlog', 'wishlist'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
                   <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
                 ))}
+                {statusFilter === 'completed' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <input type="date" aria-label="Finish date for the selected entries" max={todayIso()} value={bulkDate} onChange={(e) => setBulkDate(e.target.value)}
+                      style={{ height: 32, padding: '0 8px', fontFamily: 'var(--font-body)', fontSize: 13, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)' }} />
+                    <button disabled={!sel.length || !bulkDate || bulkBusy} onClick={() => bulkFinishDate(sel)} style={barBtn('#22c55e')}>Set Finish Date</button>
+                  </span>
+                )}
                 <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#f15959')}><Trash2 size={12} /> Delete</button>
                 <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
               </div>

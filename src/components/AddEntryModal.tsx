@@ -12,6 +12,7 @@ import { CLIP } from './MechCard'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import type { HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 import { useEscape } from '@/lib/useEscape'
+import { todayIso } from '@/lib/format'
 
 export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   hobbyId: HobbyCategory
@@ -38,6 +39,10 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   const [volumeCurrent, setVolumeCurrent] = useState('')
   const [volumeTotal, setVolumeTotal] = useState('')
   const [rankInput, setRankInput] = useState('')
+  // Blank means today, which is right for something you are adding as it
+  // happens; the fields are there for logging what happened earlier.
+  const [dateStarted, setDateStarted] = useState('')
+  const [dateCompleted, setDateCompleted] = useState('')
   const [checklist, setChecklist] = useState<ChecklistItem[]>([])
   const [recipe, setRecipe] = useState<RecipeData>(EMPTY_RECIPE)
   const [coverUrl, setCoverUrl] = useState('')
@@ -123,7 +128,8 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
   async function save() {
     if (!title.trim()) { setError('Title is required'); return }
     setSaving(true); setError(null)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayIso()
+    if (status === 'completed' && dateStarted && (dateCompleted || today) < dateStarted) { setError('The finish date is before the start date.'); return }
     // Percent-based projects: a checklist added here sets the initial % + status.
     let effStatus = status
     // A recipe added as already made has been made once.
@@ -159,8 +165,9 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
         book_subtype: hobbyId === 'books' ? bookSubtype : null,
         is_private: isPrivate,
         current_season: null, current_episode: null, priority: null,
-        date_started: effStatus === 'in_progress' ? today : null,
-        date_completed: effStatus === 'completed' ? today : null,
+        date_started: effStatus === 'in_progress' ? (dateStarted || today)
+          : effStatus === 'completed' ? (dateStarted || null) : null,
+        date_completed: effStatus === 'completed' ? (dateCompleted || today) : null,
       })
       // Optional backlog rank override — otherwise it stays at the bottom.
       if (status === 'backlog' && rankInput.trim()) {
@@ -253,6 +260,23 @@ export default function AddEntryModal({ hobbyId, onClose, onAdded, onBack }: {
               ))}
             </div>
           </div>
+
+          {(status === 'in_progress' || status === 'completed') && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="add-date-started" style={{ ...label, display: 'block' }}>{status === 'completed' ? 'Started (optional)' : 'Started'}</label>
+                <input id="add-date-started" type="date" max={todayIso()} value={dateStarted || (status === 'in_progress' ? todayIso() : '')}
+                  onChange={(e) => setDateStarted(e.target.value)} style={inp} />
+              </div>
+              {status === 'completed' && (
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="add-date-completed" style={{ ...label, display: 'block' }}>{isRecipe ? 'First made' : statusLabelFor(hobby, 'completed')}</label>
+                  <input id="add-date-completed" type="date" max={todayIso()} value={dateCompleted || todayIso()}
+                    onChange={(e) => setDateCompleted(e.target.value)} style={inp} />
+                </div>
+              )}
+            </div>
+          )}
 
           {status === 'backlog' && (
             <div style={{ marginBottom: 14 }}>

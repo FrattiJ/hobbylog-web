@@ -118,6 +118,16 @@ export async function bulkSetStatus(ids: string[], status: EntryStatus): Promise
   notifyEntriesChanged()
 }
 
+// Record when a batch of entries was finished. Filling in a date is record
+// keeping, not activity, so updated_at is left alone: it feeds Recent Activity
+// and the suggestion engine's idea of what you last touched.
+export async function bulkSetCompletedDate(ids: string[], date: string): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await supabase.from('web_entries').update({ date_completed: date }).in('id', ids)
+  if (error) throw error
+  notifyEntriesChanged()
+}
+
 export async function setEntryPriorities(orderedIds: string[]): Promise<void> {
   await Promise.all(orderedIds.map((id, i) => supabase.from('web_entries').update({ priority: i + 1 }).eq('id', id)))
   notifyEntriesChanged()

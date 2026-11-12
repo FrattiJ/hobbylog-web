@@ -7,6 +7,7 @@ import { HOBBY_MAP } from '@/lib/hobbies'
 import { CLIP } from './MechCard'
 import type { Entry } from '@/types/database'
 import { useEscape } from '@/lib/useEscape'
+import { todayIso } from '@/lib/format'
 
 export default function QuickLogModal({ onClose, onLogged }: { onClose: () => void; onLogged?: () => void }) {
   useEscape(onClose)
@@ -32,7 +33,7 @@ export default function QuickLogModal({ onClose, onLogged }: { onClose: () => vo
     const prog = progress ? parseFloat(progress) : null
     if (!dur && prog == null) return
     setBusy(true)
-    const date = new Date().toISOString().split('T')[0]
+    const date = todayIso()
     try {
       await insertSession({ entry_id: selected.id, date, duration_minutes: dur || null, progress_logged: prog, notes: notes.trim() || null })
       const update: Record<string, unknown> = {}

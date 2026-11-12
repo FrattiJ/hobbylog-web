@@ -25,6 +25,7 @@ import { useToast } from '@/components/Toast'
 import { CLIP } from '@/components/MechCard'
 import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover, Suggestion } from './ui'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
+import { todayIso } from '@/lib/format'
 
 type Mode = 'next' | 'time' | 'triage' | 'discover'
 
@@ -147,7 +148,7 @@ export default function SuggestionsPage() {
     setBusy(e.id)
     try {
       const patch: Partial<Entry> = { status }
-      const today = new Date().toISOString().slice(0, 10)
+      const today = todayIso()
       if (status === 'in_progress' && !e.date_started) patch.date_started = today
       if (status === 'completed') patch.date_completed = today
       await updateEntry(e.id, patch)

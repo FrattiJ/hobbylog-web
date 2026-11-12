@@ -38,6 +38,12 @@ export default function ShelfWall({ entries, showHobby = false }: { entries: Ent
                 {totals.get(year)} finished
               </span>
             </div>
+            {!year && (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '-6px 0 16px', lineHeight: 1.5, maxWidth: '70ch' }}>
+                These are marked finished with no date. Open one to add its date, or on a hobby page choose Completed, then Select,
+                pick several and use Set Finish Date.
+              </p>
+            )}
             <div className="cover-grid">
               {list.map((e) => (
                 <CoverTile key={e.id} entry={e} context="shelf" showStatus={false} showHobby={showHobby} />
