@@ -13,6 +13,7 @@ import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_COLORS, statusesFor, statusLabelFor } 
 import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
 import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
@@ -70,12 +71,22 @@ function loadView(): ViewMode {
 export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const hobby = HOBBY_MAP[hobbyId]
   const [entries, setEntries] = useState<Entry[]>([])
+  // A URL that names any filter is taken as the whole story: a shared link to
+  // ?status=completed should not also pick up the sort order this browser
+  // happened to use last. Session memory only fills in for a bare URL.
+  const [saved] = useState<SavedFilters>(() =>
+    ['status', 'type', 'meal', 'sort', 'dir', 'q'].some((k) => readParam(k) !== null) ? {} : loadSavedFilters(hobbyId))
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() => loadSavedFilters(hobbyId).status ?? 'all')
-  const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() => loadSavedFilters(hobbyId).subtype ?? 'all')
-  const [mealTag, setMealTag] = useState<string>(() => loadSavedFilters(hobbyId).mealTag ?? 'all')
-  const [search, setSearch] = useState('')
+  // Each filter starts from the URL if it names one, otherwise from `saved`,
+  // otherwise from the default.
+  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() =>
+    readParamOneOf('status', statusesFor(hobby)) ?? saved.status ?? 'all')
+  const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() =>
+    readParamOneOf('type', BOOK_SUBTYPES.map((s) => s.id)) ?? saved.subtype ?? 'all')
+  const [mealTag, setMealTag] = useState<string>(() =>
+    readParamOneOf('meal', MEAL_TAGS.map((t) => t.id)) ?? saved.mealTag ?? 'all')
+  const [search, setSearch] = useState(() => readParam('q') ?? '')
   const [view, setViewState] = useState<ViewMode>(loadView)
   const setView = (v: ViewMode) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ } }
   const [rankMode, setRankMode] = useState(false)
@@ -83,9 +94,10 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const statusOptions: (EntryStatus | 'all')[] = ['all', ...statusesFor(hobby)]
   // Time-to-Beat only makes sense for games, and a recipe has no release date.
   const sortOptions = SORT_OPTIONS.filter((o) => (o.id !== 'ttb' || hobbyId === 'games') && !(isRecipe && o.id === 'release'))
-  const savedSort = loadSavedFilters(hobbyId).sortBy
+  const savedSort = readParamOneOf('sort', SORT_OPTIONS.map((o) => o.id)) ?? saved.sortBy
   const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && hobbyId !== 'games' ? 'recent' : savedSort) ?? 'recent')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => loadSavedFilters(hobbyId).sortDir ?? 'desc')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() =>
+    readParamOneOf('dir', ['asc', 'desc'] as const) ?? saved.sortDir ?? 'desc')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [draftPos, setDraftPos] = useState<{ id: string; val: string } | null>(null)
@@ -108,6 +120,16 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
       JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, sortBy, sortDir })
     )
   }, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir])
+
+  // The same state, mirrored into the URL. Anything at its default is left out.
+  useUrlParams({
+    status: statusFilter === 'all' ? null : statusFilter,
+    type: subtypeFilter === 'all' ? null : subtypeFilter,
+    meal: mealTag === 'all' ? null : mealTag,
+    sort: sortBy === 'recent' ? null : sortBy,
+    dir: sortDir === (SORT_OPTIONS.find((o) => o.id === sortBy)?.defaultDir ?? 'desc') ? null : sortDir,
+  })
+  useUrlParams({ q: search.trim() || null }, 300)
 
   // Refresh when entries change anywhere (sidebar quick add, quick log, etc.)
   useEffect(() => {

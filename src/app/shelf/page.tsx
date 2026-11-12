@@ -7,6 +7,7 @@ import { ENTRY_HOBBIES } from '@/lib/hobbies'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 import ShelfWall from '@/components/ShelfWall'
+import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 // Everything you have finished, across hobbies, as one wall of covers. The
 // backlog is a list of things to do; this is the record of what got done.
@@ -17,7 +18,8 @@ const SHELF_HOBBIES = ENTRY_HOBBIES.filter((h) => !h.recipe)
 export default function ShelfPage() {
   const { enabledIds } = useHobbies()
   const [entries, setEntries] = useState<Entry[] | null>(null)
-  const [hobbyFilter, setHobbyFilter] = useState<HobbyCategory | 'all'>('all')
+  const [hobbyFilter, setHobbyFilter] = useState<HobbyCategory | 'all'>(() => readParamOneOf('hobby', SHELF_HOBBIES.map((h) => h.id)) ?? 'all')
+  useUrlParams({ hobby: hobbyFilter === 'all' ? null : hobbyFilter })
 
   useEffect(() => {
     const load = () => { getAllEntries().then(setEntries).catch(() => setEntries([])) }

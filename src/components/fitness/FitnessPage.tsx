@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Dumbbell } from 'lucide-react'
 import TodayTab from './TodayTab'
 import RoutinesTab from './RoutinesTab'
 import HistoryTab from './HistoryTab'
 import ProgressTab from './ProgressTab'
 import { ACCENT } from './ui'
+import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 const TABS = [
   { id: 'today', label: 'Today' },
@@ -20,12 +21,19 @@ type TabId = (typeof TABS)[number]['id']
 const TAB_KEY = 'fitness-tab'
 
 export default function FitnessPage() {
-  // Remembered for the session, matching how HobbyPage keeps its filters.
-  const [tab, setTab] = useState<TabId>('today')
-  useEffect(() => {
-    const saved = sessionStorage.getItem(TAB_KEY) as TabId | null
-    if (saved && TABS.some((t) => t.id === saved)) setTab(saved)
-  }, [])
+  // The tab is in the URL (so History or Progress can be linked to), and
+  // remembered for the session for arrivals that do not name one.
+  const [tab, setTab] = useState<TabId>(() => {
+    const ids = TABS.map((t) => t.id)
+    const fromUrl = readParamOneOf('tab', ids)
+    if (fromUrl) return fromUrl
+    try {
+      const saved = sessionStorage.getItem(TAB_KEY) as TabId | null
+      if (saved && ids.includes(saved)) return saved
+    } catch { /* storage unavailable */ }
+    return 'today'
+  })
+  useUrlParams({ tab: tab === 'today' ? null : tab })
 
   function select(id: TabId) {
     setTab(id)

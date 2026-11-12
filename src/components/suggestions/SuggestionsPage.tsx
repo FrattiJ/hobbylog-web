@@ -18,12 +18,13 @@ import {
   bestWindowFor, fitsIn, fmtHours, hobbyHours, upcomingOccurrences, weeklyHobbyHours,
   weeksToClear, windowTitle, DAY_SHORT, type FitPick, type TimeWindow, type WindowOccurrence,
 } from '@/lib/windows'
-import { HOBBY_MAP, STATUS_COLORS, STATUS_LABELS } from '@/lib/hobbies'
+import { HOBBY_MAP, STATUS_COLORS, STATUS_LABELS, HOBBIES } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
 import { useToast } from '@/components/Toast'
 import { CLIP } from '@/components/MechCard'
 import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover } from './ui'
+import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 type Mode = 'next' | 'time' | 'triage' | 'discover'
 
@@ -64,8 +65,10 @@ export default function SuggestionsPage() {
   const [activity, setActivity] = useState<SessionActivity>({ byEntry: new Map(), log: [] })
   const [windows, setWindows] = useState<TimeWindow[]>([])
   const [loading, setLoading] = useState(true)
-  const [mode, setMode] = useState<Mode>('next')
-  const [category, setCategory] = useState<HobbyCategory | 'all'>('all')
+  // Which list, and which hobby it is narrowed to, are part of the URL.
+  const [mode, setMode] = useState<Mode>(() => readParamOneOf('tab', MODES.map((m) => m.id)) ?? 'next')
+  const [category, setCategory] = useState<HobbyCategory | 'all'>(() => readParamOneOf('hobby', HOBBIES.map((h) => h.id)) ?? 'all')
+  useUrlParams({ tab: mode === 'next' ? null : mode, hobby: category === 'all' ? null : category })
 
   const [enriching, setEnriching] = useState<{ done: number; total: number } | null>(null)
   const [candidates, setCandidates] = useState<Candidate[] | null>(null)

@@ -7,6 +7,8 @@ import type { Entry, HobbyCategory, EntryStatus } from '@/types/database'
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/hobbies'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
+import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
+import { HOBBIES } from '@/lib/hobbies'
 
 const STATUS_OPTIONS: (EntryStatus | 'all')[] = ['all', 'wishlist', 'backlog', 'in_progress', 'completed', 'dropped']
 
@@ -15,11 +17,20 @@ type SortKey = 'recent' | 'name' | 'rating' | 'added'
 export default function SearchPage() {
   const { enabledHobbies } = useHobbies()
   const [entries, setEntries] = useState<Entry[]>([])
-  const [query, setQuery] = useState('')
-  const [hobbyFilter, setHobbyFilter] = useState<HobbyCategory | 'all'>('all')
-  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>('all')
-  const [minRating, setMinRating] = useState('')
-  const [sort, setSort] = useState<SortKey>('recent')
+  // Every filter is read from the URL on arrival and written back as it
+  // changes, so a search can be bookmarked or sent to someone.
+  const [query, setQuery] = useState(() => readParam('q') ?? '')
+  const [hobbyFilter, setHobbyFilter] = useState<HobbyCategory | 'all'>(() => readParamOneOf('hobby', HOBBIES.map((h) => h.id)) ?? 'all')
+  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() => readParamOneOf('status', STATUS_OPTIONS) ?? 'all')
+  const [minRating, setMinRating] = useState(() => { const v = readParam('min'); return v && !isNaN(parseFloat(v)) ? v : '' })
+  const [sort, setSort] = useState<SortKey>(() => readParamOneOf('sort', ['recent', 'name', 'rating', 'added'] as const) ?? 'recent')
+  useUrlParams({
+    hobby: hobbyFilter === 'all' ? null : hobbyFilter,
+    status: statusFilter === 'all' ? null : statusFilter,
+    min: minRating || null,
+    sort: sort === 'recent' ? null : sort,
+  })
+  useUrlParams({ q: query.trim() || null }, 300)
 
   useEffect(() => {
     const load = () => getAllEntries().then(setEntries)
