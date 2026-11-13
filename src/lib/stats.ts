@@ -1,5 +1,12 @@
 import type { Entry, HobbyCategory } from '@/types/database'
 import { isoDayOf, todayIso } from './format'
+import { HOBBY_MAP } from './hobbies'
+
+// "Finished" here means what it means on the Shelf: a recipe marked Made is a
+// meal cooked, not a thing completed, so recipes stay out of the finished
+// counts, the finish rate and the time-to-finish figure. They still appear in
+// the per-hobby breakdown, where the row is plainly about Cooking.
+const isFinish = (e: Entry) => e.status === 'completed' && !HOBBY_MAP[e.hobby_category]?.recipe
 
 // Everything the Stats page and the dashboard's "this month" strip show, worked
 // out from data the browser already has. Pure functions: entries, the session
@@ -94,7 +101,7 @@ export function periodStats(
   range: Range, entries: Entry[], sessions: SessionLogRow[], workouts: DatedMinutes[], today = todayIso(),
 ): PeriodStats {
   const addedDays = entries.map((e) => isoDayOf(e.created_at)).filter(Boolean)
-  const finishDays = entries.filter((e) => e.status === 'completed' && e.date_completed).map((e) => e.date_completed as string)
+  const finishDays = entries.filter((e) => isFinish(e) && e.date_completed).map((e) => e.date_completed as string)
   const logDays = [...sessions, ...workouts].map((r) => r.date).filter(Boolean)
   // A session with no date cannot be placed in a period; it is skipped below.
   const earliest = [...addedDays, ...finishDays, ...logDays].sort()[0] ?? null
@@ -136,7 +143,7 @@ export function periodStats(
       .map(([hobby, mins]) => ({ hobby, hours: Math.round((mins / 60) * 10) / 10 }))
       .filter((h) => h.hours > 0)
       .sort((a, b) => b.hours - a.hours),
-    undatedFinishes: entries.filter((e) => e.status === 'completed' && !e.date_completed).length,
+    undatedFinishes: entries.filter((e) => isFinish(e) && !e.date_completed).length,
   }
 }
 
@@ -167,8 +174,8 @@ const median = (xs: number[]) => {
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000)
 
 export function libraryStats(entries: Entry[], hobbies: HobbyCategory[], today = todayIso()): LibraryStats {
-  const done = entries.filter((e) => e.status === 'completed')
-  const dropped = entries.filter((e) => e.status === 'dropped')
+  const done = entries.filter(isFinish)
+  const dropped = entries.filter((e) => e.status === 'dropped' && !HOBBY_MAP[e.hobby_category]?.recipe)
 
   const spans = done
     .filter((e) => e.date_started && e.date_completed && e.date_completed >= e.date_started)
@@ -217,7 +224,7 @@ export function ageLabel(days: number): string {
 export function thisMonth(entries: Entry[], sessions: SessionLogRow[], workouts: DatedMinutes[], today = todayIso()) {
   const prefix = today.slice(0, 7)
   const minutes = [...sessions, ...workouts].filter((r) => r.date && r.date.startsWith(prefix)).reduce((t, r) => t + r.minutes, 0)
-  const finished = entries.filter((e) => e.status === 'completed' && e.date_completed?.startsWith(prefix)).length
+  const finished = entries.filter((e) => isFinish(e) && e.date_completed?.startsWith(prefix)).length
   const added = entries.filter((e) => isoDayOf(e.created_at).startsWith(prefix)).length
   return { finished, added, net: added - finished, hours: Math.round((minutes / 60) * 10) / 10 }
 }

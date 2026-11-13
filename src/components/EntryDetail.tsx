@@ -7,7 +7,7 @@ import { readRecipe, recipeMetadata, type RecipeData } from '@/lib/recipe'
 import RecipeView from './RecipeView'
 import RecipeFields from './RecipeFields'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
-import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
+import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityStats, normalizeBacklogPriorities, type Photo, type CommunityStats } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
@@ -62,13 +62,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   const [sessions, setSessions] = useState<Session[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
-  const [community, setCommunity] = useState<CommunityRating | null>(null)
+  const [community, setCommunity] = useState<CommunityStats | null>(null)
   const [sHours, setSHours] = useState(''); const [sMinutes, setSMinutes] = useState('')
   const [sProgress, setSProgress] = useState(''); const [sNotes, setSNotes] = useState('')
 
   useEffect(() => {
     if (entry.external_source && entry.external_id) {
-      getCommunityRating(entry.external_source, entry.external_id).then(setCommunity).catch(() => {})
+      getCommunityStats(entry.external_source, entry.external_id).then(setCommunity).catch(() => {})
     }
   }, [entry.external_source, entry.external_id])
 
@@ -434,6 +434,36 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             </div>
           )}
 
+          {/* What other people on the site are doing with the same title. Counts
+              only, never names, and nothing from entries marked private. */}
+          {community && (community.tracking > 0 || community.rating_count > 0) && (() => {
+            const mine = rating ? parseFloat(rating) : null
+            const diff = mine != null && community.avg_rating != null ? Math.round((mine - community.avg_rating) * 10) / 10 : null
+            const figures: Array<{ value: string; label: string }> = []
+            if (community.tracking > 0) figures.push({ value: community.tracking.toLocaleString(), label: community.tracking === 1 ? 'other person tracks this' : 'others track this' })
+            if (community.completed > 0) figures.push({ value: community.completed.toLocaleString(), label: `${statusLabelFor(hobby, 'completed').toLowerCase()} it` })
+            if (community.in_progress > 0) figures.push({ value: community.in_progress.toLocaleString(), label: community.in_progress === 1 ? 'is on it now' : 'are on it now' })
+            if (community.avg_rating != null && community.rating_count > 0) figures.push({ value: `${community.avg_rating}`, label: `average from ${community.rating_count} ${community.rating_count === 1 ? 'rating' : 'ratings'}` })
+            return (
+              <section aria-label="On Hobbylog" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #22c55e', padding: '12px 16px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', margin: '0 0 8px' }}>On Hobbylog</p>
+                <dl style={{ display: 'flex', gap: '10px 28px', flexWrap: 'wrap', margin: 0 }}>
+                  {figures.map((f) => (
+                    <div key={f.label} style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                      <dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--text-hi)' }}>{f.value}</dd>
+                      <dt style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>{f.label}</dt>
+                    </div>
+                  ))}
+                </dl>
+                {diff != null && (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: '8px 0 0' }}>
+                    {diff === 0 ? 'Your rating matches the average.' : `You rated it ${Math.abs(diff)} ${diff > 0 ? 'higher' : 'lower'} than the average.`}
+                  </p>
+                )}
+              </section>
+            )
+          })()}
+
           {status === 'wishlist' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', background: `${STATUS_COLORS.wishlist}12`, border: `1px solid ${STATUS_COLORS.wishlist}55`, borderLeft: `3px solid ${STATUS_COLORS.wishlist}` }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -542,19 +572,6 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
               {isPercent && (
                 <ProjectChecklist items={checklist} accent={accent} onChange={persistChecklist} />
-              )}
-
-              {community && community.count > 0 && community.avg != null && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-body)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
-                  <span style={{ color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Community</span>
-                  <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill="#d97706" /> {community.avg}/10</span>
-                  <span style={{ color: 'var(--text-dim)' }}>· {community.count} other{community.count === 1 ? '' : 's'}</span>
-                  {rating && (
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: parseFloat(rating) >= community.avg ? '#22c55e' : '#f15959' }}>
-                      you {parseFloat(rating) - community.avg >= 0 ? '+' : ''}{Math.round((parseFloat(rating) - community.avg) * 10) / 10}
-                    </span>
-                  )}
-                </div>
               )}
 
               {progressPct !== null && !isPercent && (

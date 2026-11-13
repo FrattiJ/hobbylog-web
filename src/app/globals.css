@@ -264,6 +264,21 @@ p { text-wrap: pretty; }
 /* ── Fitness: exercise cards on the Today tab ───────────────────────────────── */
 .fit-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
 
+/* ── Dashboard: the month in four figures ───────────────────────────────────── */
+.month-strip {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0;
+  background: var(--bg-card); border: 1px solid var(--border-dim); border-left: 3px solid #099bbe;
+}
+.month-strip > div { padding: 14px 18px; border-left: 1px solid var(--border-dim); min-width: 0; }
+.month-strip > div:first-child { border-left: none; }
+.month-strip dt { font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--text-dim); }
+.month-strip dd { margin: 4px 0 0; font-family: var(--font-mono); font-size: 26px; line-height: 1.1; color: var(--text-hi); }
+@media (max-width: 520px) {
+  .month-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .month-strip > div:nth-child(3) { border-left: none; }
+  .month-strip > div:nth-child(n + 3) { border-top: 1px solid var(--border-dim); }
+}
+
 /* ── Stats ──────────────────────────────────────────────────────────────────── */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 20px; margin-bottom: 20px; }
 .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }

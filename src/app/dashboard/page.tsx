@@ -6,9 +6,11 @@ import EntryCard from '@/components/EntryCard'
 import CoverTile from '@/components/CoverTile'
 import StatCard from '@/components/StatCard'
 import MechCard from '@/components/MechCard'
-import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
-import { getWorkoutTotals, FITNESS_CHANGED_EVENT, type WorkoutTotals } from '@/lib/fitness/db'
-import { STATUS_LABELS, HOBBY_PATHS } from '@/lib/hobbies'
+import Link from 'next/link'
+import { getAllEntries, getSessionLog, ENTRIES_CHANGED_EVENT, type SessionLogRow } from '@/lib/db'
+import { thisMonth } from '@/lib/stats'
+import { getWorkoutLog, FITNESS_CHANGED_EVENT } from '@/lib/fitness/db'
+import { STATUS_LABELS, HOBBY_PATHS, HOBBY_MAP } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
 import { useHobbies } from '@/components/HobbyContext'
 import GettingStarted from '@/components/GettingStarted'
@@ -64,6 +66,10 @@ function StatFilterCard({
   )
 }
 
+const sectionTitle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text-hi)', letterSpacing: 0, margin: '0 0 12px',
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { enabledHobbies } = useHobbies()
@@ -73,14 +79,21 @@ export default function DashboardPage() {
   const [sortField, setSortField] = useState<SortField>('updated')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [hobbyFilter, setHobbyFilter] = useState<string>('all')
-  const [workouts, setWorkouts] = useState<WorkoutTotals>({ count: 0, minutes: 0 })
+  // The dated logs, for "this month". The fitness tile's workout count comes
+  // from the same list, so there is one request for workouts rather than two.
+  const [workoutLog, setWorkoutLog] = useState<Array<{ date: string; minutes: number }>>([])
+  const [sessions, setSessions] = useState<SessionLogRow[]>([])
+  const workouts = { count: workoutLog.length }
 
   useEffect(() => {
-    const load = () => getAllEntries().then(setEntries).finally(() => setLoading(false))
+    const load = () => {
+      getAllEntries().then(setEntries).finally(() => setLoading(false))
+      getSessionLog().then(setSessions).catch(() => {})
+    }
     load()
     // Refresh when entries change anywhere (sidebar quick add, quick log, etc.)
     // Fitness isn't in web_entries, so its tile count comes from the workout log.
-    const loadWorkouts = () => getWorkoutTotals().then(setWorkouts).catch(() => {})
+    const loadWorkouts = () => getWorkoutLog().then(setWorkoutLog).catch(() => {})
     loadWorkouts()
     window.addEventListener(ENTRIES_CHANGED_EVENT, load)
     window.addEventListener(FITNESS_CHANGED_EVENT, loadWorkouts)
@@ -93,6 +106,14 @@ export default function DashboardPage() {
   const inProgress = entries.filter((e) => e.status === 'in_progress')
   const completed  = entries.filter((e) => e.status === 'completed')
   const backlog    = entries.filter((e) => e.status === 'backlog')
+
+  const month = useMemo(() => thisMonth(entries, sessions, workoutLog), [entries, sessions, workoutLog])
+  const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date())
+  // The newest dated finishes. Undated ones cannot be called recent.
+  const recentlyFinished = completed
+    .filter((e) => e.date_completed && !HOBBY_MAP[e.hobby_category]?.recipe)
+    .sort((a, b) => (b.date_completed as string).localeCompare(a.date_completed as string))
+    .slice(0, 6)
 
   // What the category index counts. Fitness has no entries — its tile shows how
   // many workouts have been logged instead.
@@ -160,6 +181,40 @@ export default function DashboardPage() {
       </div>
 
       <GettingStarted />
+
+      {/* ── What you are in the middle of comes first: it is the reason to open the app ── */}
+      {inProgress.length > 0 && (
+        <section aria-labelledby="dash-continue" style={{ marginBottom: 28 }}>
+          <h2 id="dash-continue" style={sectionTitle}>Pick up where you left off</h2>
+          <div className="cover-grid">
+            {inProgress.slice(0, 6).map((e) => <CoverTile key={e.id} entry={e} showStatus={false} showHobby />)}
+          </div>
+        </section>
+      )}
+
+      {/* ── The month so far, in one line of figures ── */}
+      <section aria-labelledby="dash-month" style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <h2 id="dash-month" style={{ ...sectionTitle, margin: 0 }}>{monthName} so far</h2>
+          <Link href="/stats" style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>All stats</Link>
+        </div>
+        <dl className="month-strip">
+          {[
+            { label: 'Finished', value: month.finished.toLocaleString() },
+            { label: 'Added', value: month.added.toLocaleString() },
+            { label: 'Hours logged', value: month.hours.toLocaleString() },
+            {
+              label: month.net > 0 ? 'Pile grew by' : month.net < 0 ? 'Pile shrank by' : 'Pile',
+              value: month.net === 0 ? 'Even' : Math.abs(month.net).toLocaleString(),
+            },
+          ].map((f) => (
+            <div key={f.label}>
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {/* ── Clickable stat cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -270,14 +325,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── In Progress ── */}
-      {inProgress.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text-hi)', letterSpacing: 0, margin: '0 0 12px' }}>Pick up where you left off</h2>
-          <div className="cover-grid">
-            {inProgress.slice(0, 6).map((e) => <CoverTile key={e.id} entry={e} showStatus={false} showHobby />)}
+      {/* ── Recently finished ── */}
+      {recentlyFinished.length > 0 && (
+        <section aria-labelledby="dash-finished" style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <h2 id="dash-finished" style={{ ...sectionTitle, margin: 0 }}>Recently finished</h2>
+            <Link href="/shelf" style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>Open your Shelf</Link>
           </div>
-        </div>
+          <div className="cover-grid">
+            {recentlyFinished.map((e) => <CoverTile key={e.id} entry={e} context="shelf" showStatus={false} showHobby />)}
+          </div>
+        </section>
       )}
 
       {/* ── Recent ── */}

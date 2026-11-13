@@ -23,6 +23,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       'The light theme now has readable accent colors',
       'Dates you can set: every entry shows when it was added, started and finished, and all three can be edited. Set them when adding something you finished earlier',
       'Missing finish dates can be filled in for many entries at once: on a hobby page choose Completed, then Select, then Set Finish Date. You can also sort by finish date',
+      'Stats is rebuilt around time: what you finished and added each month, whether the pile grew or shrank, hours logged and which hobby they went to, with a period you choose',
+      'New library figures: months of backlog at your pace, typical days to finish, finish rate, the spread of your ratings, and what has waited longest',
+      'The dashboard leads with what you are in the middle of, then the month so far, and shows what you finished most recently',
+      'Entry pages show how many other people track the same title, how many finished it and how they rated it',
     ],
   },
   {
