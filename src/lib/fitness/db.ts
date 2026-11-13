@@ -331,6 +331,15 @@ export async function getProgressTotals(): Promise<ProgressTotals> {
 // more, so these are what it contributes to the cross-hobby totals.
 export interface WorkoutTotals { count: number; minutes: number }
 
+// Each workout's date and length, for charts of time by week or month.
+export async function getWorkoutLog(): Promise<Array<{ date: string; minutes: number }>> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_workouts').select('date, duration_minutes').eq('user_id', userId)
+  return ((data ?? []) as Array<{ date: string | null; duration_minutes: number | null }>)
+    .filter((r) => r.date)
+    .map((r) => ({ date: r.date as string, minutes: r.duration_minutes ?? 0 }))
+}
+
 export async function getWorkoutTotals(): Promise<WorkoutTotals> {
   const userId = await currentUserId()
   const { data } = await supabase.from('web_workouts').select('duration_minutes').eq('user_id', userId)

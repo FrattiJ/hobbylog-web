@@ -484,6 +484,59 @@ export async function getSessionActivity(): Promise<SessionActivity> {
   return { byEntry, log }
 }
 
+// The session log with the entry each sitting belongs to, for stats that need
+// to say which hobby the time went to. A row with no date keeps an empty one:
+// its minutes still count toward the entry, it just cannot be placed in time.
+export interface SessionLogRow { entry_id: string; date: string; minutes: number }
+
+export async function getSessionLog(): Promise<SessionLogRow[]> {
+  const userId = await currentUserId()
+  const { data } = await supabase.from('web_sessions').select('entry_id, date, duration_minutes').eq('user_id', userId)
+  return ((data ?? []) as Array<{ entry_id: string; date: string | null; duration_minutes: number | null }>)
+    .map((r) => ({ entry_id: r.entry_id, date: r.date ?? '', minutes: r.duration_minutes ?? 0 }))
+}
+
+// The two summaries other code wants from that log, derived locally so a page
+// that needs all three makes one request rather than three.
+export function activityFromLog(rows: SessionLogRow[]): SessionActivity {
+  const byEntry = new Map<string, { lastDate: string; minutes: number; count: number }>()
+  const log: Array<{ date: string; minutes: number }> = []
+  for (const r of rows) {
+    const prev = byEntry.get(r.entry_id)
+    if (!prev) byEntry.set(r.entry_id, { lastDate: r.date, minutes: r.minutes, count: 1 })
+    else byEntry.set(r.entry_id, { lastDate: r.date > prev.lastDate ? r.date : prev.lastDate, minutes: prev.minutes + r.minutes, count: prev.count + 1 })
+    if (r.date) log.push({ date: r.date, minutes: r.minutes })
+  }
+  return { byEntry, log }
+}
+
+export function loggedMinutesFromLog(rows: SessionLogRow[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const r of rows) if (r.minutes) m.set(r.entry_id, (m.get(r.entry_id) ?? 0) + r.minutes)
+  return m
+}
+
+// What everyone else on the site is doing with one catalog item: how many track
+// it, how many finished it, how many are on it now, and how they rated it. Other
+// people's entries only, and never the ones they marked private.
+export interface CommunityStats {
+  tracking: number
+  completed: number
+  in_progress: number
+  avg_rating: number | null
+  rating_count: number
+}
+
+export async function getCommunityStats(source: string, extId: string): Promise<CommunityStats> {
+  const { data, error } = await supabase.rpc('community_stats', { p_source: source, p_ext: extId })
+  if (!error && data) return data as CommunityStats
+  // The counts come from a newer database function. Where it has not been
+  // applied yet, fall back to the rating-only one so the strip still shows
+  // something true rather than nothing.
+  const old = await getCommunityRating(source, extId)
+  return { tracking: 0, completed: 0, in_progress: 0, avg_rating: old.avg, rating_count: old.count }
+}
+
 // How the whole site rated one catalog item (matched by external source + id).
 export interface CommunityRating { avg: number | null; count: number }
 export async function getCommunityRating(source: string, extId: string): Promise<CommunityRating> {

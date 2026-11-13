@@ -14,8 +14,11 @@ export function Panel({ accent, title, sub, right, children, style }: {
   style?: React.CSSProperties
 }) {
   return (
-    <div style={{ padding: '1px', clipPath: CLIP, background: `${accent}55`, ...style }}>
-      <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 20, position: 'relative' }}>
+    // A flex column so the inner card fills the frame: in a grid row the frame
+    // stretches to its tallest neighbour, and a card that did not follow left a
+    // block of the accent colour showing underneath it.
+    <div style={{ padding: '1px', clipPath: CLIP, background: `${accent}55`, display: 'flex', flexDirection: 'column', ...style }}>
+      <div style={{ background: 'var(--bg-card)', clipPath: CLIP, padding: 20, position: 'relative', flex: 1, minWidth: 0 }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: 14, height: 14, background: accent, clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 2 }} />
         {(title || right) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: sub ? 14 : 16 }}>
