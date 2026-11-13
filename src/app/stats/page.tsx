@@ -19,6 +19,7 @@ import { getWorkoutLog, FITNESS_CHANGED_EVENT } from '@/lib/fitness/db'
 import { useHobbies } from '@/components/HobbyContext'
 import { calcHoursWithLogged } from '@/lib/hours'
 import { buildTasteProfile } from '@/lib/taste'
+import HistoryTabs from '@/components/HistoryTabs'
 import { RANGES, ageLabel, libraryStats, periodStats, type Range } from '@/lib/stats'
 import { useChartPalette } from '@/lib/chartColors'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
@@ -102,6 +103,7 @@ export default function StatsPage() {
 
   if (entries.length === 0) return (
     <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <HistoryTabs />
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: '0 0 20px' }}>STATS</h1>
       <div style={{ padding: '56px 24px', textAlign: 'center', border: '1px dashed var(--border-dim)', background: 'var(--bg-card)' }}>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 600, color: 'var(--text-hi)', margin: '0 0 6px' }}>Nothing to count yet</p>
@@ -114,6 +116,7 @@ export default function StatsPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <HistoryTabs />
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: '0 0 22px' }}>STATS</h1>
 
       {/* ── Over time ── */}

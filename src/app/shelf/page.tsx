@@ -7,6 +7,7 @@ import { ENTRY_HOBBIES } from '@/lib/hobbies'
 import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 import ShelfWall from '@/components/ShelfWall'
+import HistoryTabs from '@/components/HistoryTabs'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 import { timesFinished } from '@/lib/finishes'
 
@@ -51,6 +52,7 @@ export default function ShelfPage() {
 
   return (
     <div className="page">
+      <HistoryTabs />
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: 0 }}>SHELF</h1>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '4px 0 0' }}>

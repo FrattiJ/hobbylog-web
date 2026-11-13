@@ -50,6 +50,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Add an entry to a list from its own page, and share a list with friends. Shared lists show on your profile; private entries stay hidden',
       'Filter a hobby page by length and by genre. Length bands fit the hobby: hours for games, shows and books, running time for films, cook time for recipes',
       'Sort films, shows, books and recipes by length, the way games already sorted by time to beat',
+      'A shorter menu: Shelf, Timeline and Stats now sit together under History, with tabs to move between them',
       'Finished it more than once? Log another finish or start it again from the entry page. Each time keeps its own date on your Shelf, in Stats and on the Timeline',
     ],
   },

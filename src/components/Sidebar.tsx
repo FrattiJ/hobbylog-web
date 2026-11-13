@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart2, Search, Settings, Plus, Clock, NotebookPen, Users, Sparkles, Library, History, ListChecks,
+  Search, Settings, Plus, Clock, NotebookPen, Users, Sparkles, History, ListChecks,
 } from 'lucide-react'
 import type { Profile } from '@/types/database'
 import { HOBBY_PATHS } from '@/lib/hobbies'
@@ -19,11 +19,13 @@ interface NavItemProps {
   label: string
   accent?: string
   pathname: string
+  /** Other paths this item stands for, when one link covers several pages. */
+  also?: string[]
 }
 
-function NavItem({ href, icon: Icon, label, accent, pathname }: NavItemProps) {
+function NavItem({ href, icon: Icon, label, accent, pathname, also }: NavItemProps) {
   const p = pathname.replace(/\/$/, '') || '/'
-  const active = p === href || (href !== '/' && href !== '/dashboard' && href !== '/settings' && p.startsWith(href))
+  const active = p === href || !!also?.includes(p) || (href !== '/' && href !== '/dashboard' && href !== '/settings' && p.startsWith(href))
   const color = active ? (accent ?? 'var(--text-mid)') : undefined
   return (
     <Link
@@ -103,12 +105,11 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         <NavItem href="/search" icon={Search} label="Search" pathname={pathname} />
         <NavItem href="/suggestions" icon={Sparkles} label="What Next" accent="#a577f2" pathname={pathname} />
-        <NavItem href="/shelf" icon={Library} label="Shelf" accent="#f59e0b" pathname={pathname} />
-        <NavItem href="/timeline" icon={History} label="Timeline" accent="#099bbe" pathname={pathname} />
+        {/* Shelf, Timeline and Stats are one destination with three tabs. */}
+        <NavItem href="/shelf" icon={History} label="History" accent="#f59e0b" pathname={pathname} also={['/timeline', '/stats']} />
         <NavItem href="/lists" icon={ListChecks} label="Lists" accent="#ed539f" pathname={pathname} />
-        <NavItem href="/stats" icon={BarChart2} label="Stats" pathname={pathname} />
-        <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
         <NavItem href="/notes" icon={NotebookPen} label="Notes" pathname={pathname} />
+        <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
 
         <SectionLabel>Hobbies</SectionLabel>
         {enabledHobbies.map((hobby) => {
