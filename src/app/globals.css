@@ -282,6 +282,9 @@ p { text-wrap: pretty; }
 /* ── Stats ──────────────────────────────────────────────────────────────────── */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 20px; margin-bottom: 20px; }
 
+/* ── Sidebar: the Hobbies heading doubles as the way into Search ───────────── */
+@media (hover: hover) { .nav-section-link:hover { color: var(--text-hi) !important; } }
+
 /* ── Timeline ───────────────────────────────────────────────────────────────── */
 /* The date sits in its own column beside the day's moments, so the eye can run
    down the dates. On a phone it becomes a small heading above them instead. */

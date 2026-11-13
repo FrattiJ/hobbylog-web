@@ -103,19 +103,21 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
         <NavItem href="/notes" icon={NotebookPen} label="Notes" pathname={pathname} />
         <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
 
-        {/* Search sits on the Hobbies heading: what it searches is your hobbies. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 10px 4px 16px' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Hobbies</span>
-          <Link href="/search" aria-label="Search your hobbies" title="Search your hobbies" aria-current={searchActive ? 'page' : undefined}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
-              color: searchActive ? 'var(--text-hi)' : 'var(--text-mid)',
-              background: searchActive ? 'color-mix(in srgb, var(--text-hi) 6%, transparent)' : 'transparent',
-              border: `1px solid ${searchActive ? 'var(--text-dim)' : 'var(--border-dim)'}`, transition: 'var(--t-fast)',
-            }}>
-            <Search size={15} aria-hidden="true" />
-          </Link>
-        </div>
+        {/* Search sits on the Hobbies heading: what it searches is your hobbies.
+            The whole heading row is the link, drawn like the heading itself, so
+            it reads as part of the label rather than a button parked beside it. */}
+        <Link href="/search" className="nav-section-link" aria-label="Search your hobbies" title="Search your hobbies" aria-current={searchActive ? 'page' : undefined}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, textDecoration: 'none',
+            margin: '10px 0 2px', padding: '8px 16px', borderLeft: `3px solid ${searchActive ? 'var(--text-mid)' : 'transparent'}`,
+            fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em',
+            color: searchActive ? 'var(--text-hi)' : 'var(--text-dim)',
+            background: searchActive ? 'color-mix(in srgb, var(--text-hi) 4%, transparent)' : 'transparent',
+            transition: 'var(--t-fast)',
+          }}>
+          <span>Hobbies</span>
+          <Search size={14} aria-hidden="true" />
+        </Link>
         {enabledHobbies.map((hobby) => {
           const Icon = HOBBY_ICON_MAP[hobby.icon]
           if (!Icon) return null
