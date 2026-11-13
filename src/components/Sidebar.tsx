@@ -51,20 +51,13 @@ function NavItem({ href, icon: Icon, label, accent, pathname, also }: NavItemPro
   )
 }
 
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', padding: '18px 16px 6px' }}>
-      {children}
-    </div>
-  )
-}
-
 export default function Sidebar({ profile, mobile = false, open = true, onNavigate }: { profile: Profile | null; mobile?: boolean; open?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
   const [showAdd, setShowAdd] = useState(false)
   const [showLog, setShowLog] = useState(false)
   const { enabledHobbies } = useHobbies()
   const settingsActive = (pathname.replace(/\/$/, '') || '/') === '/settings'
+  const searchActive = (pathname.replace(/\/$/, '') || '/') === '/search'
   const close = () => { if (mobile) onNavigate?.() }
 
   return (
@@ -103,7 +96,6 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
 
       {/* Navigation */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        <NavItem href="/search" icon={Search} label="Search" pathname={pathname} />
         <NavItem href="/suggestions" icon={Sparkles} label="What Next" accent="#a577f2" pathname={pathname} />
         {/* Shelf, Timeline and Stats are one destination with three tabs. */}
         <NavItem href="/shelf" icon={History} label="History" accent="#f59e0b" pathname={pathname} also={['/timeline', '/stats']} />
@@ -111,7 +103,19 @@ export default function Sidebar({ profile, mobile = false, open = true, onNaviga
         <NavItem href="/notes" icon={NotebookPen} label="Notes" pathname={pathname} />
         <NavItem href="/friends" icon={Users} label="Friends" accent="#22c55e" pathname={pathname} />
 
-        <SectionLabel>Hobbies</SectionLabel>
+        {/* Search sits on the Hobbies heading: what it searches is your hobbies. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 10px 4px 16px' }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Hobbies</span>
+          <Link href="/search" aria-label="Search your hobbies" title="Search your hobbies" aria-current={searchActive ? 'page' : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
+              color: searchActive ? 'var(--text-hi)' : 'var(--text-mid)',
+              background: searchActive ? 'color-mix(in srgb, var(--text-hi) 6%, transparent)' : 'transparent',
+              border: `1px solid ${searchActive ? 'var(--text-dim)' : 'var(--border-dim)'}`, transition: 'var(--t-fast)',
+            }}>
+            <Search size={15} aria-hidden="true" />
+          </Link>
+        </div>
         {enabledHobbies.map((hobby) => {
           const Icon = HOBBY_ICON_MAP[hobby.icon]
           if (!Icon) return null
