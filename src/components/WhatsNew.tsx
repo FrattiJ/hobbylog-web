@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, X } from 'lucide-react'
 import { CHANGELOG, markChangelogSeen, type TourPreview } from '@/lib/changelog'
-import { STATUS_COLORS } from '@/lib/hobbies'
+import { STATUS_COLORS, HOBBY_MAP } from '@/lib/hobbies'
 import { CLIP } from './MechCard'
 import { DemoTile, LIBRARY, SHELF } from './Landing'
 
@@ -108,10 +108,99 @@ function ShelfPreview() {
   )
 }
 
+// A month on the Timeline: date, what happened, and a note where there is one.
+const MOMENTS: { day: string; kind: string; color: string; title: string; hobby: 'books' | 'games' | 'tv'; note?: string; extra?: string }[] = [
+  { day: 'Nov 12', kind: 'Completed', color: '#22c55e', title: 'Piranesi', hobby: 'books', extra: 'Rated 10' },
+  { day: 'Nov 9', kind: 'Session', color: '#099bbe', title: "Baldur's Gate 3", hobby: 'games', extra: '2h30m', note: 'Left at the gate to the lower city. Talk to the dwarf first.' },
+  { day: 'Nov 4', kind: 'Started', color: '#4f8ef7', title: 'Severance', hobby: 'tv' },
+]
+
+function TimelinePreview() {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12, borderBottom: '1px solid var(--border-dim)', paddingBottom: 8 }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)' }}>NOVEMBER 2026</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>1 finished, 1 started, 2h30m logged</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {MOMENTS.map((m) => (
+          <div key={m.title} style={{ display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', paddingTop: 8 }}>{m.day}</span>
+            <div style={{ padding: '7px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)' }}>
+              <p style={{ margin: 0, fontFamily: 'var(--font-body)', fontSize: 12.5 }}>
+                <span style={{ fontWeight: 600, color: m.color }}>{m.kind}</span>
+                {m.extra && <span style={{ color: 'var(--text-dim)' }}> {m.extra}</span>}
+              </p>
+              <p style={{ margin: '1px 0 0', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--text-hi)' }}>
+                {m.title} <span style={{ fontSize: 12.5, fontWeight: 400, color: HOBBY_MAP[m.hobby].accent }}>{HOBBY_MAP[m.hobby].label}</span>
+              </p>
+              {m.note && <p style={{ margin: '4px 0 0', paddingLeft: 8, borderLeft: `2px solid ${m.color}66`, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45 }}>{m.note}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+// A plan: the time between today and a date, filled with what fits.
+const PLANNED: { title: string; hobby: 'games' | 'books' | 'movies'; hours: number; when: string }[] = [
+  { title: "Baldur's Gate 3", hobby: 'games', hours: 14, when: '14h left, Nov 14 to Nov 28' },
+  { title: 'Project Hail Mary', hobby: 'books', hours: 12, when: '12h long, Nov 28 to Dec 10' },
+  { title: 'Citizen Sleeper', hobby: 'games', hours: 8, when: '8h long, Dec 10 to Dec 18' },
+  { title: 'Past Lives', hobby: 'movies', hours: 2, when: '1.8h long, on Dec 20' },
+]
+const PLAN_BUDGET = 46
+
+function PlanPreview() {
+  return (
+    <>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '0 0 10px', lineHeight: 1.45 }}>
+        4 things finished by Dec 20, 11 days before your date.
+      </p>
+      <div className="plan-bar" style={{ height: 14 }}>
+        {PLANNED.map((p) => <span key={p.title} style={{ width: `${(p.hours / PLAN_BUDGET) * 100}%`, background: HOBBY_MAP[p.hobby].accent }} />)}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 12px' }}>
+        <span>Today</span><span>Dec 31</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {PLANNED.slice(0, 3).map((p, i) => (
+          <div key={p.title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px', background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: `3px solid ${HOBBY_MAP[p.hobby].accent}` }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: 'var(--text-mid)', width: 14, textAlign: 'center' }}>{i + 1}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--text-hi)' }}>{p.title}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-dim)' }}>{p.when}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ListsPreview() {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 17, fontWeight: 700, color: 'var(--text-hi)' }}>Catching up before winter</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>2 of 4 finished</span>
+      </div>
+      <div className="meter" style={{ marginBottom: 14 }}><span style={{ width: '50%' }} /></div>
+      <div className="landing-tiles landing-tiles-4" style={{ maxWidth: 520 }}>
+        {SHELF.map((s) => <DemoTile key={s.title} s={{ ...s, note: undefined, status: s.rating != null && s.rating >= 9.5 ? 'completed' : 'backlog', rating: undefined }} />)}
+      </div>
+    </>
+  )
+}
+
 const PREVIEWS: Record<TourPreview, () => React.ReactElement> = {
   covers: CoversPreview,
   stats: StatsPreview,
   shelf: ShelfPreview,
+  timeline: TimelinePreview,
+  plan: PlanPreview,
+  lists: ListsPreview,
 }
 
 // ── Dialog ───────────────────────────────────────────────────────────────────

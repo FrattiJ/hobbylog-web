@@ -17,6 +17,7 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
 import { useProgressive } from '@/lib/useProgressive'
 import ListFooter from '@/components/ListFooter'
+import { lengthBandsFor, lengthBandOf, lengthHours, genresOf, genreCounts } from '@/lib/length'
 
 
 type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added' | 'finished'
@@ -40,10 +41,7 @@ function sortValue(e: Entry, by: SortOption): string | number | null {
     if (typeof m.release_date === 'string' && m.release_date) return parseInt(String(m.release_date).slice(0, 4)) || null
     return null
   }
-  if (by === 'ttb') {
-    const ttb = e.metadata?.time_to_beat
-    return ttb != null && !isNaN(Number(ttb)) ? Number(ttb) : null
-  }
+  if (by === 'ttb') return lengthHours(e)
   if (by === 'rank') return e.priority
   if (by === 'added') return e.created_at
   if (by === 'finished') return e.date_completed
@@ -55,6 +53,8 @@ interface SavedFilters {
   status?: EntryStatus | 'all'
   subtype?: BookSubtype | 'all'
   mealTag?: string
+  length?: string
+  genre?: string
   sortBy?: SortOption
   sortDir?: 'asc' | 'desc'
 }
@@ -80,7 +80,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   // ?status=completed should not also pick up the sort order this browser
   // happened to use last. Session memory only fills in for a bare URL.
   const [saved] = useState<SavedFilters>(() =>
-    ['status', 'type', 'meal', 'sort', 'dir', 'q'].some((k) => readParam(k) !== null) ? {} : loadSavedFilters(hobbyId))
+    ['status', 'type', 'meal', 'len', 'genre', 'sort', 'dir', 'q'].some((k) => readParam(k) !== null) ? {} : loadSavedFilters(hobbyId))
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   // Each filter starts from the URL if it names one, otherwise from `saved`,
@@ -91,16 +91,28 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     readParamOneOf('type', BOOK_SUBTYPES.map((s) => s.id)) ?? saved.subtype ?? 'all')
   const [mealTag, setMealTag] = useState<string>(() =>
     readParamOneOf('meal', MEAL_TAGS.map((t) => t.id)) ?? saved.mealTag ?? 'all')
+  // Length bands are the hobby's own (a film is short on a different scale
+  // from a game), and a hobby with no notion of length has none.
+  const lengthBands = lengthBandsFor(hobbyId)
+  const [lengthFilter, setLengthFilter] = useState<string>(() =>
+    readParamOneOf('len', lengthBands.map((b) => b.id)) ?? saved.length ?? 'all')
+  // A genre is free text from the catalog, so it is checked against what the
+  // library actually holds once the entries have loaded, not here.
+  const [genreFilter, setGenreFilter] = useState<string>(() => readParam('genre') ?? saved.genre ?? 'all')
   const [search, setSearch] = useState(() => readParam('q') ?? '')
   const [view, setViewState] = useState<ViewMode>(loadView)
   const setView = (v: ViewMode) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ } }
   const [rankMode, setRankMode] = useState(false)
   const isRecipe = !!hobby.recipe
   const statusOptions: (EntryStatus | 'all')[] = ['all', ...statusesFor(hobby)]
-  // Time-to-Beat only makes sense for games, and a recipe has no release date.
-  const sortOptions = SORT_OPTIONS.filter((o) => (o.id !== 'ttb' || hobbyId === 'games') && !(isRecipe && o.id === 'release'))
+  // Sorting by length needs a length to sort by, and a recipe has no release
+  // date. Games keep the name people know the figure by.
+  const hasLength = lengthBands.length > 0
+  const sortOptions = SORT_OPTIONS
+    .filter((o) => (o.id !== 'ttb' || hasLength) && !(isRecipe && o.id === 'release'))
+    .map((o) => (o.id === 'ttb' && hobbyId !== 'games' ? { ...o, label: isRecipe ? 'Cook Time' : 'Length' } : o))
   const savedSort = readParamOneOf('sort', SORT_OPTIONS.map((o) => o.id)) ?? saved.sortBy
-  const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && hobbyId !== 'games' ? 'recent' : savedSort) ?? 'recent')
+  const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && !hasLength ? 'recent' : savedSort) ?? 'recent')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() =>
     readParamOneOf('dir', ['asc', 'desc'] as const) ?? saved.sortDir ?? 'desc')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -122,15 +134,17 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   useEffect(() => {
     sessionStorage.setItem(
       `hobby-filters:${hobbyId}`,
-      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, sortBy, sortDir })
+      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, length: lengthFilter, genre: genreFilter, sortBy, sortDir })
     )
-  }, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir])
+  }, [hobbyId, statusFilter, subtypeFilter, mealTag, lengthFilter, genreFilter, sortBy, sortDir])
 
   // The same state, mirrored into the URL. Anything at its default is left out.
   useUrlParams({
     status: statusFilter === 'all' ? null : statusFilter,
     type: subtypeFilter === 'all' ? null : subtypeFilter,
     meal: mealTag === 'all' ? null : mealTag,
+    len: lengthFilter === 'all' ? null : lengthFilter,
+    genre: genreFilter === 'all' ? null : genreFilter,
     sort: sortBy === 'recent' ? null : sortBy,
     dir: sortDir === (SORT_OPTIONS.find((o) => o.id === sortBy)?.defaultDir ?? 'desc') ? null : sortDir,
   })
@@ -186,10 +200,23 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   // Parsed once per render rather than once per entry per pill.
   const mealTagsOf = new Map(isRecipe ? entries.map((e) => [e.id, readRecipe(e.metadata).meal_tags]) : [])
 
+  // What the two narrowing filters can offer, counted over the status tab that
+  // is open so the numbers match what choosing one would leave on screen.
+  const inTab = statusFilter === 'all' ? entries : entries.filter((e) => e.status === statusFilter)
+  const genreOptions = genreCounts(inTab)
+  const lengthCounts = new Map(lengthBands.map((b) => [b.id, 0]))
+  for (const e of inTab) { const b = lengthBandOf(e); if (b) lengthCounts.set(b.id, (lengthCounts.get(b.id) ?? 0) + 1) }
+  const anyLength = entries.some((e) => lengthHours(e) != null)
+  // A genre carried over from another visit, or typed into the URL, that this
+  // tab does not hold is treated as no filter rather than as "no matches".
+  const activeGenre = genreOptions.find((g) => g.genre.toLowerCase() === genreFilter.toLowerCase())?.genre ?? null
+
   const filtered = entries.filter((e) => {
     if (statusFilter !== 'all' && e.status !== statusFilter) return false
     if (hobbyId === 'books' && subtypeFilter !== 'all' && e.book_subtype !== subtypeFilter) return false
     if (isRecipe && mealTag !== 'all' && !mealTagsOf.get(e.id)?.includes(mealTag)) return false
+    if (lengthFilter !== 'all' && lengthBandOf(e)?.id !== lengthFilter) return false
+    if (activeGenre && !genresOf(e).some((g) => g.toLowerCase() === activeGenre.toLowerCase())) return false
     if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -206,7 +233,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   })
 
   // Mount the visible list in batches; any change to what is listed restarts it.
-  const paged = useProgressive(display.length, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir, search, view].join('|'))
+  const paged = useProgressive(display.length, [hobbyId, statusFilter, subtypeFilter, mealTag, lengthFilter, genreFilter, sortBy, sortDir, search, view].join('|'))
   const visible = display.slice(0, paged.shown)
 
   function handleSortChange(by: SortOption) {
@@ -411,6 +438,29 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           {sortDir === 'asc' ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </button>
 
+        {/* Narrow by length and genre. Each appears only when the library has
+            something for it to work on, and is outlined while it is in use. */}
+        {!rankMode && anyLength && (
+          <select value={lengthFilter} aria-label={isRecipe ? 'Filter by cook time' : 'Filter by length'}
+            onChange={(e) => setLengthFilter(e.target.value)}
+            style={{ ...tool, padding: '0 10px', ...(lengthFilter !== 'all' ? { borderColor: hobby.accent, color: 'var(--text-hi)' } : {}) }}>
+            <option value="all">{isRecipe ? 'Any cook time' : 'Any length'}</option>
+            {lengthBands.map((b) => (
+              <option key={b.id} value={b.id}>{b.label} ({lengthCounts.get(b.id) ?? 0})</option>
+            ))}
+          </select>
+        )}
+        {!rankMode && (genreOptions.length > 1 || activeGenre) && (
+          <select value={activeGenre ?? 'all'} aria-label="Filter by genre"
+            onChange={(e) => setGenreFilter(e.target.value)}
+            style={{ ...tool, padding: '0 10px', maxWidth: 190, ...(activeGenre ? { borderColor: hobby.accent, color: 'var(--text-hi)' } : {}) }}>
+            <option value="all">Any genre</option>
+            {genreOptions.map((g) => (
+              <option key={g.genre} value={g.genre}>{g.genre} ({g.count})</option>
+            ))}
+          </select>
+        )}
+
         {!rankMode && (
           <div role="group" aria-label="View" style={{ display: 'inline-flex' }}>
             {([['grid', LayoutGrid, 'Covers'], ['list', List, 'List']] as const).map(([id, Icon, label]) => {
@@ -559,6 +609,14 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', margin: 0 }}>
             {entries.length === 0 ? 'Add your first one to get started.' : 'Try a different search or filter.'}
           </p>
+          {entries.length > 0 && (lengthFilter !== 'all' || activeGenre || search) && (
+            <button
+              onClick={() => { setLengthFilter('all'); setGenreFilter('all'); setSearch('') }}
+              style={{ marginTop: 20, height: 40, padding: '0 18px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Clear Search and Filters
+            </button>
+          )}
           {entries.length === 0 && (
             <button
               onClick={() => setShowModal(true)}

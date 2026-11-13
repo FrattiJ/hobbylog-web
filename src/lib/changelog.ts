@@ -1,19 +1,58 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.11.0'
+export const APP_VERSION = '0.12.0'
 
 // A release's headline changes, walked through one at a time before the full
 // list. Each step pairs a short claim with a miniature of the page it is about;
 // `preview` names one of the miniatures in components/WhatsNew.tsx. Keep it to
 // three or four steps: this is the part people actually read. The last step's
 // button takes them to `cta.href`, so end on the page most worth opening.
-export type TourPreview = 'covers' | 'stats' | 'shelf'
+export type TourPreview = 'covers' | 'stats' | 'shelf' | 'timeline' | 'plan' | 'lists'
 export interface TourStep { title: string; body: string; preview: TourPreview; previewLabel: string }
 export interface Tour { steps: TourStep[]; cta: { label: string; href: string } }
 
 export interface ChangelogEntry { version: string; date: string; items: string[]; tour?: Tour }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.12.0',
+    date: 'Nov 2026',
+    tour: {
+      steps: [
+        {
+          title: 'A Timeline of everything.',
+          body: 'What you started, finished and logged, newest first, across every hobby. The notes you write when you log a session are there too, and the latest one shows on your dashboard as where you left off.',
+          preview: 'timeline',
+          previewLabel: 'A month on the timeline: a finished book with its rating, a session on a game with a note, and a show that was started.',
+        },
+        {
+          title: 'Plan to a date.',
+          body: 'In What Next, say how many hours a week you have and when you want to be done. The plan fills that time from what you own and gives each thing the day it would be finished.',
+          preview: 'plan',
+          previewLabel: 'A plan of four things between today and a goal date, drawn as one bar with a segment for each, and the dates each would be finished.',
+        },
+        {
+          title: 'Lists that cross hobbies.',
+          body: 'Group a film, a game and a book under one name, see how far through the list you are, and share it with friends if you want to. One entry can be in as many lists as you like.',
+          preview: 'lists',
+          previewLabel: 'A list holding a book, a show and two games, with a bar showing two of four finished.',
+        },
+      ],
+      cta: { label: 'Open your Timeline', href: '/timeline' },
+    },
+    items: [
+      'New Timeline page: everything you started, finished and logged, newest first, across every hobby, with search, a filter for what to show, and a way to go back to any month',
+      'The notes you write when logging a session appear on the Timeline, and a big import shows as one line instead of hundreds',
+      'Where you left off: your latest session note shows under what you have in progress on the dashboard, and at the top of the entry page',
+      'Plan to a date, in What Next: set your hours a week and a finish date, choose Balanced, More Finishes or Longer Ones, and see what fits with the day each thing would be done',
+      'Save a plan to track it: how many are finished, the hours you have logged against it, and whether you are on track for the date',
+      'New Lists page: group entries from any hobby under your own name, reorder them, and see how much of the list is finished',
+      'Add an entry to a list from its own page, and share a list with friends. Shared lists show on your profile; private entries stay hidden',
+      'Filter a hobby page by length and by genre. Length bands fit the hobby: hours for games, shows and books, running time for films, cook time for recipes',
+      'Sort films, shows, books and recipes by length, the way games already sorted by time to beat',
+      'Finished it more than once? Log another finish or start it again from the entry page. Each time keeps its own date on your Shelf, in Stats and on the Timeline',
+    ],
+  },
   {
     version: '0.11.0',
     date: 'Nov 2026',

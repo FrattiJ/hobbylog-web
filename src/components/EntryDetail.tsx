@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff } from 'lucide-react'
+import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff, RotateCcw, X } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
 import { readRecipe, recipeMetadata, type RecipeData } from '@/lib/recipe'
 import RecipeView from './RecipeView'
@@ -17,6 +17,8 @@ import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
 import { formatDay, todayIso, isoDayOf, dayToTimestamp } from '@/lib/format'
 import { useConfirm } from '@/components/ConfirmDialog'
+import { pastFinishesOf, sortPast, ordinal, type PastFinish } from '@/lib/finishes'
+import EntryLists from './EntryLists'
 
 const ACCENT = '#a577f2'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
@@ -29,7 +31,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const hobby = HOBBY_MAP[entry.hobby_category as HobbyCategory]
   const accent = hobby?.accent ?? ACCENT
   const isMobile = useIsMobile()
-  const { error: toastError } = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
   const confirm = useConfirm()
 
   const [status, setStatus] = useState(entry.status)
@@ -49,6 +51,10 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [dateAdded, setDateAdded] = useState(() => isoDayOf(entry.created_at))
   const [dateStarted, setDateStarted] = useState(entry.date_started ?? '')
   const [dateCompleted, setDateCompleted] = useState(entry.date_completed ?? '')
+  // Earlier times through, when this has been finished more than once. The
+  // dates above always describe the latest.
+  const [pastFinishes, setPastFinishes] = useState<PastFinish[]>(() => pastFinishesOf(entry))
+  const [earlierDate, setEarlierDate] = useState('')
   const [recipe, setRecipe] = useState<RecipeData>(() => readRecipe(entry.metadata))
   const [recipeDraft, setRecipeDraft] = useState<RecipeData | null>(null)
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
@@ -99,6 +105,75 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const isRecipe = !!hobby?.recipe
   const showSessionProgress = !isGameEntry && !hobby?.percentBased && progUnit !== '%' && !isRecipe
   const isPercent = !!hobby?.percentBased
+  // Going round again is for things you watch, read or play. A recipe already
+  // counts how often it was made, and a build is finished once.
+  const canRepeat = !isRecipe && !isPercent
+  // The newest session that says something: the reminder of where this stands.
+  const leftOff = status === 'in_progress' ? sessions.find((s) => s.notes && s.notes.trim()) ?? null : null
+
+  // Earlier finishes save as they change, like the checklist: each is a small
+  // edit to the record, not part of the form above.
+  async function savePast(next: PastFinish[], extra: Partial<WebEntry> = {}) {
+    const sorted = sortPast(next)
+    await updateEntry(entry.id, { metadata: { ...(entry.metadata ?? {}), past_finishes: sorted }, ...extra })
+    setPastFinishes(sorted)
+    onChanged()
+  }
+
+  async function addEarlierFinish() {
+    if (!earlierDate || busy) return
+    if (earlierDate > todayIso()) { toastError('Dates cannot be in the future.'); return }
+    setBusy(true)
+    try { await savePast([...pastFinishes, { started: null, completed: earlierDate }]); setEarlierDate('') }
+    catch { toastError('Could not save that finish. Try again.') }
+    setBusy(false)
+  }
+
+  async function removePastFinish(index: number) {
+    const target = pastFinishes[index]
+    if (!(await confirm({
+      title: 'Remove this finish?',
+      body: `The ${target.completed ? `finish on ${formatDay(target.completed)}` : 'undated finish'} will be taken off your Shelf and out of your stats. The entry itself stays.`,
+      confirmLabel: 'Remove Finish',
+      danger: true,
+    }))) return
+    try { await savePast(pastFinishes.filter((_, i) => i !== index)) }
+    catch { toastError('Could not remove that finish. Try again.') }
+  }
+
+  // Finished it again, already: the finish on record moves to the earlier
+  // list and today becomes the latest. The date can be corrected above.
+  async function finishedAgain() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const today = todayIso()
+      await savePast([...pastFinishes, { started: dateStarted || null, completed: dateCompleted || null }], { date_started: null, date_completed: today })
+      setDateStarted(''); setDateCompleted(today)
+      toastSuccess(`Logged another finish for ${entry.title}`)
+    } catch { toastError('Could not log that finish. Try again.') }
+    setBusy(false)
+  }
+
+  // Going through it again from the start: the finish on record is kept, and
+  // the entry goes back to In Progress with its progress cleared. Games keep
+  // their hours, which only ever add up.
+  async function startAgain() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const today = todayIso()
+      const isGame = entry.hobby_category === 'games'
+      await savePast([...pastFinishes, { started: dateStarted || null, completed: dateCompleted || null }], {
+        status: 'in_progress', date_started: today, date_completed: null,
+        ...(isGame ? {} : { progress_current: 0, current_season: null, current_episode: null }),
+      })
+      setStatus('in_progress'); setDateStarted(today); setDateCompleted('')
+      if (!isGame) { setProgressCurrent('0'); setSeason(''); setEpisode('') }
+      toastSuccess(`${entry.title} is back in progress. Your earlier finish is kept.`)
+    } catch { toastError('Could not start it again. Try again.') }
+    setBusy(false)
+  }
 
   // Checklist changes drive the project's % and status, and save immediately.
   async function persistChecklist(items: ChecklistItem[]) {
@@ -234,6 +309,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           ...(entry.metadata ?? {}),
           volume_current: volumeCurrent ? parseInt(volumeCurrent, 10) : null,
           volume_total: volumeTotal ? parseInt(volumeTotal, 10) : null,
+          ...(pastFinishes.length > 0 ? { past_finishes: pastFinishes } : {}),
         },
       } : {}
       await updateEntry(entry.id, {
@@ -409,8 +485,29 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
               {entry.date_started && <span>Started {formatDay(entry.date_started)}</span>}
               {entry.date_completed && <span>{isRecipe ? 'First made' : 'Completed'} {formatDay(entry.date_completed)}</span>}
               {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>Made {progressCurrent}x</span>}
+              {pastFinishes.length > 0 && (
+                <span style={{ color: accent }}>
+                  {entry.status === 'completed'
+                    ? `Finished ${pastFinishes.length + 1} times`
+                    : `Finished ${pastFinishes.length === 1 ? 'once' : `${pastFinishes.length} times`} before`}
+                </span>
+              )}
             </div>
+            <EntryLists entryId={entry.id} accent={accent} />
           </div>
+
+          {/* Where this stands, in your own words: the last thing you wrote
+              when you logged a session on it. */}
+          {leftOff && (
+            <section aria-label="Where you left off" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #099bbe', padding: '12px 16px' }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', margin: '0 0 6px' }}>
+                Where you left off, {formatDay(leftOff.date)}
+              </p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, lineHeight: 1.55, color: 'var(--text-hi)', margin: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                {leftOff.notes}
+              </p>
+            </section>
+          )}
 
           {/* The recipe itself: read view, with an edit mode of its own */}
           {isRecipe && (
@@ -536,6 +633,55 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   Left blank, the start and finish dates fill in with today when the status changes. Set them by hand for anything you finished earlier.
                 </p>
               </div>
+
+              {/* Finishing it more than once */}
+              {canRepeat && (entry.status === 'completed' || pastFinishes.length > 0) && (
+                <div>
+                  <p style={label}>Finished More Than Once</p>
+                  {pastFinishes.length > 0 && (
+                    <ul style={{ listStyle: 'none', margin: '0 0 10px', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {pastFinishes.map((f, i) => (
+                        <li key={`${f.completed ?? 'undated'}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', flexShrink: 0, minWidth: 64 }}>{ordinal(i + 1)} time</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', flex: 1 }}>
+                            {f.completed ? `Finished ${formatDay(f.completed)}` : 'Finished, date not recorded'}
+                          </span>
+                          <button onClick={() => removePastFinish(i)} aria-label={`Remove the ${ordinal(i + 1)} finish`} title="Remove this finish"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, background: 'none', border: '1px solid var(--border-dim)', color: '#f87171', cursor: 'pointer', flexShrink: 0 }}>
+                            <X size={14} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {entry.status === 'completed' && status === 'completed' && (
+                      <>
+                        <button onClick={finishedAgain} disabled={busy}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#22c55e', background: '#22c55e18', border: '1px solid #22c55e88', cursor: busy ? 'wait' : 'pointer' }}>
+                          Finished It Again
+                        </button>
+                        <button onClick={startAgain} disabled={busy}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: accent, background: 'transparent', border: `1px solid ${accent}88`, cursor: busy ? 'wait' : 'pointer' }}>
+                          <RotateCcw size={14} aria-hidden="true" /> Start It Again
+                        </button>
+                      </>
+                    )}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <input type="date" aria-label="Date of an earlier finish" max={todayIso()} value={earlierDate} onChange={(e) => setEarlierDate(e.target.value)}
+                        style={{ ...inp, width: 'auto', padding: '7px 10px' }} />
+                      <button onClick={addEarlierFinish} disabled={!earlierDate || busy}
+                        style={{ minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: earlierDate ? 'var(--text-hi)' : 'var(--text-mute)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: earlierDate && !busy ? 'pointer' : 'not-allowed' }}>
+                        Add Earlier Finish
+                      </button>
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    Each time through keeps its own date on your Shelf and in Stats. The dates above are for the latest.
+                    {entry.status === 'completed' && status === 'completed' ? ' Start It Again puts it back in progress without losing the finish you have.' : ''}
+                  </p>
+                </div>
+              )}
 
               {isTV && (
                 <div>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2, CalendarClock, AlertTriangle } from 'lucide-react'
+import { Sparkles, Compass, CheckCheck, RefreshCw, Loader2, CalendarClock, AlertTriangle, Target } from 'lucide-react'
 import {
   getAllEntries, getSessionActivity, getTimeWindows, insertEntry, updateEntry,
   normalizeBacklogPriorities, ENTRIES_CHANGED_EVENT, WINDOWS_CHANGED_EVENT, type SessionActivity,
@@ -26,12 +26,14 @@ import { CLIP } from '@/components/MechCard'
 import { Panel, Tag, Btn, Reasons, ScoreBar, Empty, Cover, Suggestion } from './ui'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 import { todayIso } from '@/lib/format'
+import PlanPanel from './PlanPanel'
 
-type Mode = 'next' | 'time' | 'triage' | 'discover'
+type Mode = 'next' | 'time' | 'plan' | 'triage' | 'discover'
 
 const MODES: Array<{ id: Mode; label: string; icon: typeof Sparkles; accent: string }> = [
   { id: 'next',     label: 'Next Up',       icon: Sparkles,      accent: '#a577f2' },
   { id: 'time',     label: 'Time I Have',   icon: CalendarClock, accent: '#d97706' },
+  { id: 'plan',     label: 'Plan',          icon: Target,        accent: '#5f8df1' },
   { id: 'triage',   label: 'Finish or Drop', icon: CheckCheck,   accent: '#099bbe' },
   { id: 'discover', label: 'Discover',      icon: Compass,       accent: '#22c55e' },
 ]
@@ -120,6 +122,10 @@ export default function SuggestionsPage() {
     () => profile.stalled.filter((s) => inScope(s.entry.hobby_category)),
     [profile, inScope]
   )
+  // The plan works from the same scope, and fills the time in the order Next
+  // Up would pick: the whole ranking, not just the eight shown on that tab.
+  const scoped = useMemo(() => entries.filter((e) => inScope(e.hobby_category)), [entries, inScope])
+  const planRank = useMemo(() => pickNextUp(scoped, profile, scoped.length).map((p) => p.entry.id), [scoped, profile])
   // ── The time side ────────────────────────────────────────────────────────
   // `now` is captured once per mount rather than read inside the memo: a Date
   // read during render would make every re-render produce different windows.
@@ -434,6 +440,11 @@ export default function SuggestionsPage() {
                 </div>
               )}
             </Panel>
+          )}
+
+          {mode === 'plan' && (
+            <PlanPanel entries={scoped} rank={planRank}
+              paceHours={profile.pace.hoursPerWeek} windowHours={weeklyHobbyHours(windows)} />
           )}
 
           {mode === 'triage' && (

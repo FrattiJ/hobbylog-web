@@ -1,12 +1,21 @@
 import type { Entry, HobbyCategory } from '@/types/database'
 import { isoDayOf, todayIso } from './format'
 import { HOBBY_MAP } from './hobbies'
+import { finishesOf } from './finishes'
 
 // "Finished" here means what it means on the Shelf: a recipe marked Made is a
 // meal cooked, not a thing completed, so recipes stay out of the finished
 // counts, the finish rate and the time-to-finish figure. They still appear in
 // the per-hobby breakdown, where the row is plainly about Cooking.
 const isFinish = (e: Entry) => e.status === 'completed' && !HOBBY_MAP[e.hobby_category]?.recipe
+
+// Every dated finish in the library, one per time through: something finished
+// twice was finished on two days, and both belong on a chart of finishes.
+const finishDaysOf = (entries: Entry[]): string[] =>
+  entries
+    .filter((e) => !HOBBY_MAP[e.hobby_category]?.recipe)
+    .flatMap((e) => finishesOf(e).map((f) => f.date))
+    .filter((d): d is string => !!d)
 
 // Everything the Stats page and the dashboard's "this month" strip show, worked
 // out from data the browser already has. Pure functions: entries, the session
@@ -101,7 +110,7 @@ export function periodStats(
   range: Range, entries: Entry[], sessions: SessionLogRow[], workouts: DatedMinutes[], today = todayIso(),
 ): PeriodStats {
   const addedDays = entries.map((e) => isoDayOf(e.created_at)).filter(Boolean)
-  const finishDays = entries.filter((e) => isFinish(e) && e.date_completed).map((e) => e.date_completed as string)
+  const finishDays = finishDaysOf(entries)
   const logDays = [...sessions, ...workouts].map((r) => r.date).filter(Boolean)
   // A session with no date cannot be placed in a period; it is skipped below.
   const earliest = [...addedDays, ...finishDays, ...logDays].sort()[0] ?? null
@@ -224,7 +233,7 @@ export function ageLabel(days: number): string {
 export function thisMonth(entries: Entry[], sessions: SessionLogRow[], workouts: DatedMinutes[], today = todayIso()) {
   const prefix = today.slice(0, 7)
   const minutes = [...sessions, ...workouts].filter((r) => r.date && r.date.startsWith(prefix)).reduce((t, r) => t + r.minutes, 0)
-  const finished = entries.filter((e) => isFinish(e) && e.date_completed?.startsWith(prefix)).length
+  const finished = finishDaysOf(entries).filter((d) => d.startsWith(prefix)).length
   const added = entries.filter((e) => isoDayOf(e.created_at).startsWith(prefix)).length
   return { finished, added, net: added - finished, hours: Math.round((minutes / 60) * 10) / 10 }
 }

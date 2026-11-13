@@ -487,13 +487,28 @@ export async function getSessionActivity(): Promise<SessionActivity> {
 // The session log with the entry each sitting belongs to, for stats that need
 // to say which hobby the time went to. A row with no date keeps an empty one:
 // its minutes still count toward the entry, it just cannot be placed in time.
-export interface SessionLogRow { entry_id: string; date: string; minutes: number }
+//
+// Each row also carries what was written when it was logged. The Timeline lists
+// those notes, and the dashboard shows the latest one as "where you left off".
+export interface SessionLogRow {
+  entry_id: string
+  date: string
+  minutes: number
+  id?: string
+  progress?: number | null
+  notes?: string | null
+  created_at?: string
+}
 
 export async function getSessionLog(): Promise<SessionLogRow[]> {
   const userId = await currentUserId()
-  const { data } = await supabase.from('web_sessions').select('entry_id, date, duration_minutes').eq('user_id', userId)
-  return ((data ?? []) as Array<{ entry_id: string; date: string | null; duration_minutes: number | null }>)
-    .map((r) => ({ entry_id: r.entry_id, date: r.date ?? '', minutes: r.duration_minutes ?? 0 }))
+  const { data } = await supabase.from('web_sessions')
+    .select('id, entry_id, date, duration_minutes, progress_logged, notes, created_at').eq('user_id', userId)
+  return ((data ?? []) as Array<{ id: string; entry_id: string; date: string | null; duration_minutes: number | null; progress_logged: number | null; notes: string | null; created_at: string }>)
+    .map((r) => ({
+      entry_id: r.entry_id, date: r.date ?? '', minutes: r.duration_minutes ?? 0,
+      id: r.id, progress: r.progress_logged, notes: r.notes, created_at: r.created_at,
+    }))
 }
 
 // The two summaries other code wants from that log, derived locally so a page
@@ -595,7 +610,10 @@ export async function deleteMyAccount(): Promise<void> {
 // ── Sessions ────────────────────────────────────────────────────────────────
 
 export async function getSessionsByEntry(entryId: string): Promise<Session[]> {
-  const { data } = await supabase.from('web_sessions').select('*').eq('entry_id', entryId).order('date', { ascending: false })
+  // Newest first, and within a day the one logged last: the top row is where
+  // you actually left off.
+  const { data } = await supabase.from('web_sessions').select('*').eq('entry_id', entryId)
+    .order('date', { ascending: false }).order('created_at', { ascending: false })
   return (data ?? []) as Session[]
 }
 

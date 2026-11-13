@@ -6,15 +6,21 @@ import type { Entry } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusLabelFor } from '@/lib/hobbies'
 import { readRecipe, formatCookTime } from '@/lib/recipe'
 import { formatDayShort, formatDay } from '@/lib/format'
+import { ordinal, type Finish } from '@/lib/finishes'
 
 // The chamfered corner that marks a panel across the app, at cover size.
 const CLIP = 'polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px)'
 
 // What sits under the title. One line, chosen by what is most useful to know
 // about an entry in that state.
-function metaLine(entry: Entry, context: 'library' | 'shelf', showStatus: boolean): string {
+function metaLine(entry: Entry, context: 'library' | 'shelf', showStatus: boolean, finish?: Finish): string {
   const hobby = HOBBY_MAP[entry.hobby_category]
-  if (context === 'shelf') return formatDayShort(entry.date_completed)
+  if (context === 'shelf') {
+    // On the shelf a tile is one finish. When there has been more than one,
+    // say which this is, so the same cover in two years is not a mystery.
+    const date = formatDayShort(finish ? finish.date : entry.date_completed)
+    return finish && finish.of > 1 ? [date, `${ordinal(finish.nth)} time`].filter(Boolean).join(', ') : date
+  }
   if (hobby?.recipe) {
     const r = readRecipe(entry.metadata)
     const parts = [formatCookTime(r.cook_minutes), entry.progress_current > 0 ? `Made ${entry.progress_current}x` : null].filter(Boolean)
@@ -39,9 +45,13 @@ function metaLine(entry: Entry, context: 'library' | 'shelf', showStatus: boolea
 // seeing at a glance laid over or under it. Used by the library grid and the
 // shelf. In select mode it is a toggle; otherwise it is a real link, so it can
 // be opened in a new tab like any other.
-export default function CoverTile({ entry, context = 'library', showStatus = true, showHobby = false, selectable = false, selected = false, onToggleSelect }: {
+export default function CoverTile({ entry, context = 'library', showStatus = true, showHobby = false, selectable = false, selected = false, onToggleSelect, finish, note }: {
   entry: Entry
   context?: 'library' | 'shelf'
+  /** Which finish this tile stands for, on the shelf. Defaults to the entry's latest. */
+  finish?: Finish
+  /** A line of the reader's own words to show under the tile, with its date. */
+  note?: { text: string; date: string } | null
   showStatus?: boolean
   showHobby?: boolean
   selectable?: boolean
@@ -53,7 +63,7 @@ export default function CoverTile({ entry, context = 'library', showStatus = tru
   const total = entry.progress_total
     || (entry.hobby_category === 'games' && entry.metadata?.time_to_beat ? Number(entry.metadata.time_to_beat) : null)
   const pct = total && !hobby?.recipe ? Math.min(100, Math.round((entry.progress_current / total) * 100)) : null
-  const meta = metaLine(entry, context, showStatus)
+  const meta = metaLine(entry, context, showStatus, finish)
   const statusColor = STATUS_COLORS[entry.status]
 
   const body = (
@@ -110,6 +120,12 @@ export default function CoverTile({ entry, context = 'library', showStatus = tru
         )}
         {meta && <span>{meta}</span>}
       </p>
+      {note && (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, lineHeight: 1.4, color: 'var(--text-mid)', margin: '5px 0 0', overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <span className="sr-only">Last note, {formatDay(note.date)}: </span>
+          &ldquo;{note.text}&rdquo;
+        </p>
+      )}
     </>
   )
 

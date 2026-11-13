@@ -9,6 +9,7 @@ import FriendEntryDetail from './FriendEntryDetail'
 import { useToast } from './Toast'
 import { useProgressive } from '@/lib/useProgressive'
 import ListFooter from './ListFooter'
+import { getFriendLists, type HobbyList } from '@/lib/lists'
 
 const GREEN = '#22c55e'
 
@@ -28,6 +29,9 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
   const [statusF, setStatusF] = useState<'all' | string>('all')
   const [sort, setSort] = useState<SortKey>('recent')
   const [commonOnly, setCommonOnly] = useState(false)
+  // Lists this friend has chosen to share, and which one is open.
+  const [lists, setLists] = useState<HobbyList[]>([])
+  const [listF, setListF] = useState<string>('all')
   const [selected, setSelected] = useState<Entry | null>(null)
   const { error: toastError, success: toastSuccess } = useToast()
 
@@ -45,6 +49,9 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
         if (e0) setSelected(e0)
       }
     }).catch(() => { if (alive) setLoading(false) })
+    // Optional: a friend with nothing shared, or a database without the lists
+    // tables yet, both just mean there is no row of lists to show.
+    getFriendLists(friendId).then((l) => { if (alive) setLists(l.filter((x) => x.items.length > 0)) }).catch(() => {})
     return () => { alive = false }
   }, [friendId, initialEntryId])
 
@@ -68,18 +75,24 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
   const commonCount = entries.filter(iHave).length
   const hobbiesPresent = HOBBIES.filter((h) => entries.some((e) => e.hobby_category === h.id))
 
+  // An open list narrows the library to its entries and puts them in its order.
+  const openList = lists.find((l) => l.id === listF) ?? null
+  const listOrder = openList ? new Map(openList.items.map((it) => [it.entry_id, it.position])) : null
+
   const filtered = entries.filter((e) => {
+    if (listOrder && !listOrder.has(e.id)) return false
     if (hobbyF !== 'all' && e.hobby_category !== hobbyF) return false
     if (statusF !== 'all' && e.status !== statusF) return false
     if (commonOnly && !iHave(e)) return false
     return true
   })
   const display = [...filtered].sort((a, b) => {
+    if (listOrder) return (listOrder.get(a.id) ?? 0) - (listOrder.get(b.id) ?? 0)
     if (sort === 'title') return a.title.localeCompare(b.title)
     if (sort === 'rating') return (b.rating ?? -1) - (a.rating ?? -1)
     return a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0
   })
-  const paged = useProgressive(display.length, [hobbyF, statusF, sort, String(commonOnly)].join('|'))
+  const paged = useProgressive(display.length, [hobbyF, statusF, sort, String(commonOnly), listF].join('|'))
 
   const chip = (active: boolean, color: string): React.CSSProperties => ({
     padding: '5px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em',
@@ -130,6 +143,23 @@ export default function FriendLibrary({ friendId, username, avatarUrl, onBack, i
         {stat(backlog, 'Backlog', 'var(--text-mid)')}
         {stat(commonCount, 'In Common', '#d97706')}
       </div>
+
+      {/* Lists they have shared */}
+      {lists.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', marginRight: 2 }}>Lists</span>
+            {lists.map((l) => (
+              <button key={l.id} onClick={() => setListF(listF === l.id ? 'all' : l.id)} aria-pressed={listF === l.id} style={chip(listF === l.id, '#ed539f')}>
+                {l.name} ({l.items.filter((it) => entries.some((e) => e.id === it.entry_id)).length})
+              </button>
+            ))}
+          </div>
+          {openList?.description && (
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.5, margin: '10px 0 0', maxWidth: '70ch' }}>{openList.description}</p>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>

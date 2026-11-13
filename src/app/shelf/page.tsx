@@ -8,6 +8,7 @@ import { getAllEntries, ENTRIES_CHANGED_EVENT } from '@/lib/db'
 import { useHobbies } from '@/components/HobbyContext'
 import ShelfWall from '@/components/ShelfWall'
 import { readParamOneOf, useUrlParams } from '@/lib/urlState'
+import { timesFinished } from '@/lib/finishes'
 
 // Everything you have finished, across hobbies, as one wall of covers. The
 // backlog is a list of things to do; this is the record of what got done.
@@ -29,11 +30,15 @@ export default function ShelfPage() {
   }, [])
 
   const hobbies = SHELF_HOBBIES.filter((h) => enabledIds.includes(h.id))
-  const finished = (entries ?? []).filter((e) => e.status === 'completed' && hobbies.some((h) => h.id === e.hobby_category))
+  // Anything finished at least once, including something you are in the
+  // middle of again. The counts are of finishes, so a reread counts twice.
+  const finished = (entries ?? []).filter((e) => timesFinished(e) > 0 && hobbies.some((h) => h.id === e.hobby_category))
+  const finishCount = (list: Entry[]) => list.reduce((t, e) => t + timesFinished(e), 0)
   const withFinishes = hobbies
-    .map((h) => ({ hobby: h, count: finished.filter((e) => e.hobby_category === h.id).length }))
+    .map((h) => ({ hobby: h, count: finishCount(finished.filter((e) => e.hobby_category === h.id)) }))
     .filter((x) => x.count > 0)
   const shown = hobbyFilter === 'all' ? finished : finished.filter((e) => e.hobby_category === hobbyFilter)
+  const total = finishCount(finished)
 
   const tab = (active: boolean, color: string): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px',
@@ -53,7 +58,7 @@ export default function ShelfPage() {
             ? 'Loading…'
             : finished.length === 0
               ? 'Everything you finish lands here.'
-              : `${finished.length} finished across ${withFinishes.length} ${withFinishes.length === 1 ? 'hobby' : 'hobbies'}`}
+              : `${total} finished across ${withFinishes.length} ${withFinishes.length === 1 ? 'hobby' : 'hobbies'}`}
         </p>
       </div>
 
@@ -78,7 +83,7 @@ export default function ShelfPage() {
           {withFinishes.length > 1 && (
             <div className="tab-row" role="tablist" aria-label="Filter by hobby" style={{ marginBottom: 24 }}>
               <button role="tab" aria-selected={hobbyFilter === 'all'} onClick={() => setHobbyFilter('all')} style={tab(hobbyFilter === 'all', '#f59e0b')}>
-                All <span style={tabCount}>{finished.length}</span>
+                All <span style={tabCount}>{total}</span>
               </button>
               {withFinishes.map(({ hobby, count }) => (
                 <button key={hobby.id} role="tab" aria-selected={hobbyFilter === hobby.id}

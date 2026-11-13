@@ -9,6 +9,7 @@ import MechCard from '@/components/MechCard'
 import Link from 'next/link'
 import { getAllEntries, getSessionLog, ENTRIES_CHANGED_EVENT, type SessionLogRow } from '@/lib/db'
 import { thisMonth } from '@/lib/stats'
+import { latestNotes } from '@/lib/timeline'
 import { getWorkoutLog, FITNESS_CHANGED_EVENT } from '@/lib/fitness/db'
 import { STATUS_LABELS, HOBBY_PATHS, HOBBY_MAP } from '@/lib/hobbies'
 import type { Entry, HobbyCategory } from '@/types/database'
@@ -108,6 +109,8 @@ export default function DashboardPage() {
   const backlog    = entries.filter((e) => e.status === 'backlog')
 
   const month = useMemo(() => thisMonth(entries, sessions, workoutLog), [entries, sessions, workoutLog])
+  // The last note logged on each entry: the reminder of where it stands.
+  const leftOff = useMemo(() => latestNotes(sessions), [sessions])
   const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date())
   // The newest dated finishes. Undated ones cannot be called recent.
   const recentlyFinished = completed
@@ -185,9 +188,12 @@ export default function DashboardPage() {
       {/* ── What you are in the middle of comes first: it is the reason to open the app ── */}
       {inProgress.length > 0 && (
         <section aria-labelledby="dash-continue" style={{ marginBottom: 28 }}>
-          <h2 id="dash-continue" style={sectionTitle}>Pick up where you left off</h2>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <h2 id="dash-continue" style={{ ...sectionTitle, margin: 0 }}>Pick up where you left off</h2>
+            <Link href="/timeline" style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>Open your Timeline</Link>
+          </div>
           <div className="cover-grid">
-            {inProgress.slice(0, 6).map((e) => <CoverTile key={e.id} entry={e} showStatus={false} showHobby />)}
+            {inProgress.slice(0, 6).map((e) => <CoverTile key={e.id} entry={e} showStatus={false} showHobby note={leftOff.get(e.id)} />)}
           </div>
         </section>
       )}
