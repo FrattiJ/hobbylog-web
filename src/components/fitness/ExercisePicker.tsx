@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Search, Plus, Dumbbell } from 'lucide-react'
 import type { Exercise, TrackingType } from '@/types/fitness'
 import type { CatalogExercise } from '@/lib/fitness/catalog'
 import { exerciseFromCatalog, findOrCreateExercise } from '@/lib/fitness/db'
+import { MUSCLE_LABELS, asMuscle, guessMuscles, type MuscleId } from '@/lib/fitness/muscles'
+import { useCatalog } from './useCatalog'
+import { MuscleSelect } from './MuscleSelect'
 import { Modal, Input, Select, Button, Label, ACCENT, Empty } from './ui'
 
 export const TRACKING_LABELS: Record<TrackingType, string> = {
@@ -21,12 +24,6 @@ const TRACKING_HINTS: Record<TrackingType, string> = {
   time_distance: 'Running, rowing, cycling — logs a duration and how far you went.',
 }
 
-// The catalog is ~52 KB of generated data, so it only loads when the picker opens.
-function useCatalog() {
-  const [mod, setMod] = useState<typeof import('@/lib/fitness/catalog') | null>(null)
-  useEffect(() => { import('@/lib/fitness/catalog').then(setMod) }, [])
-  return mod
-}
 
 export default function ExercisePicker({ mine, onPick, onClose }: {
   mine: Exercise[]
@@ -38,7 +35,9 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Set when the user opts to define an exercise the catalog doesn't have.
-  const [custom, setCustom] = useState<{ name: string; tracking: TrackingType } | null>(null)
+  // `muscle` stays undefined until the user touches the field, and until then
+  // the form follows whatever the name suggests.
+  const [custom, setCustom] = useState<{ name: string; tracking: TrackingType; muscle?: MuscleId | null } | null>(null)
 
   const q = query.trim().toLowerCase()
 
@@ -72,7 +71,8 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
     setBusy(true)
     setError(null)
     try {
-      onPick(await findOrCreateExercise({ name: custom.name, tracking_type: custom.tracking }))
+      const muscle = custom.muscle !== undefined ? custom.muscle : guessMuscles(custom.name)?.primary ?? null
+      onPick(await findOrCreateExercise({ name: custom.name, tracking_type: custom.tracking, muscle }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create that exercise')
       setBusy(false)
@@ -80,6 +80,8 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
   }
 
   if (custom) {
+    const guessed = guessMuscles(custom.name)?.primary ?? null
+    const muscle = custom.muscle !== undefined ? custom.muscle : guessed
     return (
       <Modal title="New exercise" onClose={onClose} width={480}>
         <Label style={{ marginBottom: 6 }}>Name</Label>
@@ -106,6 +108,17 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
           {TRACKING_HINTS[custom.tracking]}
         </p>
 
+        <Label style={{ margin: '16px 0 6px' }}>Main muscle worked</Label>
+        <MuscleSelect value={muscle} onChange={(m) => setCustom({ ...custom, muscle: m })} />
+        <p style={{
+          fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
+          marginTop: 8, lineHeight: 1.6,
+        }}>
+          {custom.muscle === undefined && guessed
+            ? `Filled in from the name: ${MUSCLE_LABELS[guessed]}. Change it if that's wrong.`
+            : 'Used to suggest swaps and to draw the body map. Leave it if you\'re not sure. You can set it later.'}
+        </p>
+
         {error && <p style={{ color: '#f15959', fontSize: 13, marginTop: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
@@ -124,7 +137,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
         <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-dim)' }} />
         <Input
           autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search 873 exercises, or type your own name"
+          placeholder="Search the catalog, or type your own name"
           style={{ paddingLeft: 30 }}
         />
       </div>
@@ -138,7 +151,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
             {mineHits.map((e) => (
               <Row
                 key={e.id} name={e.name} disabled={busy}
-                meta={[TRACKING_LABELS[e.tracking_type], e.muscle, e.equipment].filter(Boolean).join(' · ')}
+                meta={[TRACKING_LABELS[e.tracking_type], asMuscle(e.muscle) ? MUSCLE_LABELS[asMuscle(e.muscle)!] : e.muscle, e.equipment].filter(Boolean).join(' · ')}
                 onClick={() => onPick(e)}
               />
             ))}
@@ -151,7 +164,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
             {catalogHits.map((c) => (
               <Row
                 key={c.id} name={c.name} disabled={busy}
-                meta={[c.muscles[0], c.equipment, c.category].filter(Boolean).join(' · ')}
+                meta={[asMuscle(c.muscles[0]) ? MUSCLE_LABELS[asMuscle(c.muscles[0])!] : c.muscles[0], c.equipment, c.category].filter(Boolean).join(' · ')}
                 onClick={() => pickCatalog(c)}
               />
             ))}

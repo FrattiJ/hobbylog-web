@@ -8,6 +8,8 @@ import {
   removeExercise, setRoutineExercises, updateExercise, updateRoutine, type RoutineExerciseDraft,
 } from '@/lib/fitness/db'
 import { fmtDuration, parseDuration } from '@/lib/fitness/calc'
+import { MUSCLE_LABELS, asMuscle, guessMuscles, musclesFor, type MuscleId } from '@/lib/fitness/muscles'
+import { MuscleSelect } from './MuscleSelect'
 import { useToast } from '../Toast'
 import ExercisePicker, { TRACKING_LABELS } from './ExercisePicker'
 import { Button, Input, Select, TextArea, Label, Rule, Empty, Confirm, Modal, DAY_NAMES, DAY_FULL, ACCENT } from './ui'
@@ -186,7 +188,7 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
                     {[
                       TRACKING_LABELS[e.tracking_type],
                       e.catalog_id ? null : 'Custom',
-                      e.muscle,
+                      muscleNote(e),
                     ].filter(Boolean).join(' · ')}
                   </Label>
                 </div>
@@ -221,21 +223,36 @@ function ExerciseLibrary({ exercises, onChanged }: { exercises: Exercise[]; onCh
   )
 }
 
+// The muscle shown for an exercise in the library. One read off the name is
+// marked as a guess, so it's clear which ones nobody has confirmed.
+function muscleNote(e: Exercise): string | null {
+  const use = musclesFor(e)
+  if (use.primary.length === 0) return 'No muscle set'
+  const label = MUSCLE_LABELS[use.primary[0]]
+  return use.source === 'guess' ? `${label} (guessed)` : label
+}
+
 function EditExercise({ exercise, onClose, onSaved }: {
   exercise: Exercise; onClose: () => void; onSaved: () => void
 }) {
   const { error: toastError } = useToast()
   const [name, setName] = useState(exercise.name)
   const [tracking, setTracking] = useState<TrackingType>(exercise.tracking_type)
+  // Starts on the stored muscle, or failing that on what the name suggests, so
+  // an unlabelled exercise is usually one Save away from being right.
+  const stored = asMuscle(exercise.muscle)
+  const [muscle, setMuscle] = useState<MuscleId | null>(stored ?? guessMuscles(exercise.name)?.primary ?? null)
+  const [muscleTouched, setMuscleTouched] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const trackingChanged = tracking !== exercise.tracking_type
+  const showingGuess = !stored && !muscleTouched && muscle !== null
 
   async function save() {
     if (!name.trim()) { toastError('Give the exercise a name'); return }
     setSaving(true)
     try {
-      await updateExercise(exercise.id, { name: name.trim(), tracking_type: tracking })
+      await updateExercise(exercise.id, { name: name.trim(), tracking_type: tracking, muscle })
       onSaved()
     } catch (e) {
       // The (user, name) unique index is what keeps PR history continuous, so a
@@ -267,6 +284,14 @@ function EditExercise({ exercise, onClose, onSaved }: {
           records may look different.
         </p>
       )}
+
+      <Label style={{ margin: '16px 0 6px' }}>Main muscle worked</Label>
+      <MuscleSelect value={muscle} onChange={(m) => { setMuscle(m); setMuscleTouched(true) }} />
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', marginTop: 8, lineHeight: 1.6 }}>
+        {showingGuess
+          ? `Guessed from the name: ${MUSCLE_LABELS[muscle]}. Saving keeps it, so change it first if it's wrong.`
+          : 'Decides which exercises are offered as a swap, and what lights up on the body map.'}
+      </p>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
         <Button variant="quiet" onClick={onClose}>Cancel</Button>

@@ -1,5 +1,6 @@
 import type { TrackingType } from '@/types/fitness'
 import { EQUIPMENT, CATEGORIES, MUSCLES, ROWS, type CatalogRow } from './catalog.data'
+import { musclesFor, type MuscleUse } from './muscles'
 
 export interface CatalogExercise {
   id: string
@@ -7,6 +8,8 @@ export interface CatalogExercise {
   equipment: string
   category: string
   muscles: string[]
+  // Muscles that assist. Never repeats a primary one.
+  secondary: string[]
 }
 
 function expand(r: CatalogRow): CatalogExercise {
@@ -16,6 +19,7 @@ function expand(r: CatalogRow): CatalogExercise {
     equipment: EQUIPMENT[r[2]],
     category: CATEGORIES[r[3]],
     muscles: r[4].map((i) => MUSCLES[i]),
+    secondary: r[5].map((i) => MUSCLES[i]),
   }
 }
 
@@ -71,6 +75,19 @@ const ALIAS_NAMES: Record<string, string> = {
 // Resolved once. A name that no longer exists (catalog regenerated upstream) is
 // simply dropped rather than throwing.
 const CATALOG_BY_NAME = new Map(CATALOG.map((e) => [e.name.toLowerCase(), e]))
+
+// The catalog entry behind one of your exercises: the one it was picked from, or
+// failing that one with exactly the same name (a custom "Barbell Squat" is still
+// a barbell squat).
+export function catalogEntryFor(ex: { name: string; catalog_id: string | null }): CatalogExercise | undefined {
+  return (ex.catalog_id ? CATALOG_BY_ID.get(ex.catalog_id) : undefined)
+    ?? CATALOG_BY_NAME.get(ex.name.trim().toLowerCase())
+}
+
+// musclesFor with the catalog's secondary muscles filled in.
+export function resolveMuscles(ex: { name: string; muscle: string | null; catalog_id: string | null }): MuscleUse {
+  return musclesFor(ex, catalogEntryFor(ex))
+}
 const ALIASES = new Map<string, CatalogExercise>()
 for (const [alias, name] of Object.entries(ALIAS_NAMES)) {
   const hit = CATALOG_BY_NAME.get(name.toLowerCase())

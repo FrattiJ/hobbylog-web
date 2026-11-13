@@ -10,6 +10,7 @@ import {
 import { fmtSet, setsVolume } from '@/lib/fitness/calc'
 import { useToast } from '../Toast'
 import SetGrid, { draftHasData, draftToSet, type DraftSet } from './SetGrid'
+import { SessionMusclesPanel, countedSets, type SessionWork } from './MuscleMap'
 import { Button, Input, TextArea, Label, Empty, Confirm, Rule, ACCENT } from './ui'
 
 // Sets belonging to one exercise within a workout, in the order they were logged.
@@ -23,6 +24,14 @@ function groupSets(sets: WorkoutSet[], exercises: Map<string, Exercise>): Group[
     else groups.push({ exercise: exercises.get(s.exercise_id), sets: [s] })
   }
   return groups
+}
+
+// The same groups, as the body map wants them. Sets on an exercise that has
+// since been hard-deleted have no muscle to count toward, so they're left out.
+function musclesWork(groups: Group[]): SessionWork[] {
+  return groups
+    .filter((g): g is Group & { exercise: Exercise } => !!g.exercise)
+    .map((g) => ({ exercise: g.exercise, sets: countedSets(g.sets) }))
 }
 
 export default function HistoryTab() {
@@ -140,6 +149,10 @@ export default function HistoryTab() {
 
             {expanded && !isEditing && (
               <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-dim)' }}>
+                {/* What the session trained, before the set-by-set detail. */}
+                <div style={{ padding: '14px 0 12px', borderBottom: '1px solid var(--border-dim)' }}>
+                  <SessionMusclesPanel work={musclesWork(groups)} width={170} />
+                </div>
                 {groups.map((g, i) => (
                   <div key={i} style={{ marginTop: 10 }}>
                     <div style={{ fontSize: 13, color: 'var(--text-mid)', marginBottom: 4 }}>

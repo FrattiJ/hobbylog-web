@@ -52,6 +52,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Sort films, shows, books and recipes by length, the way games already sorted by time to beat',
       'A shorter menu: Shelf, Timeline and Stats now sit together under History, with tabs to move between them',
       'Finished it more than once? Log another finish or start it again from the entry page. Each time keeps its own date on your Shelf, in Stats and on the Timeline',
+      'Fitness: swap an exercise mid-session. Machine taken? Tap Swap on its card for other exercises that train the same muscle, yours first with what you did last time. Your routine is not changed',
+      'Fitness: a body map of the muscles you trained, shown when you finish a workout and on each session in History',
+      'Fitness: your own exercises now have a main muscle. It is filled in from the name where it can be, and you can set or correct it under Routines, Your Exercises',
     ],
   },
   {
