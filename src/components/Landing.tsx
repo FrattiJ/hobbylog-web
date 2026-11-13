@@ -19,7 +19,7 @@ import { LoginForm, initialAuthMode, AUTH_EMAIL_ID, type AuthMode } from './Logi
 
 const CLIP = 'polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px)'
 
-interface Sample { title: string; hobby: HobbyCategory; rating?: number; rank?: number; status?: 'backlog' | 'in_progress' | 'completed' | 'wishlist'; pct?: number; note?: string }
+export interface Sample { title: string; hobby: HobbyCategory; rating?: number; rank?: number; status?: 'backlog' | 'in_progress' | 'completed' | 'wishlist'; pct?: number; note?: string }
 
 const STRIP: Sample[] = [
   { title: 'Hollow Knight', hobby: 'games', rating: 9.5 },
@@ -33,7 +33,7 @@ const STRIP: Sample[] = [
   { title: 'Past Lives', hobby: 'movies', rating: 9.5 },
 ]
 
-const LIBRARY: Sample[] = [
+export const LIBRARY: Sample[] = [
   { title: "Baldur's Gate 3", hobby: 'games', status: 'in_progress', pct: 81, note: '61 of 75 hrs' },
   { title: 'Hades II', hobby: 'games', status: 'backlog', rank: 1 },
   { title: 'Citizen Sleeper', hobby: 'games', status: 'backlog', rank: 2 },
@@ -47,7 +47,7 @@ const RANKED = [
   { title: 'Return of the Obra Dinn', why: 'About 8 hours.' },
 ]
 
-const SHELF: Sample[] = [
+export const SHELF: Sample[] = [
   { title: 'Project Hail Mary', hobby: 'books', rating: 9, note: 'Oct 8' },
   { title: 'Shogun', hobby: 'tv', rating: 9.5, note: 'Jul 25' },
   { title: 'Outer Wilds', hobby: 'games', rating: 10, note: 'Jun 15' },
@@ -56,7 +56,7 @@ const SHELF: Sample[] = [
 
 const STATUS_NAME = { wishlist: 'Wishlist', backlog: 'Backlog', in_progress: 'In Progress', completed: 'Completed' } as const
 
-function DemoTile({ s, showMeta = true }: { s: Sample; showMeta?: boolean }) {
+export function DemoTile({ s, showMeta = true }: { s: Sample; showMeta?: boolean }) {
   const accent = HOBBY_MAP[s.hobby].accent
   return (
     <div>

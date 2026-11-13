@@ -1,5 +1,8 @@
 'use client'
 
+import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+
 // The frame and field styles shared by the signed-out screens: sign in, request
 // a reset link, and choose a new password.
 
@@ -36,6 +39,24 @@ export function authPrimaryButton(busy: boolean, disabled: boolean): React.CSSPr
     border: '1px solid #a577f2',
     cursor: busy ? 'wait' : 'pointer', opacity: disabled ? 0.5 : 1,
   }
+}
+
+// A password field with a show/hide switch. Typing a password blind on a phone
+// keyboard is where most failed sign-ins come from, and a second "confirm"
+// field only doubles the typing; being able to look is the better check.
+// The switch is a real toggle button (aria-pressed), and it never submits.
+export function PasswordInput({ style, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div style={{ position: 'relative', marginBottom: style?.marginBottom }}>
+      <input {...props} type={shown ? 'text' : 'password'} spellCheck={false} autoCapitalize="none"
+        style={{ ...authInput, ...style, marginBottom: 0, paddingRight: 48 }} />
+      <button type="button" aria-label="Show password" aria-pressed={shown} onClick={() => setShown((v) => !v)}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: shown ? 'var(--text-hi)' : 'var(--text-dim)', cursor: 'pointer' }}>
+        {shown ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+      </button>
+    </div>
+  )
 }
 
 export function AuthMessage({ message }: { message: { kind: 'error' | 'info'; text: string } | null }) {

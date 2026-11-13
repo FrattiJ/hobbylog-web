@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { supabase, authLinkError } from '@/lib/supabaseClient'
-import { AUTH_ACCENT as ACCENT, AuthMessage, authInput as inp, authLabel as label, authLink, authPrimaryButton } from './AuthShell'
+import { AUTH_ACCENT as ACCENT, AuthMessage, PasswordInput, authInput as inp, authLabel as label, authLink, authPrimaryButton } from './AuthShell'
 
 // Which providers to offer, e.g. NEXT_PUBLIC_OAUTH_PROVIDERS="google,discord".
 //
@@ -29,6 +30,28 @@ export const initialAuthMode: AuthMode = authLinkError ? 'forgot' : 'signin'
 // The id of the first field, so a call to action elsewhere on the page can send
 // focus (and with it the scroll position) straight to the form.
 export const AUTH_EMAIL_ID = 'auth-email'
+
+// What a new account shares, said at the moment someone is deciding whether to
+// make one. There is nothing to opt in or out of here, so it is a statement
+// rather than a set of switches: closed by default, with the short answer
+// ("private by default") readable without opening it.
+function PrivacyDefaults() {
+  return (
+    <details className="auth-details">
+      <summary>
+        <ChevronDown size={16} aria-hidden="true" className="auth-details-chevron" />
+        <span>What other people can see</span>
+        <span className="auth-details-hint">Private by default</span>
+      </summary>
+      <ul>
+        <li>Your library is visible only to friends you have accepted. Nobody else can open it.</li>
+        <li>Any single entry can be marked private, which hides it from friends too.</li>
+        <li>Once you pick a username, other members can find you by it. They see the username and your avatar, and nothing else, until you accept a friend request.</li>
+        <li>Your email address is never shown to anyone. It is used to confirm the account and to reset your password.</li>
+      </ul>
+    </details>
+  )
+}
 
 // Sign in, create an account, or ask for a password-reset link. One form whose
 // primary action follows the mode; the mode is owned by the parent so that
@@ -150,13 +173,14 @@ export function LoginForm({ mode, onModeChange }: { mode: AuthMode; onModeChange
             <label htmlFor="auth-password" style={{ ...label, display: 'block' }}>Password</label>
             {mode === 'signin' && <button type="button" onClick={() => switchMode('forgot')} style={{ ...authLink, fontSize: 13 }}>Forgot password?</button>}
           </div>
-          <input id="auth-password" name="password" type="password" required minLength={mode === 'signup' ? 6 : undefined}
+          <PasswordInput id="auth-password" name="password" required minLength={mode === 'signup' ? 6 : undefined}
             value={password} onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            style={{ ...inp, marginBottom: mode === 'signup' ? 6 : 20 }} />
+            style={{ marginBottom: mode === 'signup' ? 6 : 20 }} />
           {mode === 'signup' && (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px' }}>At least 6 characters.</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '0 0 16px' }}>At least 6 characters.</p>
           )}
+          {mode === 'signup' && <PrivacyDefaults />}
         </>
       )}
 

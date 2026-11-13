@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { AuthMessage, authInput, authLabel, authPrimaryButton } from './AuthShell'
+import { AuthMessage, PasswordInput, authLabel, authPrimaryButton } from './AuthShell'
 
 // Supabase's default floor. The server enforces whatever the project is really
 // set to, and its message is shown as-is if that is stricter.
@@ -35,11 +35,11 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
   return (
     <form onSubmit={(e) => { e.preventDefault(); save() }}>
       <label htmlFor="new-password" style={{ ...authLabel, display: 'block' }}>New password</label>
-      <input id="new-password" name="new-password" type="password" required minLength={MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)}
-        autoComplete="new-password" style={{ ...authInput, marginBottom: 16 }} />
+      <PasswordInput id="new-password" name="new-password" required minLength={MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password" style={{ marginBottom: 16 }} />
       <label htmlFor="confirm-password" style={{ ...authLabel, display: 'block' }}>Confirm password</label>
-      <input id="confirm-password" name="confirm-password" type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)}
-        autoComplete="new-password" style={{ ...authInput, marginBottom: 20 }} />
+      <PasswordInput id="confirm-password" name="confirm-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)}
+        autoComplete="new-password" style={{ marginBottom: 20 }} />
       <AuthMessage message={error ? { kind: 'error', text: error } : null} />
       <div style={{ display: 'flex' }}>
         <button type="submit" aria-busy={busy} style={authPrimaryButton(busy, false)}>

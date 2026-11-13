@@ -463,6 +463,65 @@ input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.4); }
 @keyframes landing-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .landing-enter { animation: landing-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+/* ── Sign-up: what a new account shares ─────────────────────────────────────── */
+.auth-details { margin: 0 0 20px; border: 1px solid var(--border-dim); background: var(--bg-base); }
+.auth-details summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; cursor: pointer; list-style: none;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--text-hi);
+}
+.auth-details summary::-webkit-details-marker { display: none; }
+.auth-details-chevron { flex-shrink: 0; color: var(--text-dim); transition: transform 0.15s ease; transform: rotate(-90deg); }
+.auth-details[open] .auth-details-chevron { transform: none; }
+.auth-details-hint { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--text-dim); white-space: nowrap; }
+.auth-details ul {
+  list-style: none; margin: 0; padding: 12px 14px 14px; border-top: 1px solid var(--border-dim);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.auth-details li { font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--text-mid); }
+@media (max-width: 380px) { .auth-details-hint { display: none; } }
+
+/* ── What's New tour ────────────────────────────────────────────────────────── */
+.tour-preview {
+  position: relative; height: 290px; overflow: hidden; padding: 20px 20px 0;
+  background: var(--bg-base); border: 1px solid var(--border-dim);
+}
+/* The preview is a cropped look at a page, so it fades out rather than ending
+   on a hard edge halfway through a tile. */
+.tour-preview::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-base));
+}
+@keyframes tour-step { from { opacity: 0; transform: translateX(var(--tour-from, 16px)); } to { opacity: 1; transform: none; } }
+.tour-step { animation: tour-step 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.tour-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-top: 26px; }
+.tour-dots { display: flex; align-items: center; gap: 4px; }
+.tour-dot { width: 28px; height: 28px; padding: 0; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.tour-dot span { display: block; width: 8px; height: 8px; border-radius: 4px; background: var(--text-mute); transition: width 0.2s ease, background-color 0.2s ease; }
+.tour-dot[aria-current='step'] span { width: 24px; background: #a577f2; }
+.tour-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.tour-text-btn {
+  min-height: 44px; padding: 0 14px; background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 15px; font-weight: 600; color: var(--text-mid);
+}
+.tour-next {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 20px; margin-left: 6px; cursor: pointer;
+  font-family: var(--font-body); font-size: 16px; font-weight: 700; color: #fff; white-space: nowrap;
+  background: #6d3fd6; border: 1px solid #a577f2;
+  clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+}
+.tour-bars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: end; height: 110px; }
+.tour-bars > div { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 2px; }
+@media (max-width: 520px) {
+  .tour-preview { height: 210px; padding: 14px 14px 0; }
+  /* Three across at this width, so a row of tiles shows whole instead of two
+     tiles cropped at the waist. */
+  .tour-preview .landing-tiles-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tour-preview .landing-tiles-4 > :nth-child(n + 4) { display: none; }
+  .tour-footer { margin-top: 20px; }
+  .tour-actions { width: 100%; }
+  .tour-actions .tour-next { margin-left: auto; }
+}
+
 /* ── Light theme: accent-coloured text ──────────────────────────────────────── */
 /* Accent and status colours are tuned to read as text on the dark theme, and no
    single shade clears 4.5:1 on both a near-black and a near-white surface.

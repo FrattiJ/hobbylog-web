@@ -2,12 +2,44 @@
 // "What's New" popup fires for anyone whose last-seen version is older.
 export const APP_VERSION = '0.11.0'
 
-export interface ChangelogEntry { version: string; date: string; items: string[] }
+// A release's headline changes, walked through one at a time before the full
+// list. Each step pairs a short claim with a miniature of the page it is about;
+// `preview` names one of the miniatures in components/WhatsNew.tsx. Keep it to
+// three or four steps: this is the part people actually read. The last step's
+// button takes them to `cta.href`, so end on the page most worth opening.
+export type TourPreview = 'covers' | 'stats' | 'shelf'
+export interface TourStep { title: string; body: string; preview: TourPreview; previewLabel: string }
+export interface Tour { steps: TourStep[]; cta: { label: string; href: string } }
+
+export interface ChangelogEntry { version: string; date: string; items: string[]; tour?: Tour }
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '0.11.0',
     date: 'Nov 2026',
+    tour: {
+      steps: [
+        {
+          title: 'Your library, by cover.',
+          body: 'Hobby pages open as a wall of cover art, and every status tab shows how many entries it holds. The compact list is one toggle away.',
+          preview: 'covers',
+          previewLabel: 'A games library drawn as a grid of covers, with tabs for wishlist, backlog, in progress and completed.',
+        },
+        {
+          title: 'Stats that follow time.',
+          body: 'See what you finished and added each month, whether the pile grew or shrank, and how many months of backlog you have at your own pace.',
+          preview: 'stats',
+          previewLabel: 'A chart of entries finished and added over six months, above three figures: months of backlog, finish rate and typical days to finish.',
+        },
+        {
+          title: 'A Shelf for what you finished.',
+          body: 'Everything you have completed, grouped by year with your ratings. Finish dates can be edited now, so older entries land in the right year.',
+          preview: 'shelf',
+          previewLabel: 'A shelf for 2026 showing four finished entries with their ratings and finish dates.',
+        },
+      ],
+      cta: { label: 'Open your Shelf', href: '/shelf' },
+    },
     items: [
       'A cleaner, easier-to-read look: a new typeface for everything you read, larger text and plainer wording throughout',
       'Your library as covers: hobby pages open as a wall of cover art, with a toggle back to the compact list',
@@ -27,6 +59,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'New library figures: months of backlog at your pace, typical days to finish, finish rate, the spread of your ratings, and what has waited longest',
       'The dashboard leads with what you are in the middle of, then the month so far, and shows what you finished most recently',
       'Entry pages show how many other people track the same title, how many finished it and how they rated it',
+      'What\'s New opens as a short tour of the headline changes, with the full list one click away',
+      'Password fields have a show button, and creating an account spells out what other people can and cannot see',
     ],
   },
   {
