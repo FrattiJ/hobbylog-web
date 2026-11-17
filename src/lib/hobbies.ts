@@ -19,6 +19,10 @@ export interface HobbyConfig {
   // it's skipped anywhere the UI assumes "a list of entries with a status". e.g.
   // fitness, which tracks routines, sets and PRs rather than things to finish.
   customSection?: boolean
+  // Things you have to get hold of before you can start them. These hobbies
+  // offer a Wishlist status, kept apart from the backlog so that ranking,
+  // backlog hours and What Next only ever count what you actually have.
+  wishlist?: boolean
   // Entries are recipes: ingredients, steps, meal tags, difficulty and cook time
   // in place of a progress bar, and progress_current counts the times it was made.
   recipe?: boolean
@@ -33,18 +37,19 @@ export const HOBBIES: HobbyConfig[] = [
     id: 'games',
     label: 'Game',
     pluralLabel: 'Video Games',
-    accent: '#7c3aed',
+    accent: '#a577f2',
     icon: 'Gamepad2',
     progressLabel: 'Hours Played',
     progressUnit: 'hrs',
     manualOnly: false,
     apiSource: 'igdb',
+    wishlist: true,
   },
   {
     id: 'movies',
     label: 'Movie',
     pluralLabel: 'Movies',
-    accent: '#dc2626',
+    accent: '#e66565',
     icon: 'Film',
     progressLabel: 'Minutes Watched',
     progressUnit: 'min',
@@ -55,7 +60,7 @@ export const HOBBIES: HobbyConfig[] = [
     id: 'tv',
     label: 'TV Show',
     pluralLabel: 'TV Shows',
-    accent: '#2563eb',
+    accent: '#5f8df1',
     icon: 'Tv',
     progressLabel: 'Episode',
     progressUnit: 'ep',
@@ -72,24 +77,26 @@ export const HOBBIES: HobbyConfig[] = [
     progressUnit: 'pg',
     manualOnly: false,
     apiSource: 'openlibrary',
+    wishlist: true,
   },
   {
     id: 'gundams',
     label: 'Project',
     pluralLabel: 'Projects',
-    accent: '#059669',
+    accent: '#05a271',
     icon: 'Bot',
     progressLabel: '% Complete',
     progressUnit: '%',
     manualOnly: true,
     percentBased: true,
     hideRating: true,
+    wishlist: true,
   },
   {
     id: 'fitness',
     label: 'Fitness',
     pluralLabel: 'Fitness',
-    accent: '#ea580c',
+    accent: '#f25b0c',
     icon: 'Dumbbell',
     progressLabel: 'Workouts',
     progressUnit: 'workouts',
@@ -101,7 +108,7 @@ export const HOBBIES: HobbyConfig[] = [
     id: 'art',
     label: 'Art',
     pluralLabel: 'Art',
-    accent: '#6366f1',
+    accent: '#8183f4',
     icon: 'Palette',
     progressLabel: '% Complete',
     progressUnit: '%',
@@ -112,7 +119,7 @@ export const HOBBIES: HobbyConfig[] = [
     id: 'cooking',
     label: 'Recipe',
     pluralLabel: 'Cooking',
-    accent: '#0d9488',
+    accent: '#0ea194',
     icon: 'ChefHat',
     progressLabel: 'Times Made',
     progressUnit: 'made',
@@ -165,6 +172,7 @@ export const BOOK_SUBTYPE_MAP: Record<BookSubtype, BookSubtypeConfig> = Object.f
 // ── Shared display helpers ────────────────────────────────────────────────────
 
 export const STATUS_LABELS: Record<string, string> = {
+  wishlist:    'Wishlist',
   backlog:     'Backlog',
   in_progress: 'In Progress',
   completed:   'Completed',
@@ -175,7 +183,7 @@ const ALL_STATUSES: EntryStatus[] = ['backlog', 'in_progress', 'completed', 'dro
 
 /** The statuses to offer for a hobby, in display order. */
 export function statusesFor(hobby: HobbyConfig | undefined): EntryStatus[] {
-  return hobby?.statuses ?? ALL_STATUSES
+  return hobby?.statuses ?? (hobby?.wishlist ? ['wishlist', ...ALL_STATUSES] : ALL_STATUSES)
 }
 
 /** A status's label as this hobby words it ("Made" for a recipe, "Completed" otherwise). */
@@ -184,8 +192,9 @@ export function statusLabelFor(hobby: HobbyConfig | undefined, status: string): 
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  backlog:     '#6b7280',
-  in_progress: '#3b82f6',
+  wishlist:    '#ed539f',
+  backlog:     '#8691a1',
+  in_progress: '#4f8ef7',
   completed:   '#22c55e',
-  dropped:     '#ef4444',
+  dropped:     '#f15959',
 }

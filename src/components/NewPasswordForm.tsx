@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { AuthMessage, authInput, authLabel, authPrimaryButton } from './AuthShell'
+import { AuthMessage, PasswordInput, authLabel, authPrimaryButton } from './AuthShell'
 
 // Supabase's default floor. The server enforces whatever the project is really
 // set to, and its message is shown as-is if that is stricter.
@@ -20,7 +20,8 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
   const incomplete = !password || !confirm
 
   async function save() {
-    if (busy || incomplete) return
+    if (busy) return
+    if (incomplete) { setError('Enter the new password twice.'); return }
     if (password.length < MIN_LENGTH) { setError(`Use at least ${MIN_LENGTH} characters.`); return }
     if (password !== confirm) { setError('The two passwords do not match.'); return }
     setBusy(true); setError(null)
@@ -31,22 +32,20 @@ export default function NewPasswordForm({ submitLabel, onDone }: { submitLabel: 
     onDone()
   }
 
-  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter') save() }
-
   return (
-    <>
-      <p style={authLabel}>NEW PASSWORD</p>
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter}
-        placeholder="••••••••" autoComplete="new-password" aria-label="New password" style={{ ...authInput, marginBottom: 16 }} />
-      <p style={authLabel}>CONFIRM PASSWORD</p>
-      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} onKeyDown={onEnter}
-        placeholder="••••••••" autoComplete="new-password" aria-label="Confirm password" style={{ ...authInput, marginBottom: 20 }} />
+    <form onSubmit={(e) => { e.preventDefault(); save() }}>
+      <label htmlFor="new-password" style={{ ...authLabel, display: 'block' }}>New password</label>
+      <PasswordInput id="new-password" name="new-password" required minLength={MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password" style={{ marginBottom: 16 }} />
+      <label htmlFor="confirm-password" style={{ ...authLabel, display: 'block' }}>Confirm password</label>
+      <PasswordInput id="confirm-password" name="confirm-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)}
+        autoComplete="new-password" style={{ marginBottom: 20 }} />
       <AuthMessage message={error ? { kind: 'error', text: error } : null} />
       <div style={{ display: 'flex' }}>
-        <button onClick={save} disabled={busy || incomplete} style={authPrimaryButton(busy, busy || incomplete)}>
-          {busy ? '…' : submitLabel}
+        <button type="submit" aria-busy={busy} style={authPrimaryButton(busy, false)}>
+          {busy ? 'Saving…' : submitLabel}
         </button>
       </div>
-    </>
+    </form>
   )
 }

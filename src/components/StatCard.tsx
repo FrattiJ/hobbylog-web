@@ -12,7 +12,10 @@ function useCountUp(target: number, duration = 900) {
     const tick = (now: number) => {
       const p = Math.min((now - startTime) / duration, 1)
       const eased = 1 - Math.pow(1 - p, 3) // ease-out cubic
-      setCount(Math.round(eased * target))
+      // Whole numbers count up in whole numbers; 8.9 keeps its decimal instead
+      // of being rounded to 9 on the way.
+      const scale = Number.isInteger(target) ? 1 : 10
+      setCount(Math.round(eased * target * scale) / scale)
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
@@ -27,24 +30,25 @@ interface StatCardProps {
   accent?: string
   sub?: string
   index?: number
+  // Printed straight after the number: "%", " mo", " days".
+  suffix?: string
 }
 
-export default function StatCard({ label, value, accent = '#7c3aed', sub, index = 0 }: StatCardProps) {
+export default function StatCard({ label, value, accent = '#a577f2', sub, index = 0, suffix = '' }: StatCardProps) {
   const numericValue = typeof value === 'number' ? value : (parseFloat(String(value)) || 0)
   const isNumeric = typeof value === 'number' || (!isNaN(parseFloat(String(value))) && value !== '—')
   const animated = useCountUp(isNumeric ? numericValue : 0)
 
   return (
-    <MechCard accent={accent} index={index} panelNum={index + 1}>
+    <MechCard accent={accent} index={index}>
       <div style={{ padding: '20px 18px 16px' }}>
         <p
           style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 14,
-            letterSpacing: '0.18em',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            fontWeight: 500,
             color: 'var(--text-dim)',
-            textTransform: 'uppercase',
-            marginBottom: 10,
+            margin: '0 0 10px',
           }}
         >
           {label}
@@ -52,17 +56,18 @@ export default function StatCard({ label, value, accent = '#7c3aed', sub, index 
         <p
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: 32,
+            fontSize: 34,
             fontWeight: 400,
             color: 'var(--text-hi)',
             lineHeight: 1,
             marginBottom: 6,
           }}
         >
-          {isNumeric ? animated.toLocaleString() : value}
+          {isNumeric ? animated.toLocaleString(undefined, { maximumFractionDigits: 1 }) : value}
+          {isNumeric && suffix && <span style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text-mid)' }}>{suffix}</span>}
         </p>
         {sub && (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
             {sub}
           </p>
         )}

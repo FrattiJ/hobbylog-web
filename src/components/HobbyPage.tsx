@@ -1,26 +1,35 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown, CheckSquare, Trash2, X } from 'lucide-react'
+import { Plus, ArrowUp, ArrowDown, ListOrdered, GripVertical, ChevronUp, ChevronDown, CheckSquare, Trash2, X, LayoutGrid, List } from 'lucide-react'
 import EntryCard from './EntryCard'
+import CoverTile from './CoverTile'
+import ShelfWall from './ShelfWall'
 import AddEntryModal from './AddEntryModal'
 import SteamSync from './SteamSync'
 import { useToast } from './Toast'
 import type { Entry, HobbyCategory, EntryStatus, BookSubtype } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPES, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
 import { MEAL_TAGS, readRecipe } from '@/lib/recipe'
-import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { getEntriesByHobby, setEntryPriorities, bulkDeleteEntries, bulkSetStatus, bulkSetCompletedDate, ENTRIES_CHANGED_EVENT } from '@/lib/db'
+import { todayIso, formatDay } from '@/lib/format'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { readParam, readParamOneOf, useUrlParams } from '@/lib/urlState'
+import { useProgressive } from '@/lib/useProgressive'
+import ListFooter from '@/components/ListFooter'
+import { lengthBandsFor, lengthBandOf, lengthHours, genresOf, genreCounts } from '@/lib/length'
 
 
-type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added'
+type SortOption = 'recent' | 'name' | 'release' | 'ttb' | 'rank' | 'added' | 'finished'
 
 const SORT_OPTIONS: { id: SortOption; label: string; defaultDir: 'asc' | 'desc' }[] = [
-  { id: 'recent',  label: 'RECENT',       defaultDir: 'desc' },
-  { id: 'name',    label: 'NAME',         defaultDir: 'asc'  },
-  { id: 'release', label: 'RELEASE DATE', defaultDir: 'desc' },
-  { id: 'ttb',     label: 'TIME TO BEAT', defaultDir: 'asc'  },
-  { id: 'rank',    label: 'RANK',         defaultDir: 'asc'  },
-  { id: 'added',   label: 'DATE ADDED',   defaultDir: 'asc'  },
+  { id: 'recent',  label: 'Recent',       defaultDir: 'desc' },
+  { id: 'name',    label: 'Name',         defaultDir: 'asc'  },
+  { id: 'release', label: 'Release Date', defaultDir: 'desc' },
+  { id: 'ttb',     label: 'Time to Beat', defaultDir: 'asc'  },
+  { id: 'rank',    label: 'Rank',         defaultDir: 'asc'  },
+  { id: 'added',   label: 'Date Added',   defaultDir: 'asc'  },
+  { id: 'finished', label: 'Date Finished', defaultDir: 'desc' },
 ]
 
 function sortValue(e: Entry, by: SortOption): string | number | null {
@@ -32,12 +41,10 @@ function sortValue(e: Entry, by: SortOption): string | number | null {
     if (typeof m.release_date === 'string' && m.release_date) return parseInt(String(m.release_date).slice(0, 4)) || null
     return null
   }
-  if (by === 'ttb') {
-    const ttb = e.metadata?.time_to_beat
-    return ttb != null && !isNaN(Number(ttb)) ? Number(ttb) : null
-  }
+  if (by === 'ttb') return lengthHours(e)
   if (by === 'rank') return e.priority
   if (by === 'added') return e.created_at
+  if (by === 'finished') return e.date_completed
   return e.updated_at // recent
 }
 
@@ -46,6 +53,8 @@ interface SavedFilters {
   status?: EntryStatus | 'all'
   subtype?: BookSubtype | 'all'
   mealTag?: string
+  length?: string
+  genre?: string
   sortBy?: SortOption
   sortDir?: 'asc' | 'desc'
 }
@@ -55,23 +64,57 @@ function loadSavedFilters(hobbyId: string): SavedFilters {
   try { return JSON.parse(sessionStorage.getItem(`hobby-filters:${hobbyId}`) ?? '{}') } catch { return {} }
 }
 
+// Covers or compact rows. A reading preference rather than a filter, so it is
+// remembered across hobbies and visits, not per page.
+type ViewMode = 'grid' | 'list'
+const VIEW_KEY = 'hobbylog-library-view'
+function loadView(): ViewMode {
+  if (typeof window === 'undefined') return 'grid'
+  try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid' } catch { return 'grid' }
+}
+
 export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const hobby = HOBBY_MAP[hobbyId]
   const [entries, setEntries] = useState<Entry[]>([])
+  // A URL that names any filter is taken as the whole story: a shared link to
+  // ?status=completed should not also pick up the sort order this browser
+  // happened to use last. Session memory only fills in for a bare URL.
+  const [saved] = useState<SavedFilters>(() =>
+    ['status', 'type', 'meal', 'len', 'genre', 'sort', 'dir', 'q'].some((k) => readParam(k) !== null) ? {} : loadSavedFilters(hobbyId))
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() => loadSavedFilters(hobbyId).status ?? 'all')
-  const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() => loadSavedFilters(hobbyId).subtype ?? 'all')
-  const [mealTag, setMealTag] = useState<string>(() => loadSavedFilters(hobbyId).mealTag ?? 'all')
-  const [search, setSearch] = useState('')
+  // Each filter starts from the URL if it names one, otherwise from `saved`,
+  // otherwise from the default.
+  const [statusFilter, setStatusFilter] = useState<EntryStatus | 'all'>(() =>
+    readParamOneOf('status', statusesFor(hobby)) ?? saved.status ?? 'all')
+  const [subtypeFilter, setSubtypeFilter] = useState<BookSubtype | 'all'>(() =>
+    readParamOneOf('type', BOOK_SUBTYPES.map((s) => s.id)) ?? saved.subtype ?? 'all')
+  const [mealTag, setMealTag] = useState<string>(() =>
+    readParamOneOf('meal', MEAL_TAGS.map((t) => t.id)) ?? saved.mealTag ?? 'all')
+  // Length bands are the hobby's own (a film is short on a different scale
+  // from a game), and a hobby with no notion of length has none.
+  const lengthBands = lengthBandsFor(hobbyId)
+  const [lengthFilter, setLengthFilter] = useState<string>(() =>
+    readParamOneOf('len', lengthBands.map((b) => b.id)) ?? saved.length ?? 'all')
+  // A genre is free text from the catalog, so it is checked against what the
+  // library actually holds once the entries have loaded, not here.
+  const [genreFilter, setGenreFilter] = useState<string>(() => readParam('genre') ?? saved.genre ?? 'all')
+  const [search, setSearch] = useState(() => readParam('q') ?? '')
+  const [view, setViewState] = useState<ViewMode>(loadView)
+  const setView = (v: ViewMode) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ } }
   const [rankMode, setRankMode] = useState(false)
   const isRecipe = !!hobby.recipe
   const statusOptions: (EntryStatus | 'all')[] = ['all', ...statusesFor(hobby)]
-  // Time-to-Beat only makes sense for games, and a recipe has no release date.
-  const sortOptions = SORT_OPTIONS.filter((o) => (o.id !== 'ttb' || hobbyId === 'games') && !(isRecipe && o.id === 'release'))
-  const savedSort = loadSavedFilters(hobbyId).sortBy
-  const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && hobbyId !== 'games' ? 'recent' : savedSort) ?? 'recent')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => loadSavedFilters(hobbyId).sortDir ?? 'desc')
+  // Sorting by length needs a length to sort by, and a recipe has no release
+  // date. Games keep the name people know the figure by.
+  const hasLength = lengthBands.length > 0
+  const sortOptions = SORT_OPTIONS
+    .filter((o) => (o.id !== 'ttb' || hasLength) && !(isRecipe && o.id === 'release'))
+    .map((o) => (o.id === 'ttb' && hobbyId !== 'games' ? { ...o, label: isRecipe ? 'Cook Time' : 'Length' } : o))
+  const savedSort = readParamOneOf('sort', SORT_OPTIONS.map((o) => o.id)) ?? saved.sortBy
+  const [sortBy, setSortBy] = useState<SortOption>(() => (savedSort === 'ttb' && !hasLength ? 'recent' : savedSort) ?? 'recent')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() =>
+    readParamOneOf('dir', ['asc', 'desc'] as const) ?? saved.sortDir ?? 'desc')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [draftPos, setDraftPos] = useState<{ id: string; val: string } | null>(null)
@@ -79,6 +122,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const { error: toastError, success: toastSuccess } = useToast()
+  const confirm = useConfirm()
 
   const loadEntries = useCallback(() => {
     getEntriesByHobby(hobbyId).then(setEntries).finally(() => setLoading(false))
@@ -90,9 +134,21 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   useEffect(() => {
     sessionStorage.setItem(
       `hobby-filters:${hobbyId}`,
-      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, sortBy, sortDir })
+      JSON.stringify({ status: statusFilter, subtype: subtypeFilter, mealTag, length: lengthFilter, genre: genreFilter, sortBy, sortDir })
     )
-  }, [hobbyId, statusFilter, subtypeFilter, mealTag, sortBy, sortDir])
+  }, [hobbyId, statusFilter, subtypeFilter, mealTag, lengthFilter, genreFilter, sortBy, sortDir])
+
+  // The same state, mirrored into the URL. Anything at its default is left out.
+  useUrlParams({
+    status: statusFilter === 'all' ? null : statusFilter,
+    type: subtypeFilter === 'all' ? null : subtypeFilter,
+    meal: mealTag === 'all' ? null : mealTag,
+    len: lengthFilter === 'all' ? null : lengthFilter,
+    genre: genreFilter === 'all' ? null : genreFilter,
+    sort: sortBy === 'recent' ? null : sortBy,
+    dir: sortDir === (SORT_OPTIONS.find((o) => o.id === sortBy)?.defaultDir ?? 'desc') ? null : sortDir,
+  })
+  useUrlParams({ q: search.trim() || null }, 300)
 
   // Refresh when entries change anywhere (sidebar quick add, quick log, etc.)
   useEffect(() => {
@@ -106,10 +162,29 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   function exitSelect() { setSelectMode(false); setSelectedIds(new Set()) }
   async function bulkDelete(ids: string[]) {
     if (ids.length === 0 || bulkBusy) return
-    if (!confirm(`Delete ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}? This can't be undone.`)) return
+    const what = ids.length === 1 ? 'this entry' : `these ${ids.length} entries`
+    if (!(await confirm({
+      title: `Delete ${what}?`,
+      body: 'Their sessions, photos and notes go with them. This cannot be undone.',
+      confirmLabel: ids.length === 1 ? 'Delete Entry' : `Delete ${ids.length} Entries`,
+      danger: true,
+    }))) return
     setBulkBusy(true)
     try { await bulkDeleteEntries(ids); toastSuccess(`Deleted ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`); exitSelect(); loadEntries() }
     catch { toastError('Could not delete — try again') }
+    setBulkBusy(false)
+  }
+  // Imports and older logs often mark things completed with no date, which
+  // leaves them undated on the Shelf. This fills the date in for a selection.
+  const [bulkDate, setBulkDate] = useState('')
+  async function bulkFinishDate(ids: string[]) {
+    if (ids.length === 0 || !bulkDate || bulkBusy) return
+    setBulkBusy(true)
+    try {
+      await bulkSetCompletedDate(ids, bulkDate)
+      toastSuccess(`Finish date set to ${formatDay(bulkDate)} for ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`)
+      exitSelect(); loadEntries()
+    } catch { toastError('Could not set the date. Try again.') }
     setBulkBusy(false)
   }
   async function bulkStatus(ids: string[], status: EntryStatus) {
@@ -125,10 +200,23 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
   // Parsed once per render rather than once per entry per pill.
   const mealTagsOf = new Map(isRecipe ? entries.map((e) => [e.id, readRecipe(e.metadata).meal_tags]) : [])
 
+  // What the two narrowing filters can offer, counted over the status tab that
+  // is open so the numbers match what choosing one would leave on screen.
+  const inTab = statusFilter === 'all' ? entries : entries.filter((e) => e.status === statusFilter)
+  const genreOptions = genreCounts(inTab)
+  const lengthCounts = new Map(lengthBands.map((b) => [b.id, 0]))
+  for (const e of inTab) { const b = lengthBandOf(e); if (b) lengthCounts.set(b.id, (lengthCounts.get(b.id) ?? 0) + 1) }
+  const anyLength = entries.some((e) => lengthHours(e) != null)
+  // A genre carried over from another visit, or typed into the URL, that this
+  // tab does not hold is treated as no filter rather than as "no matches".
+  const activeGenre = genreOptions.find((g) => g.genre.toLowerCase() === genreFilter.toLowerCase())?.genre ?? null
+
   const filtered = entries.filter((e) => {
     if (statusFilter !== 'all' && e.status !== statusFilter) return false
     if (hobbyId === 'books' && subtypeFilter !== 'all' && e.book_subtype !== subtypeFilter) return false
     if (isRecipe && mealTag !== 'all' && !mealTagsOf.get(e.id)?.includes(mealTag)) return false
+    if (lengthFilter !== 'all' && lengthBandOf(e)?.id !== lengthFilter) return false
+    if (activeGenre && !genresOf(e).some((g) => g.toLowerCase() === activeGenre.toLowerCase())) return false
     if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -143,6 +231,10 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number)
     return sortDir === 'asc' ? cmp : -cmp
   })
+
+  // Mount the visible list in batches; any change to what is listed restarts it.
+  const paged = useProgressive(display.length, [hobbyId, statusFilter, subtypeFilter, mealTag, lengthFilter, genreFilter, sortBy, sortDir, search, view].join('|'))
+  const visible = display.slice(0, paged.shown)
 
   function handleSortChange(by: SortOption) {
     setSortBy(by)
@@ -185,110 +277,108 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
     padding: '8px 14px',
     color: 'var(--text-hi)',
     fontSize: 14,
-    fontFamily: 'var(--font-mono)',
-    letterSpacing: '0.04em',
+    fontFamily: 'var(--font-body)',
+    letterSpacing: '0.02em',
     outline: 'none',
     width: '100%',
   }
 
   if (loading) {
     return (
-      <div style={{ padding: '32px 32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="mech-skeleton"
-              style={{
-                height: 120,
-                clipPath: 'polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px)',
-                animationDelay: `${i * 120}ms`,
-              }}
-            />
+      <div className="page" aria-busy="true" aria-label="Loading">
+        <div className="cover-grid">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="mech-skeleton" style={{ aspectRatio: '2 / 3', animationDelay: `${i * 80}ms` }} />
           ))}
         </div>
       </div>
     )
   }
 
+  const tab = (active: boolean, color: string): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px',
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: active ? 600 : 500,
+    background: active ? `${color}1f` : 'transparent',
+    border: `1px solid ${active ? color : 'var(--border-dim)'}`,
+    color: active ? color : 'var(--text-mid)', cursor: 'pointer', transition: 'var(--t-fast)',
+  })
+  const tabCount: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }
+  const tool: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 38, padding: '0 12px',
+    fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500,
+    background: 'var(--bg-card)', border: '1px solid var(--border-dim)', color: 'var(--text-mid)', cursor: 'pointer',
+  }
+  const finished = entries.filter((e) => e.status === 'completed').length
+
   return (
-    <div style={{ padding: '32px' }}>
+    <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.2em', marginBottom: 4 }}>
-            CATEGORY / {hobbyId.toUpperCase()}
-          </p>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 22,
-            fontWeight: 900,
-            color: 'var(--text-hi)',
-            letterSpacing: '0.08em',
-            margin: 0,
-          }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: 0 }}>
             {hobby.pluralLabel.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', marginTop: 4, letterSpacing: '0.1em' }}>
-            {entries.length} RECORDS INDEXED
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '4px 0 0' }}>
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}{finished > 0 ? `, ${finished} ${statusLabelFor(hobby, 'completed').toLowerCase()}` : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {hobbyId === 'games' && <SteamSync accent={hobby.accent} onSynced={loadEntries} />}
           <button
             onClick={() => setShowModal(true)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              background: `${hobby.accent}22`,
-              border: `1px solid ${hobby.accent}88`,
-              borderLeft: `3px solid ${hobby.accent}`,
-              color: hobby.accent,
-              fontFamily: 'var(--font-display)',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              display: 'inline-flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px',
+              background: `${hobby.accent}22`, border: `1px solid ${hobby.accent}88`, borderLeft: `3px solid ${hobby.accent}`,
+              color: hobby.accent, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = `${hobby.accent}44`; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${hobby.accent}44)` }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = `${hobby.accent}22`; e.currentTarget.style.filter = 'none' }}
           >
-            <Plus size={13} />
-            ADD {hobby.label.toUpperCase()}
+            <Plus size={16} aria-hidden="true" />
+            Add {hobby.label}
           </button>
         </div>
       </div>
 
-      {/* Book sub-type pills */}
-      {hobbyId === 'books' && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[{ id: 'all' as const, label: 'All', count: entries.length },
-            ...BOOK_SUBTYPES.map((s) => ({
-              id: s.id, label: s.label,
-              count: entries.filter((e) => e.book_subtype === s.id).length,
-            })).filter((s) => s.count > 0),
-          ].map((s) => {
-            const active = subtypeFilter === s.id
+      {/* Status tabs, each with how many it holds */}
+      <div className="tab-row" role="tablist" aria-label="Filter by status" style={{ marginBottom: 10 }}>
+        {statusOptions.map((s) => {
+          const active = statusFilter === s
+          const color = s === 'all' ? hobby.accent : STATUS_COLORS[s]
+          const count = s === 'all' ? entries.length : entries.filter((e) => e.status === s).length
+          return (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                setStatusFilter(s)
+                if (s === 'backlog') { setSortBy('rank'); setSortDir('asc') }
+                else { setRankMode(false); if (sortBy === 'rank') handleSortChange('recent') }
+              }}
+              style={tab(active, color)}
+            >
+              {s === 'all' ? 'All' : statusLabelFor(hobby, s)}
+              <span style={tabCount}>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Book sub-types */}
+      {hobbyId === 'books' && entries.length > 0 && (
+        <div className="tab-row" role="tablist" aria-label="Filter by type" style={{ marginBottom: 10 }}>
+          {[{ id: 'all' as const, label: 'All types', count: entries.length },
+            ...BOOK_SUBTYPES.map((st) => ({
+              id: st.id, label: st.label,
+              count: entries.filter((e) => e.book_subtype === st.id).length,
+            })).filter((st) => st.count > 0),
+          ].map((st) => {
+            const active = subtypeFilter === st.id
             return (
-              <button
-                key={s.id}
-                onClick={() => setSubtypeFilter(s.id === 'all' ? 'all' : active ? 'all' : s.id)}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  background: active ? `${hobby.accent}22` : 'transparent',
-                  border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
-                  color: active ? hobby.accent : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {s.label} ({s.count})
+              <button key={st.id} role="tab" aria-selected={active}
+                onClick={() => setSubtypeFilter(st.id === 'all' ? 'all' : active ? 'all' : st.id)}
+                style={tab(active, hobby.accent)}>
+                {st.label}
+                <span style={tabCount}>{st.count}</span>
               </button>
             )
           })}
@@ -297,8 +387,8 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
 
       {/* Meal / course tabs */}
       {isRecipe && entries.length > 0 && (
-        <div role="tablist" aria-label="Meal or course" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[{ id: 'all', label: 'All', count: entries.length },
+        <div className="tab-row" role="tablist" aria-label="Filter by meal or course" style={{ marginBottom: 10 }}>
+          {[{ id: 'all', label: 'All meals', count: entries.length },
             ...MEAL_TAGS.map((t) => ({
               id: t.id, label: t.label,
               count: entries.filter((e) => mealTagsOf.get(e.id)?.includes(t.id)).length,
@@ -306,145 +396,105 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           ].map((t) => {
             const active = mealTag === t.id
             return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={active}
+              <button key={t.id} role="tab" aria-selected={active}
                 onClick={() => setMealTag(active ? 'all' : t.id)}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  background: active ? `${hobby.accent}22` : 'transparent',
-                  border: `1px solid ${active ? hobby.accent : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${hobby.accent}` : '1px solid var(--border-dim)',
-                  color: active ? hobby.accent : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {t.label} ({t.count})
+                style={tab(active, hobby.accent)}>
+                {t.label}
+                <span style={tabCount}>{t.count}</span>
               </button>
             )
           })}
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', width: 240 }}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`SEARCH ${hobby.pluralLabel.toUpperCase()}…`}
-            style={inp}
-          />
-        </div>
+      {/* Toolbar: search, sort, view, bulk tools */}
+      <div style={{ display: 'flex', gap: 8, margin: '6px 0 22px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${hobby.pluralLabel}…`}
+          aria-label={`Search ${hobby.pluralLabel}`}
+          autoComplete="off"
+          style={{ ...inp, flex: '1 1 200px', maxWidth: 340, width: 'auto', height: 38, padding: '0 14px' }}
+        />
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {statusOptions.map((s) => {
-            const active = statusFilter === s
-            const color = s === 'all' ? hobby.accent : STATUS_COLORS[s]
-            return (
-              <button
-                key={s}
-                onClick={() => {
-                  setStatusFilter(s)
-                  if (s === 'backlog') { setSortBy('rank'); setSortDir('asc') }
-                  else { setRankMode(false); if (sortBy === 'rank') handleSortChange('recent') }
-                }}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 14,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  background: active ? `${color}22` : 'transparent',
-                  border: `1px solid ${active ? color : 'var(--border-dim)'}`,
-                  borderLeft: active ? `2px solid ${color}` : '1px solid var(--border-dim)',
-                  color: active ? color : 'var(--text-dim)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {s === 'all' ? 'ALL' : statusLabelFor(hobby, s)}
-              </button>
-            )
-          })}
-        </div>
+        <select
+          value={sortBy}
+          aria-label="Sort by"
+          onChange={(e) => handleSortChange(e.target.value as SortOption)}
+          style={{ ...tool, padding: '0 10px' }}
+        >
+          {sortOptions.map((o) => (
+            <option key={o.id} value={o.id}>Sort: {o.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          aria-label={sortDir === 'asc' ? 'Sorted ascending. Switch to descending' : 'Sorted descending. Switch to ascending'}
+          title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+          style={{ ...tool, width: 38, padding: 0 }}
+        >
+          {sortDir === 'asc' ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+        </button>
 
-        {/* Sort controls */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <select
-            value={sortBy}
-            onChange={(e) => handleSortChange(e.target.value as SortOption)}
-            style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', fontFamily: 'var(--font-mono)', fontSize: 14,
-              letterSpacing: '0.1em', padding: '6px 10px', cursor: 'pointer', outline: 'none',
-            }}
-          >
-            {sortOptions.map((o) => (
-              <option key={o.id} value={o.id}>SORT: {o.label}</option>
+        {/* Narrow by length and genre. Each appears only when the library has
+            something for it to work on, and is outlined while it is in use. */}
+        {!rankMode && anyLength && (
+          <select value={lengthFilter} aria-label={isRecipe ? 'Filter by cook time' : 'Filter by length'}
+            onChange={(e) => setLengthFilter(e.target.value)}
+            style={{ ...tool, padding: '0 10px', ...(lengthFilter !== 'all' ? { borderColor: hobby.accent, color: 'var(--text-hi)' } : {}) }}>
+            <option value="all">{isRecipe ? 'Any cook time' : 'Any length'}</option>
+            {lengthBands.map((b) => (
+              <option key={b.id} value={b.id}>{b.label} ({lengthCounts.get(b.id) ?? 0})</option>
             ))}
           </select>
-          <button
-            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-            title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 32, height: 32,
-              background: 'var(--bg-card)', border: '1px solid var(--border-dim)',
-              color: 'var(--text-mid)', cursor: 'pointer', transition: 'all 0.12s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-hi)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-mid)')}
-          >
-            {sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        </div>
+        )}
+        {!rankMode && (genreOptions.length > 1 || activeGenre) && (
+          <select value={activeGenre ?? 'all'} aria-label="Filter by genre"
+            onChange={(e) => setGenreFilter(e.target.value)}
+            style={{ ...tool, padding: '0 10px', maxWidth: 190, ...(activeGenre ? { borderColor: hobby.accent, color: 'var(--text-hi)' } : {}) }}>
+            <option value="all">Any genre</option>
+            {genreOptions.map((g) => (
+              <option key={g.genre} value={g.genre}>{g.genre} ({g.count})</option>
+            ))}
+          </select>
+        )}
+
+        {!rankMode && (
+          <div role="group" aria-label="View" style={{ display: 'inline-flex' }}>
+            {([['grid', LayoutGrid, 'Covers'], ['list', List, 'List']] as const).map(([id, Icon, label]) => {
+              const active = view === id
+              return (
+                <button key={id} onClick={() => setView(id)} aria-pressed={active} aria-label={`${label} view`} title={`${label} view`}
+                  style={{ ...tool, width: 38, padding: 0, marginLeft: id === 'list' ? -1 : 0, background: active ? `${hobby.accent}22` : 'var(--bg-card)', borderColor: active ? hobby.accent : 'var(--border-dim)', color: active ? hobby.accent : 'var(--text-mid)', position: 'relative', zIndex: active ? 1 : 0 }}>
+                  <Icon size={16} aria-hidden="true" />
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <span style={{ flex: 1 }} />
 
         {statusFilter === 'backlog' && (
           <button
-            onClick={() => setRankMode((r) => !r)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginLeft: 'auto',
-              padding: '8px 18px',
-              fontFamily: 'var(--font-display)',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              background: rankMode ? '#d97706' : '#d9770622',
-              border: '1px solid #d97706',
-              borderLeft: '3px solid #d97706',
-              color: rankMode ? 'var(--bg-base)' : '#d97706',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.filter = 'drop-shadow(0 0 6px #d9770666)')}
-            onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            onClick={() => setRankMode((v) => !v)}
+            aria-pressed={rankMode}
+            style={{ ...tool, fontWeight: 600, background: rankMode ? '#d97706' : '#d9770622', borderColor: '#d97706', color: rankMode ? 'var(--bg-base)' : '#f59e0b' }}
           >
-            <ListOrdered size={14} />
-            {rankMode ? 'DONE RANKING' : isRecipe ? 'RANK TO-TRY LIST' : 'RANK BACKLOG'}
+            <ListOrdered size={16} aria-hidden="true" />
+            {rankMode ? 'Done Ranking' : isRecipe ? 'Rank To-Try List' : 'Rank Backlog'}
           </button>
         )}
-        {!rankMode && (
+        {!rankMode && entries.length > 0 && (
           <button
             onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginLeft: statusFilter === 'backlog' ? 8 : 'auto',
-              padding: '8px 18px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em',
-              background: selectMode ? hobby.accent : `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, borderLeft: `3px solid ${hobby.accent}`,
-              color: selectMode ? 'var(--bg-base)' : hobby.accent, cursor: 'pointer', transition: 'all 0.15s ease',
-            }}
+            aria-pressed={selectMode}
+            style={{ ...tool, fontWeight: 600, background: selectMode ? hobby.accent : 'var(--bg-card)', borderColor: selectMode ? hobby.accent : 'var(--border-dim)', color: selectMode ? 'var(--bg-base)' : 'var(--text-mid)' }}
           >
-            <CheckSquare size={14} />
-            {selectMode ? 'DONE' : 'SELECT'}
+            <CheckSquare size={16} aria-hidden="true" />
+            {selectMode ? 'Done' : 'Select'}
           </button>
         )}
       </div>
@@ -452,13 +502,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
       {/* Rank mode — ordered backlog list with reorder controls */}
       {rankMode && statusFilter === 'backlog' ? (
         ranked.length === 0 ? (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.14em', textAlign: 'center', padding: 32 }}>
-            BACKLOG EMPTY — NOTHING TO RANK
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', textAlign: 'center', padding: 32 }}>
+            Your backlog is empty, so there is nothing to rank yet.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 720 }}>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.14em', margin: 0 }}>
-              DRAG ROWS, TYPE A POSITION NUMBER, OR USE THE ARROWS
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: 0 }}>
+              Drag rows, type a position number, or use the arrows
             </p>
             {ranked.map((e, i) => (
               <div
@@ -488,12 +538,13 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                     borderBottom: edge,
                     borderLeft: `3px solid ${i === 0 ? '#d97706' : hobby.accent}`,
                     opacity: dragIndex === i ? 0.4 : 1,
+                    contentVisibility: 'auto', containIntrinsicSize: 'auto 66px',
                     cursor: 'grab',
                     transition: 'background 0.12s ease, opacity 0.12s ease',
                   } as React.CSSProperties
                 })()}
               >
-                <GripVertical size={14} style={{ color: 'var(--text-mute)', flexShrink: 0 }} />
+                <GripVertical size={14} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
                 <input
                   type="number"
                   min={1}
@@ -510,20 +561,20 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                     border: '1px solid var(--border-dim)',
                     padding: '6px 0',
                     textAlign: 'center',
-                    fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900,
+                    fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 900,
                     color: i === 0 ? '#d97706' : 'var(--text-mid)',
                     outline: 'none',
                   }}
                 />
                 {e.cover_url && (
-                  <img src={e.cover_url} alt="" draggable={false} style={{ width: 32, height: 44, objectFit: 'cover', flexShrink: 0, border: `1px solid ${hobby.accent}33` }} />
+                  <img src={e.cover_url} alt="" draggable={false} style={{ width: 32, height: 44, objectFit: 'cover', flexShrink: 0, border: `1px solid ${hobby.accent}33` }} loading="lazy" decoding="async" />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.04em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', letterSpacing: '0.02em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {e.title}
                   </p>
                   {i === 0 && (
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#d97706', letterSpacing: '0.14em' }}>▸ UP NEXT</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d97706', letterSpacing: '0.08em' }}>Up Next</span>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -537,7 +588,7 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
                         color: disabled ? 'var(--text-mute)' : hobby.accent,
                         cursor: disabled ? 'default' : 'pointer',
                         opacity: disabled ? 0.4 : 1,
-                        transition: 'all 0.12s ease',
+                        transition: 'var(--t-fast)',
                       }}
                       onMouseEnter={(ev) => { if (!disabled) ev.currentTarget.style.background = `${hobby.accent}22` }}
                       onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
@@ -551,39 +602,27 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
           </div>
         )
       ) : /* Grid */ filtered.length === 0 ? (
-        <div
-          style={{
-            padding: '64px 32px',
-            textAlign: 'center',
-            border: `1px solid ${hobby.accent}33`,
-            borderLeft: `3px solid ${hobby.accent}`,
-            background: 'var(--bg-card)',
-          }}
-        >
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: hobby.accent, letterSpacing: '0.2em', marginBottom: 8 }}>
-            ◈ NO DATA FOUND
+        <div style={{ padding: '56px 24px', textAlign: 'center', border: '1px dashed var(--border-dim)', background: 'var(--bg-card)' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 600, color: 'var(--text-hi)', margin: '0 0 6px' }}>
+            {entries.length === 0 ? `Nothing in ${hobby.pluralLabel} yet` : 'No matches'}
           </p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--text-hi)', marginBottom: 4 }}>
-            {entries.length === 0 ? `${hobby.pluralLabel.toUpperCase()} LIBRARY EMPTY` : 'NO MATCHES'}
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text-dim)', margin: 0 }}>
+            {entries.length === 0 ? 'Add your first one to get started.' : 'Try a different search or filter.'}
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: 20 }}>
-            {entries.length === 0 ? 'INITIALIZE FIRST RECORD' : 'ADJUST QUERY PARAMETERS'}
-          </p>
+          {entries.length > 0 && (lengthFilter !== 'all' || activeGenre || search) && (
+            <button
+              onClick={() => { setLengthFilter('all'); setGenreFilter('all'); setSearch('') }}
+              style={{ marginTop: 20, height: 40, padding: '0 18px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)', fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Clear Search and Filters
+            </button>
+          )}
           {entries.length === 0 && (
             <button
               onClick={() => setShowModal(true)}
-              style={{
-                padding: '8px 20px',
-                background: `${hobby.accent}22`,
-                border: `1px solid ${hobby.accent}`,
-                color: hobby.accent,
-                fontFamily: 'var(--font-display)',
-                fontSize: 14,
-                letterSpacing: '0.1em',
-                cursor: 'pointer',
-              }}
+              style={{ marginTop: 20, display: 'inline-flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', background: `${hobby.accent}22`, border: `1px solid ${hobby.accent}`, color: hobby.accent, fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
-              ADD FIRST RECORD
+              <Plus size={16} aria-hidden="true" /> Add {hobby.label}
             </button>
           )}
         </div>
@@ -593,29 +632,51 @@ export default function HobbyPage({ hobbyId }: { hobbyId: HobbyCategory }) {
             const allIds = display.map((e) => e.id)
             const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id))
             const sel = allIds.filter((id) => selectedIds.has(id))
-            const barBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: sel.length ? `${color}18` : 'transparent', border: `1px solid ${sel.length ? color : 'var(--border-dim)'}`, color: sel.length ? color : 'var(--text-mute)', cursor: sel.length && !bulkBusy ? 'pointer' : 'not-allowed' })
+            const barBtn = (color: string): React.CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', background: sel.length ? `${color}18` : 'transparent', border: `1px solid ${sel.length ? color : 'var(--border-dim)'}`, color: sel.length ? color : 'var(--text-mute)', cursor: sel.length && !bulkBusy ? 'pointer' : 'not-allowed' })
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 14px', marginBottom: 14, background: 'var(--bg-card)', border: `1px solid ${hobby.accent}66`, borderLeft: `3px solid ${hobby.accent}`, position: 'sticky', top: 8, zIndex: 5 }}>
                 <button onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em', background: 'transparent', border: `1px solid ${hobby.accent}66`, color: hobby.accent, cursor: 'pointer' }}>
-                  <CheckSquare size={13} /> {allSelected ? 'CLEAR ALL' : `SELECT ALL (${allIds.length})`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.02em', background: 'transparent', border: `1px solid ${hobby.accent}66`, color: hobby.accent, cursor: 'pointer' }}>
+                  <CheckSquare size={13} /> {allSelected ? 'Clear All' : `Select All (${allIds.length})`}
                 </button>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>{sel.length} selected</span>
                 <span style={{ flex: 1 }} />
-                {(['in_progress', 'completed', 'backlog'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
+                {(['in_progress', 'completed', 'backlog', 'wishlist'] as const).filter((s) => statusesFor(hobby).includes(s)).map((s) => (
                   <button key={s} disabled={!sel.length || bulkBusy} onClick={() => bulkStatus(sel, s)} style={barBtn(STATUS_COLORS[s])}>→ {statusLabelFor(hobby, s)}</button>
                 ))}
-                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#ef4444')}><Trash2 size={12} /> DELETE</button>
+                {statusFilter === 'completed' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <input type="date" aria-label="Finish date for the selected entries" max={todayIso()} value={bulkDate} onChange={(e) => setBulkDate(e.target.value)}
+                      style={{ height: 32, padding: '0 8px', fontFamily: 'var(--font-body)', fontSize: 13, background: 'var(--bg-base)', border: '1px solid var(--border-dim)', color: 'var(--text-hi)' }} />
+                    <button disabled={!sel.length || !bulkDate || bulkBusy} onClick={() => bulkFinishDate(sel)} style={barBtn('#22c55e')}>Set Finish Date</button>
+                  </span>
+                )}
+                <button disabled={!sel.length || bulkBusy} onClick={() => bulkDelete(sel)} style={barBtn('#f15959')}><Trash2 size={12} /> Delete</button>
                 <button onClick={exitSelect} aria-label="Exit select mode" style={{ display: 'flex', padding: 7, background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: 'pointer' }}><X size={13} /></button>
               </div>
             )
           })()}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-            {display.map((entry, i) => (
-              <EntryCard key={entry.id} entry={entry} index={i}
-                selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
-            ))}
-          </div>
+          {view === 'list' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 12 }}>
+              {visible.map((entry, i) => (
+                <EntryCard key={entry.id} entry={entry} index={i} showType={hobbyId === 'books'}
+                  selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
+              ))}
+            </div>
+          ) : statusFilter === 'completed' && sortBy === 'recent' && !selectMode && !isRecipe ? (
+            // Finished things get the shelf: by year, newest first. It pages itself.
+            <ShelfWall entries={display} />
+          ) : (
+            <div className="cover-grid">
+              {visible.map((entry) => (
+                <CoverTile key={entry.id} entry={entry} showStatus={statusFilter === 'all'}
+                  selectable={selectMode} selected={selectedIds.has(entry.id)} onToggleSelect={toggleSelect} />
+              ))}
+            </div>
+          )}
+          {!(view === 'grid' && statusFilter === 'completed' && sortBy === 'recent' && !selectMode && !isRecipe) && (
+            <ListFooter sentinel={paged.sentinel} shown={paged.shown} total={display.length} done={paged.done} more={paged.more} />
+          )}
         </>
       )}
 

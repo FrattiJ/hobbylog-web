@@ -1,5 +1,5 @@
 export type HobbyCategory = 'games' | 'movies' | 'tv' | 'books' | 'gundams' | 'fitness' | 'art' | 'cooking'
-export type EntryStatus = 'backlog' | 'in_progress' | 'completed' | 'dropped'
+export type EntryStatus = 'wishlist' | 'backlog' | 'in_progress' | 'completed' | 'dropped'
 export type BookSubtype = 'book' | 'audiobook' | 'manga' | 'comic' | 'webtoon' | 'light_novel'
 
 export interface Profile {

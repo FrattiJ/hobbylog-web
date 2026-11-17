@@ -10,7 +10,7 @@ import NewPasswordForm from './NewPasswordForm'
 export default function ResetPasswordScreen({ onDone }: { onDone: () => void }) {
   return (
     <AuthShell tagline="Choose a new password to get back into your account.">
-      <NewPasswordForm submitLabel="SAVE PASSWORD" onDone={onDone} />
+      <NewPasswordForm submitLabel="Save Password" onDone={onDone} />
       <div style={{ marginTop: 16, textAlign: 'center' }}>
         <button onClick={() => supabase.auth.signOut()} style={authLink}>Cancel and sign out</button>
       </div>

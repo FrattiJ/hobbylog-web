@@ -1,10 +1,111 @@
 // Bump APP_VERSION and add an entry when shipping tester-visible changes — the
 // "What's New" popup fires for anyone whose last-seen version is older.
-export const APP_VERSION = '0.10.1'
+export const APP_VERSION = '0.12.0'
 
-export interface ChangelogEntry { version: string; date: string; items: string[] }
+// A release's headline changes, walked through one at a time before the full
+// list. Each step pairs a short claim with a miniature of the page it is about;
+// `preview` names one of the miniatures in components/WhatsNew.tsx. Keep it to
+// three or four steps: this is the part people actually read. The last step's
+// button takes them to `cta.href`, so end on the page most worth opening.
+export type TourPreview = 'covers' | 'stats' | 'shelf' | 'timeline' | 'plan' | 'lists'
+export interface TourStep { title: string; body: string; preview: TourPreview; previewLabel: string }
+export interface Tour { steps: TourStep[]; cta: { label: string; href: string } }
+
+export interface ChangelogEntry { version: string; date: string; items: string[]; tour?: Tour }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.12.0',
+    date: 'Nov 2026',
+    tour: {
+      steps: [
+        {
+          title: 'A Timeline of everything.',
+          body: 'What you started, finished and logged, newest first, across every hobby. The notes you write when you log a session are there too, and the latest one shows on your dashboard as where you left off.',
+          preview: 'timeline',
+          previewLabel: 'A month on the timeline: a finished book with its rating, a session on a game with a note, and a show that was started.',
+        },
+        {
+          title: 'Plan to a date.',
+          body: 'In What Next, say how many hours a week you have and when you want to be done. The plan fills that time from what you own and gives each thing the day it would be finished.',
+          preview: 'plan',
+          previewLabel: 'A plan of four things between today and a goal date, drawn as one bar with a segment for each, and the dates each would be finished.',
+        },
+        {
+          title: 'Lists that cross hobbies.',
+          body: 'Group a film, a game and a book under one name, see how far through the list you are, and share it with friends if you want to. One entry can be in as many lists as you like.',
+          preview: 'lists',
+          previewLabel: 'A list holding a book, a show and two games, with a bar showing two of four finished.',
+        },
+      ],
+      cta: { label: 'Open your Timeline', href: '/timeline' },
+    },
+    items: [
+      'New Timeline page: everything you started, finished and logged, newest first, across every hobby, with search, a filter for what to show, and a way to go back to any month',
+      'The notes you write when logging a session appear on the Timeline, and a big import shows as one line instead of hundreds',
+      'Where you left off: your latest session note shows under what you have in progress on the dashboard, and at the top of the entry page',
+      'Plan to a date, in What Next: set your hours a week and a finish date, choose Balanced, More Finishes or Longer Ones, and see what fits with the day each thing would be done',
+      'Save a plan to track it: how many are finished, the hours you have logged against it, and whether you are on track for the date',
+      'New Lists page: group entries from any hobby under your own name, reorder them, and see how much of the list is finished',
+      'Add an entry to a list from its own page, and share a list with friends. Shared lists show on your profile; private entries stay hidden',
+      'Filter a hobby page by length and by genre. Length bands fit the hobby: hours for games, shows and books, running time for films, cook time for recipes',
+      'Sort films, shows, books and recipes by length, the way games already sorted by time to beat',
+      'A shorter menu: Shelf, Timeline and Stats now sit together under History, with tabs to move between them',
+      'Finished it more than once? Log another finish or start it again from the entry page. Each time keeps its own date on your Shelf, in Stats and on the Timeline',
+      'Fitness: swap an exercise mid-session. Machine taken? Tap Swap on its card for other exercises that train the same muscle, yours first with what you did last time. Your routine is not changed',
+      'Fitness: a body map of the muscles you trained, shown when you finish a workout and on each session in History',
+      'Fitness: your own exercises now have a main muscle. It is filled in from the name where it can be, and you can set or correct it under Routines, Your Exercises',
+    ],
+  },
+  {
+    version: '0.11.0',
+    date: 'Nov 2026',
+    tour: {
+      steps: [
+        {
+          title: 'Your library, by cover.',
+          body: 'Hobby pages open as a wall of cover art, and every status tab shows how many entries it holds. The compact list is one toggle away.',
+          preview: 'covers',
+          previewLabel: 'A games library drawn as a grid of covers, with tabs for wishlist, backlog, in progress and completed.',
+        },
+        {
+          title: 'Stats that follow time.',
+          body: 'See what you finished and added each month, whether the pile grew or shrank, and how many months of backlog you have at your own pace.',
+          preview: 'stats',
+          previewLabel: 'A chart of entries finished and added over six months, above three figures: months of backlog, finish rate and typical days to finish.',
+        },
+        {
+          title: 'A Shelf for what you finished.',
+          body: 'Everything you have completed, grouped by year with your ratings. Finish dates can be edited now, so older entries land in the right year.',
+          preview: 'shelf',
+          previewLabel: 'A shelf for 2026 showing four finished entries with their ratings and finish dates.',
+        },
+      ],
+      cta: { label: 'Open your Shelf', href: '/shelf' },
+    },
+    items: [
+      'A cleaner, easier-to-read look: a new typeface for everything you read, larger text and plainer wording throughout',
+      'Your library as covers: hobby pages open as a wall of cover art, with a toggle back to the compact list',
+      'New Shelf page: everything you have finished, grouped by year, with your ratings',
+      'Wishlist: a new status for games, books and projects you do not have yet. They stay out of your backlog ranking and What Next until you move them',
+      'Status tabs now show how many entries each one holds',
+      'Pinch-to-zoom works on phones, keyboard focus is visible everywhere, and reduced-motion settings are respected',
+      'A new front page for visitors who are not signed in',
+      'What Next and Fitness are laid out for both phones and wide screens: suggestion cards two across, larger tabs, compact set grids',
+      'Filters, tabs and sort order are part of the page address, so a view can be bookmarked, shared or reloaded',
+      'Deleting asks in a proper dialog that says what goes with it, including sessions, photos, friends and goals that used to vanish at once',
+      'Big libraries open faster: entries load in batches as you scroll',
+      'The light theme now has readable accent colors',
+      'Dates you can set: every entry shows when it was added, started and finished, and all three can be edited. Set them when adding something you finished earlier',
+      'Missing finish dates can be filled in for many entries at once: on a hobby page choose Completed, then Select, then Set Finish Date. You can also sort by finish date',
+      'Stats is rebuilt around time: what you finished and added each month, whether the pile grew or shrank, hours logged and which hobby they went to, with a period you choose',
+      'New library figures: months of backlog at your pace, typical days to finish, finish rate, the spread of your ratings, and what has waited longest',
+      'The dashboard leads with what you are in the middle of, then the month so far, and shows what you finished most recently',
+      'Entry pages show how many other people track the same title, how many finished it and how they rated it',
+      'What\'s New opens as a short tour of the headline changes, with the full list one click away',
+      'Password fields have a show button, and creating an account spells out what other people can and cannot see',
+    ],
+  },
   {
     version: '0.10.1',
     date: 'Nov 2026',

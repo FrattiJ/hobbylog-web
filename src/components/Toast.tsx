@@ -21,9 +21,9 @@ export function useToast(): ToastApi {
 }
 
 const KINDS: Record<ToastKind, { color: string; Icon: typeof Info }> = {
-  error: { color: '#ef4444', Icon: AlertTriangle },
+  error: { color: '#f15959', Icon: AlertTriangle },
   success: { color: '#22c55e', Icon: CheckCircle2 },
-  info: { color: '#0891b2', Icon: Info },
+  info: { color: '#099bbe', Icon: Info },
 }
 
 function ToastRow({ t, onClose }: { t: Toast; onClose: () => void }) {
@@ -44,7 +44,7 @@ function ToastRow({ t, onClose }: { t: Toast; onClose: () => void }) {
       }}
     >
       <Icon size={15} style={{ color, flexShrink: 0, marginTop: 1 }} />
-      <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-hi)', lineHeight: 1.45, wordBreak: 'break-word' }}>{t.message}</span>
+      <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-hi)', lineHeight: 1.45, wordBreak: 'break-word' }}>{t.message}</span>
       <button onClick={onClose} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 0, display: 'flex' }}>
         <X size={14} />
       </button>

@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient'
 import { currentUserId } from './currentUser'
 import { searchCatalog, searchTypeFor, fetchCatalogDetails } from './search'
 import { fetchJikanMetadata } from './importParsers'
+import { todayIso } from './format'
 
 export interface WebEntry {
   id: string
@@ -66,7 +67,7 @@ export async function addEntry(userId: string, data: {
 
 export async function setEntryStatus(id: string, status: string): Promise<void> {
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayIso()
   if (status === 'completed') patch.date_completed = today
   if (status === 'in_progress') patch.date_started = today
   const { error } = await supabase.from('web_entries').update(patch).eq('id', id)

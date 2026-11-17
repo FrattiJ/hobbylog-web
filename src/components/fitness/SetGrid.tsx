@@ -63,19 +63,19 @@ interface Column {
 // reps to do, never how much to load.
 const COLUMNS: Record<TrackingType, Column[]> = {
   weight_reps: [
-    { key: 'reps', label: 'REPS', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
-    { key: 'weight', label: 'LBS', placeholder: (g) => (g?.weight != null ? String(g.weight) : '—') },
+    { key: 'reps', label: 'Reps', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
+    { key: 'weight', label: 'lbs', placeholder: (g) => (g?.weight != null ? String(g.weight) : '—') },
   ],
   reps: [
-    { key: 'reps', label: 'REPS', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
-    { key: 'weight', label: '+ LBS', placeholder: (g) => (g?.weight ? String(g.weight) : 'bw') },
+    { key: 'reps', label: 'Reps', placeholder: (g, t) => (g?.reps != null ? String(g.reps) : t?.reps != null ? String(t.reps) : '—') },
+    { key: 'weight', label: '+ lbs', placeholder: (g) => (g?.weight ? String(g.weight) : 'bw') },
   ],
   time: [
-    { key: 'duration', label: 'TIME', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
+    { key: 'duration', label: 'Time', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
   ],
   time_distance: [
-    { key: 'duration', label: 'TIME', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
-    { key: 'distance', label: 'MILES', placeholder: (g) => (g?.distance != null ? String(g.distance) : '—') },
+    { key: 'duration', label: 'Time', placeholder: (g, t) => (g?.seconds != null ? fmtDuration(g.seconds) : t?.seconds != null ? fmtDuration(t.seconds) : 'mm:ss') },
+    { key: 'distance', label: 'miles', placeholder: (g) => (g?.distance != null ? String(g.distance) : '—') },
   ],
 }
 
@@ -90,7 +90,9 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
   onChange: (sets: DraftSet[]) => void
 }) {
   const cols = COLUMNS[exercise.tracking_type]
-  const grid = `28px ${cols.map(() => '1fr').join(' ')} 34px 30px`
+  // Number fields: wide enough for "1:23:45" and a thumb, no wider. On a
+  // desktop card 1fr columns stretched each one to 400px.
+  const grid = `28px ${cols.map(() => 'minmax(64px, 150px)').join(' ')} 44px 34px`
 
   const update = (key: string, patch: Partial<DraftSet>) =>
     onChange(sets.map((s) => (s.key === key ? { ...s, ...patch } : s)))
@@ -99,12 +101,12 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
     <div>
       <div style={{
         display: 'grid', gridTemplateColumns: grid, gap: 6, padding: '0 0 5px',
-        fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em',
+        fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
         color: 'var(--text-dim)', borderBottom: '1px solid var(--border-dim)', marginBottom: 7,
       }}>
         <span style={{ textAlign: 'center' }}>#</span>
         {cols.map((c) => <span key={c.key}>{c.label}</span>)}
-        <span style={{ textAlign: 'center' }} title="Warm-up sets are excluded from records">W/U</span>
+        <span style={{ textAlign: 'center' }} title="Warm-up sets are excluded from records">Warm</span>
         <span />
       </div>
 
@@ -116,7 +118,7 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
         return (
           <div key={s.key} style={{ display: 'grid', gridTemplateColumns: grid, gap: 6, alignItems: 'center', marginBottom: 5 }}>
             <span style={{
-              fontFamily: 'var(--font-mono)', fontSize: 12, textAlign: 'center',
+              fontFamily: 'var(--font-body)', fontSize: 12, textAlign: 'center',
               color: s.warmup ? 'var(--text-mute)' : 'var(--text-dim)',
             }}>
               {s.warmup ? 'W' : i + 1}
@@ -140,26 +142,26 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
                 height: 32, background: s.warmup ? `${ACCENT}22` : 'transparent',
                 border: `1px solid ${s.warmup ? ACCENT : 'var(--border-dim)'}`,
                 color: s.warmup ? ACCENT : 'var(--text-mute)',
-                fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer',
+                fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer',
               }}
-            >
+ aria-label="Warm-up set">
               {s.warmup ? '✓' : ''}
             </button>
 
             <button
               onClick={() => onChange(sets.filter((x) => x.key !== s.key))}
               title="Remove set"
-              style={{ background: 'none', border: 'none', color: 'var(--text-mute)', cursor: 'pointer', padding: 4 }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444' }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 4 }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#f15959' }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-mute)' }}
-            >
+ aria-label="Remove set">
               <Trash2 size={13} />
             </button>
 
             {broken.length > 0 && (
               <span style={{
                 gridColumn: '2 / -1', display: 'flex', alignItems: 'center', gap: 5,
-                fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em',
+                fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em',
                 color: '#eab308', marginTop: -2, marginBottom: 3,
               }}>
                 <Trophy size={10} /> {broken.map((k) => PR_LABELS[k]).join(' · ')} PR
@@ -173,7 +175,7 @@ export default function SetGrid({ exercise, sets, lastSets, records, targets = n
         variant="ghost" style={{ width: '100%', marginTop: 4, borderLeft: '1px dashed var(--border-dim)' }}
         onClick={() => onChange([...sets, emptySet()])}
       >
-        <Plus size={12} /> ADD SET
+        <Plus size={12} /> Add Set
       </Button>
     </div>
   )

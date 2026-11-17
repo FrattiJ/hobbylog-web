@@ -19,8 +19,8 @@ function EntryInner() {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div style={{ padding: 40, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', letterSpacing: '0.2em' }}>LOADING…</div>
-  if (!entry) return <div style={{ padding: 40, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>Entry not found.</div>
+  if (loading) return <div style={{ padding: 40, fontFamily: 'var(--font-body)', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Loading…</div>
+  if (!entry) return <div style={{ padding: 40, fontFamily: 'var(--font-body)', color: 'var(--text-dim)' }}>Entry not found.</div>
 
   return <EntryDetail entry={entry} onBack={() => router.push(`/${entry.hobby_category}`)} onChanged={load} />
 }

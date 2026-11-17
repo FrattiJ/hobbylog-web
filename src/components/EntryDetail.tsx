@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff } from 'lucide-react'
+import { Star, Trash2, ArrowLeft, Save, Image as ImageIcon, Pencil, FileText, Eye, EyeOff, RotateCcw, X } from 'lucide-react'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusesFor, statusLabelFor } from '@/lib/hobbies'
 import { readRecipe, recipeMetadata, type RecipeData } from '@/lib/recipe'
 import RecipeView from './RecipeView'
 import RecipeFields from './RecipeFields'
 import { updateEntry, deleteEntry, refetchDetails, type WebEntry } from '@/lib/entries'
-import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityRating, normalizeBacklogPriorities, type Photo, type CommunityRating } from '@/lib/db'
+import { getSessionsByEntry, insertSession, deleteSession, getPhotosByEntry, getCommunityStats, normalizeBacklogPriorities, type Photo, type CommunityStats } from '@/lib/db'
 import PhotoGallery from './PhotoGallery'
 import { compressImage } from '@/lib/image'
 import { searchTypeFor, computeTVProgress, searchCatalog, type CatalogHit } from '@/lib/search'
@@ -15,8 +15,12 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import ProjectChecklist, { type ChecklistItem } from './ProjectChecklist'
 import { useToast } from './Toast'
 import type { HobbyCategory, Session } from '@/types/database'
+import { formatDay, todayIso, isoDayOf, dayToTimestamp } from '@/lib/format'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { pastFinishesOf, sortPast, ordinal, type PastFinish } from '@/lib/finishes'
+import EntryLists from './EntryLists'
 
-const ACCENT = '#7c3aed'
+const ACCENT = '#a577f2'
 const META_KEYS = ['genres', 'platforms', 'author', 'narrator', 'publisher', 'rating', 'release_year', 'director', 'studios', 'developers', 'publishers', 'networks', 'creator', 'streaming'] as const
 
 export default function EntryDetail({ entry, onBack, onChanged }: {
@@ -27,7 +31,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const hobby = HOBBY_MAP[entry.hobby_category as HobbyCategory]
   const accent = hobby?.accent ?? ACCENT
   const isMobile = useIsMobile()
-  const { error: toastError } = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
+  const confirm = useConfirm()
 
   const [status, setStatus] = useState(entry.status)
   const [isPrivate, setIsPrivate] = useState(!!entry.is_private)
@@ -40,6 +45,16 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const [volumeCurrent, setVolumeCurrent] = useState(entry.metadata?.volume_current != null ? String(entry.metadata.volume_current) : '')
   const [volumeTotal, setVolumeTotal] = useState(entry.metadata?.volume_total != null ? String(entry.metadata.volume_total) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
+  // The three dates an entry carries. "Added" is the row's created_at shown as
+  // a day; the other two are plain dates. All three can be corrected by hand,
+  // which matters most for anything imported or logged after the fact.
+  const [dateAdded, setDateAdded] = useState(() => isoDayOf(entry.created_at))
+  const [dateStarted, setDateStarted] = useState(entry.date_started ?? '')
+  const [dateCompleted, setDateCompleted] = useState(entry.date_completed ?? '')
+  // Earlier times through, when this has been finished more than once. The
+  // dates above always describe the latest.
+  const [pastFinishes, setPastFinishes] = useState<PastFinish[]>(() => pastFinishesOf(entry))
+  const [earlierDate, setEarlierDate] = useState('')
   const [recipe, setRecipe] = useState<RecipeData>(() => readRecipe(entry.metadata))
   const [recipeDraft, setRecipeDraft] = useState<RecipeData | null>(null)
   const [coverUrl, setCoverUrl] = useState(entry.cover_url ?? '')
@@ -53,13 +68,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
   const [sessions, setSessions] = useState<Session[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
-  const [community, setCommunity] = useState<CommunityRating | null>(null)
+  const [community, setCommunity] = useState<CommunityStats | null>(null)
   const [sHours, setSHours] = useState(''); const [sMinutes, setSMinutes] = useState('')
   const [sProgress, setSProgress] = useState(''); const [sNotes, setSNotes] = useState('')
 
   useEffect(() => {
     if (entry.external_source && entry.external_id) {
-      getCommunityRating(entry.external_source, entry.external_id).then(setCommunity).catch(() => {})
+      getCommunityStats(entry.external_source, entry.external_id).then(setCommunity).catch(() => {})
     }
   }, [entry.external_source, entry.external_id])
 
@@ -90,6 +105,75 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const isRecipe = !!hobby?.recipe
   const showSessionProgress = !isGameEntry && !hobby?.percentBased && progUnit !== '%' && !isRecipe
   const isPercent = !!hobby?.percentBased
+  // Going round again is for things you watch, read or play. A recipe already
+  // counts how often it was made, and a build is finished once.
+  const canRepeat = !isRecipe && !isPercent
+  // The newest session that says something: the reminder of where this stands.
+  const leftOff = status === 'in_progress' ? sessions.find((s) => s.notes && s.notes.trim()) ?? null : null
+
+  // Earlier finishes save as they change, like the checklist: each is a small
+  // edit to the record, not part of the form above.
+  async function savePast(next: PastFinish[], extra: Partial<WebEntry> = {}) {
+    const sorted = sortPast(next)
+    await updateEntry(entry.id, { metadata: { ...(entry.metadata ?? {}), past_finishes: sorted }, ...extra })
+    setPastFinishes(sorted)
+    onChanged()
+  }
+
+  async function addEarlierFinish() {
+    if (!earlierDate || busy) return
+    if (earlierDate > todayIso()) { toastError('Dates cannot be in the future.'); return }
+    setBusy(true)
+    try { await savePast([...pastFinishes, { started: null, completed: earlierDate }]); setEarlierDate('') }
+    catch { toastError('Could not save that finish. Try again.') }
+    setBusy(false)
+  }
+
+  async function removePastFinish(index: number) {
+    const target = pastFinishes[index]
+    if (!(await confirm({
+      title: 'Remove this finish?',
+      body: `The ${target.completed ? `finish on ${formatDay(target.completed)}` : 'undated finish'} will be taken off your Shelf and out of your stats. The entry itself stays.`,
+      confirmLabel: 'Remove Finish',
+      danger: true,
+    }))) return
+    try { await savePast(pastFinishes.filter((_, i) => i !== index)) }
+    catch { toastError('Could not remove that finish. Try again.') }
+  }
+
+  // Finished it again, already: the finish on record moves to the earlier
+  // list and today becomes the latest. The date can be corrected above.
+  async function finishedAgain() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const today = todayIso()
+      await savePast([...pastFinishes, { started: dateStarted || null, completed: dateCompleted || null }], { date_started: null, date_completed: today })
+      setDateStarted(''); setDateCompleted(today)
+      toastSuccess(`Logged another finish for ${entry.title}`)
+    } catch { toastError('Could not log that finish. Try again.') }
+    setBusy(false)
+  }
+
+  // Going through it again from the start: the finish on record is kept, and
+  // the entry goes back to In Progress with its progress cleared. Games keep
+  // their hours, which only ever add up.
+  async function startAgain() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const today = todayIso()
+      const isGame = entry.hobby_category === 'games'
+      await savePast([...pastFinishes, { started: dateStarted || null, completed: dateCompleted || null }], {
+        status: 'in_progress', date_started: today, date_completed: null,
+        ...(isGame ? {} : { progress_current: 0, current_season: null, current_episode: null }),
+      })
+      setStatus('in_progress'); setDateStarted(today); setDateCompleted('')
+      if (!isGame) { setProgressCurrent('0'); setSeason(''); setEpisode('') }
+      toastSuccess(`${entry.title} is back in progress. Your earlier finish is kept.`)
+    } catch { toastError('Could not start it again. Try again.') }
+    setBusy(false)
+  }
 
   // Checklist changes drive the project's % and status, and save immediately.
   async function persistChecklist(items: ChecklistItem[]) {
@@ -101,7 +185,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
       newStatus = done === total ? 'completed' : done > 0 ? 'in_progress' : 'backlog'
       setStatus(newStatus); setProgressCurrent(String(pct))
     }
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayIso()
     try {
       await updateEntry(entry.id, {
         metadata: { ...(entry.metadata ?? {}), checklist: items },
@@ -132,9 +216,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const inp: React.CSSProperties = {
     width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-dim)',
     borderLeft: `2px solid ${accent}66`, padding: '9px 12px', color: 'var(--text-hi)',
-    fontSize: 14, fontFamily: 'var(--font-mono)', outline: 'none',
+    fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none',
   }
-  const label: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 6px' }
+  const label: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', margin: '0 0 6px' }
 
   async function saveCover(url: string) {
     try {
@@ -157,9 +241,37 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     setCoverSearching(false)
   }
 
+  // The one-tap path off the wishlist: you have it now, so it joins the backlog
+  // at the bottom of the ranking.
+  async function moveToBacklog() {
+    setBusy(true)
+    try {
+      await updateEntry(entry.id, { status: 'backlog' })
+      setStatus('backlog')
+      await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
+      onChanged()
+    } catch {
+      toastError('Could not move it to your backlog. Try again.')
+    }
+    setBusy(false)
+  }
+
   async function save() {
-    setBusy(true); setNote(null)
-    const today = new Date().toISOString().split('T')[0]
+    setNote(null)
+    const today = todayIso()
+    // A date left blank is filled in when the status implies it: finishing
+    // today, or starting today. A date that was typed is always kept.
+    const started = dateStarted || (status === 'in_progress' ? today : '')
+    const completed = dateCompleted || (status === 'completed' ? today : '')
+    if (started && completed && completed < started) {
+      setNote('The finish date is before the start date. Fix one of them and save again.')
+      return
+    }
+    if ([dateAdded, started, completed].some((d) => d && d > today)) {
+      setNote('Dates cannot be in the future.')
+      return
+    }
+    setBusy(true)
     try {
       let progressValue = progressCurrent ? parseFloat(progressCurrent) : 0
       const tvFields: { current_season?: number | null; current_episode?: number | null } = {}
@@ -197,6 +309,7 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           ...(entry.metadata ?? {}),
           volume_current: volumeCurrent ? parseInt(volumeCurrent, 10) : null,
           volume_total: volumeTotal ? parseInt(volumeTotal, 10) : null,
+          ...(pastFinishes.length > 0 ? { past_finishes: pastFinishes } : {}),
         },
       } : {}
       await updateEntry(entry.id, {
@@ -207,9 +320,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         progress_total: progressTotalValue,
         ...tvFields,
         ...mangaFields,
-        date_completed: status === 'completed' && !entry.date_completed ? today : entry.date_completed,
-        date_started: status === 'in_progress' && !entry.date_started ? today : entry.date_started,
+        date_completed: completed || null,
+        date_started: started || null,
+        // Only when the day actually changed, so the original time of day survives.
+        ...(dateAdded && dateAdded !== isoDayOf(entry.created_at) ? { created_at: dayToTimestamp(dateAdded) } : {}),
       })
+      setDateStarted(started); setDateCompleted(completed)
       // Status change into/out of backlog — renumber that hobby's backlog so ranks stay 1..N.
       if (status !== entry.status) await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
       setNote('Saved.'); onChanged()
@@ -238,7 +354,12 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   }
 
   async function remove() {
-    if (!confirm(`Delete "${entry.title}"?`)) return
+    if (!(await confirm({
+      title: `Delete “${entry.title}”?`,
+      body: 'Its sessions, photos and notes go with it. This cannot be undone.',
+      confirmLabel: 'Delete Entry',
+      danger: true,
+    }))) return
     try {
       await deleteEntry(entry.id)
       if (entry.status === 'backlog') await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory)
@@ -246,6 +367,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     } catch {
       toastError(`Could not delete “${entry.title}” — try again`)
     }
+  }
+
+  // Removing a log leaves the entry's progress where it is: the session is a
+  // record of a sitting, and the total may have been corrected by hand since.
+  async function removeSession(s: Session) {
+    if (!(await confirm({
+      title: 'Delete this session?',
+      body: `The log from ${formatDay(s.date)} will be removed. Your progress total stays as it is.`,
+      confirmLabel: 'Delete Session',
+      danger: true,
+    }))) return
+    try { await deleteSession(s.id); loadExtras() }
+    catch { toastError('Could not delete that session. Try again.') }
   }
 
   async function addSession() {
@@ -261,13 +395,13 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
     if (!dur && prog == null && !sNotes.trim()) return
     setBusy(true)
     try {
-      await insertSession({ entry_id: entry.id, date: new Date().toISOString().split('T')[0], duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
+      await insertSession({ entry_id: entry.id, date: todayIso(), duration_minutes: dur || null, progress_logged: prog, notes: sNotes.trim() || null })
       if (prog && prog > 0) {
         const cur = Math.round(((parseFloat(progressCurrent) || 0) + prog) * 10) / 10
         setProgressCurrent(String(cur))
         // Cooking a recipe that was still on the to-try list means it is made.
         const firstCook = isRecipe && status !== 'completed'
-        const today = new Date().toISOString().split('T')[0]
+        const today = todayIso()
         await updateEntry(entry.id, { progress_current: cur, ...(firstCook ? { status: 'completed', date_completed: entry.date_completed ?? today } : {}) })
         if (firstCook) { setStatus('completed'); await normalizeBacklogPriorities(entry.hobby_category as HobbyCategory) }
       }
@@ -279,9 +413,9 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
   const metaRows = META_KEYS.map((k) => [k, entry.metadata?.[k]] as const).filter(([, v]) => v != null && v !== '')
 
   return (
-    <div style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.08em' }}>
-        <ArrowLeft size={14} /> BACK TO {(hobby?.pluralLabel ?? '').toUpperCase()}
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 24, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em' }}>
+        <ArrowLeft size={14} /> Back to {(hobby?.pluralLabel ?? '')}
       </button>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? 20 : 32 }}>
@@ -290,31 +424,31 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           <div style={{ aspectRatio: '2/3', width: '100%', maxWidth: isMobile ? 200 : undefined, margin: isMobile ? '0 auto 8px' : '0 0 8px', background: 'var(--bg-card)', border: `1px solid ${accent}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {coverUrl
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-display)' }}>{entry.title[0]}</span>}
+              ? <img src={coverUrl} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
+              : <span style={{ fontSize: 48, fontWeight: 900, color: `${accent}88`, fontFamily: 'var(--font-body)' }}>{entry.title[0]}</span>}
           </div>
 
           {editingCover ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              <input autoFocus value={coverInput} onChange={(e) => setCoverInput(e.target.value)} placeholder="Paste image URL…" style={inp} />
+              <input autoFocus value={coverInput} onChange={(e) => setCoverInput(e.target.value)} placeholder="Paste image URL…" style={inp} aria-label="Paste image URL" />
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>SAVE</button>
-                <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>UPLOAD</button>
-                <button onClick={() => { setEditingCover(false); setCoverResults([]) }} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => saveCover(coverInput.trim())} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: 'pointer' }}>Save</button>
+                <button onClick={() => coverFileRef.current?.click()} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}>Upload</button>
+                <button onClick={() => { setEditingCover(false); setCoverResults([]) }} style={{ flex: 1, padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>Cancel</button>
               </div>
               {coverSearchType && (
                 <button onClick={findCovers} disabled={coverSearching}
-                  style={{ padding: '6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: accent, background: 'transparent', border: `1px dashed ${accent}66`, cursor: coverSearching ? 'wait' : 'pointer' }}>
-                  {coverSearching ? 'SEARCHING…' : '⌕ FIND COVERS'}
+                  style={{ padding: '6px', fontFamily: 'var(--font-body)', fontSize: 12, color: accent, background: 'transparent', border: `1px dashed ${accent}66`, cursor: coverSearching ? 'wait' : 'pointer' }}>
+                  {coverSearching ? 'Searching…' : 'Find Covers'}
                 </button>
               )}
               {coverResults.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
                   {coverResults.map((r) => (
                     <button key={`${r.external_source}-${r.external_id}`} onClick={() => saveCover(r.cover_url!)} title={r.title}
-                      style={{ padding: 0, border: '1px solid var(--border-dim)', background: 'var(--bg-base)', cursor: 'pointer', aspectRatio: '2/3', overflow: 'hidden' }}>
+                      style={{ padding: 0, border: '1px solid var(--border-dim)', background: 'var(--bg-base)', cursor: 'pointer', aspectRatio: '2/3', overflow: 'hidden' }} aria-label={r.title}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r.cover_url!} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={r.cover_url!} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -324,8 +458,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             </div>
           ) : (
             <button onClick={() => { setCoverInput(entry.cover_url ?? ''); setEditingCover(true) }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginBottom: 16, padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em', cursor: 'pointer' }}>
-              <ImageIcon size={12} /> {coverUrl ? 'CHANGE COVER' : 'SET COVER'}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginBottom: 16, padding: '6px 10px', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', cursor: 'pointer' }}>
+              <ImageIcon size={12} /> {coverUrl ? 'Change Cover' : 'Set Cover'}
             </button>
           )}
 
@@ -333,8 +467,8 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             <div style={{ background: 'var(--bg-card)', border: `1px solid ${accent}33`, borderLeft: `3px solid ${accent}`, padding: 12 }}>
               {metaRows.map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 8 }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{k.replace(/_/g, ' ')}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{typeof v === 'number' && k === 'rating' ? `${v.toFixed(1)}/10` : String(v)}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', margin: '2px 0 0', lineHeight: 1.4 }}>{typeof v === 'number' && k === 'rating' ? `${v.toFixed(1)}/10` : String(v)}</p>
                 </div>
               ))}
             </div>
@@ -344,28 +478,50 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
         {/* Main */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.06em' }}>{entry.title}</h1>
-            <div style={{ display: 'flex', gap: 16, marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)' }}>
-              {entry.date_started && <span>STARTED {entry.date_started}</span>}
-              {entry.date_completed && <span>{isRecipe ? 'FIRST MADE' : 'COMPLETED'} {entry.date_completed}</span>}
-              {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>MADE {progressCurrent}x</span>}
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, padding: '2px 8px', background: `${accent}22`, color: accent, letterSpacing: '0.05em' }}>{(entry.hobby_category === 'books' && entry.book_subtype ? BOOK_SUBTYPE_MAP[entry.book_subtype as keyof typeof BOOK_SUBTYPE_MAP]?.label : null) ?? hobby?.label}</span>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--text-hi)', margin: '12px 0 0', letterSpacing: '0.02em', textTransform: 'none' }}>{entry.title}</h1>
+            <div style={{ display: 'flex', gap: '4px 16px', flexWrap: 'wrap', marginTop: 8, fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)' }}>
+              <span>Added {formatDay(isoDayOf(entry.created_at))}</span>
+              {entry.date_started && <span>Started {formatDay(entry.date_started)}</span>}
+              {entry.date_completed && <span>{isRecipe ? 'First made' : 'Completed'} {formatDay(entry.date_completed)}</span>}
+              {isRecipe && parseFloat(progressCurrent) > 0 && <span style={{ color: accent }}>Made {progressCurrent}x</span>}
+              {pastFinishes.length > 0 && (
+                <span style={{ color: accent }}>
+                  {entry.status === 'completed'
+                    ? `Finished ${pastFinishes.length + 1} times`
+                    : `Finished ${pastFinishes.length === 1 ? 'once' : `${pastFinishes.length} times`} before`}
+                </span>
+              )}
             </div>
+            <EntryLists entryId={entry.id} accent={accent} />
           </div>
+
+          {/* Where this stands, in your own words: the last thing you wrote
+              when you logged a session on it. */}
+          {leftOff && (
+            <section aria-label="Where you left off" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #099bbe', padding: '12px 16px' }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', margin: '0 0 6px' }}>
+                Where you left off, {formatDay(leftOff.date)}
+              </p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, lineHeight: 1.55, color: 'var(--text-hi)', margin: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                {leftOff.notes}
+              </p>
+            </section>
+          )}
 
           {/* The recipe itself: read view, with an edit mode of its own */}
           {isRecipe && (
             <div style={{ padding: '1px', clipPath: CLIP_SM, background: `${accent}55` }}>
               <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>RECIPE</h2>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>RECIPE</h2>
                   {recipeDraft ? (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setRecipeDraft(null)} disabled={busy} style={{ padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>CANCEL</button>
-                      <button onClick={saveRecipe} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: busy ? 'wait' : 'pointer' }}><Save size={11} /> SAVE RECIPE</button>
+                      <button onClick={() => setRecipeDraft(null)} disabled={busy} style={{ padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: 'var(--text-dim)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={saveRecipe} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, cursor: busy ? 'wait' : 'pointer' }}><Save size={11} /> Save Recipe</button>
                     </div>
                   ) : (
-                    <button onClick={() => setRecipeDraft(recipe)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}><Pencil size={11} /> EDIT</button>
+                    <button onClick={() => setRecipeDraft(recipe)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontFamily: 'var(--font-body)', fontSize: 12, letterSpacing: '0.05em', color: accent, background: 'transparent', border: `1px solid ${accent}66`, cursor: 'pointer' }}><Pencil size={11} /> Edit</button>
                   )}
                 </div>
                 {recipeDraft
@@ -375,16 +531,61 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
             </div>
           )}
 
+          {/* What other people on the site are doing with the same title. Counts
+              only, never names, and nothing from entries marked private. */}
+          {community && (community.tracking > 0 || community.rating_count > 0) && (() => {
+            const mine = rating ? parseFloat(rating) : null
+            const diff = mine != null && community.avg_rating != null ? Math.round((mine - community.avg_rating) * 10) / 10 : null
+            const figures: Array<{ value: string; label: string }> = []
+            if (community.tracking > 0) figures.push({ value: community.tracking.toLocaleString(), label: community.tracking === 1 ? 'other person tracks this' : 'others track this' })
+            if (community.completed > 0) figures.push({ value: community.completed.toLocaleString(), label: `${statusLabelFor(hobby, 'completed').toLowerCase()} it` })
+            if (community.in_progress > 0) figures.push({ value: community.in_progress.toLocaleString(), label: community.in_progress === 1 ? 'is on it now' : 'are on it now' })
+            if (community.avg_rating != null && community.rating_count > 0) figures.push({ value: `${community.avg_rating}`, label: `average from ${community.rating_count} ${community.rating_count === 1 ? 'rating' : 'ratings'}` })
+            return (
+              <section aria-label="On Hobbylog" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', borderLeft: '3px solid #22c55e', padding: '12px 16px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', margin: '0 0 8px' }}>On Hobbylog</p>
+                <dl style={{ display: 'flex', gap: '10px 28px', flexWrap: 'wrap', margin: 0 }}>
+                  {figures.map((f) => (
+                    <div key={f.label} style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                      <dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--text-hi)' }}>{f.value}</dd>
+                      <dt style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>{f.label}</dt>
+                    </div>
+                  ))}
+                </dl>
+                {diff != null && (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: '8px 0 0' }}>
+                    {diff === 0 ? 'Your rating matches the average.' : `You rated it ${Math.abs(diff)} ${diff > 0 ? 'higher' : 'lower'} than the average.`}
+                  </p>
+                )}
+              </section>
+            )
+          })()}
+
+          {status === 'wishlist' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', background: `${STATUS_COLORS.wishlist}12`, border: `1px solid ${STATUS_COLORS.wishlist}55`, borderLeft: `3px solid ${STATUS_COLORS.wishlist}` }}>
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: 'var(--text-hi)', margin: 0 }}>On your wishlist</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.5 }}>
+                  Wishlist items stay out of your backlog ranking and What Next until you have them.
+                </p>
+              </div>
+              <button onClick={moveToBacklog} disabled={busy}
+                style={{ padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: STATUS_COLORS.wishlist, background: `${STATUS_COLORS.wishlist}22`, border: `1px solid ${STATUS_COLORS.wishlist}`, cursor: busy ? 'wait' : 'pointer' }}>
+                I Have It: Move to Backlog
+              </button>
+            </div>
+          )}
+
           {/* Review card when completed */}
           {isCompleted && (
             <div style={{ padding: '1px', clipPath: CLIP_SM, background: '#22c55e55' }}>
               <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <FileText size={14} style={{ color: '#22c55e' }} />
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'FIELD REPORT'}</h2>
-                  {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>{isRecipe ? 'Notes for Next Time' : 'YOUR REVIEW'}</h2>
+                  {rating && <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 14, color: '#d97706' }}><Star size={13} fill="#d97706" /> {rating}/10</span>}
                 </div>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
+                <textarea aria-label={isRecipe ? 'Notes for next time' : 'Your review'} value={notes} onChange={(e) => setNotes(e.target.value)} rows={5} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'What would you change next time? (remember to Save)' : 'How was it? (remember to Save)'} style={{ ...inp, resize: 'vertical', lineHeight: 1.7 }} />
               </div>
             </div>
           )}
@@ -392,36 +593,103 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
           {/* Edit panel */}
           <div style={{ padding: '1px', clipPath: CLIP_SM, background: `${accent}55` }}>
             <div style={{ background: 'var(--bg-card)', clipPath: CLIP_SM, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.1em' }}>EDIT ENTRY</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-hi)', margin: 0, letterSpacing: '0.05em' }}>EDIT ENTRY</h2>
 
               <div>
-                <p style={label}>STATUS</p>
+                <p style={label}>Status</p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {statusesFor(hobby).map((s) => {
                     const active = status === s
-                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{statusLabelFor(hobby, s)}</button>
+                    return <button key={s} onClick={() => setStatus(s)} style={{ padding: '5px 12px', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.05em', background: active ? `${STATUS_COLORS[s]}22` : 'transparent', border: `1px solid ${active ? STATUS_COLORS[s] : 'var(--border-dim)'}`, color: active ? STATUS_COLORS[s] : 'var(--text-dim)', cursor: 'pointer' }}>{statusLabelFor(hobby, s)}</button>
                   })}
                 </div>
               </div>
 
               <div>
-                <p style={label}>VISIBILITY</p>
+                <p style={label}>Visibility</p>
                 <button onClick={togglePrivate}
                   title={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#ef444414' : 'transparent', border: `1px solid ${isPrivate ? '#ef444466' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #ef4444' : '1px solid var(--border-dim)', color: isPrivate ? '#ef4444' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.04em', textAlign: 'left' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: isPrivate ? '#f1595914' : 'transparent', border: `1px solid ${isPrivate ? '#f1595966' : 'var(--border-dim)'}`, borderLeft: isPrivate ? '3px solid #f15959' : '1px solid var(--border-dim)', color: isPrivate ? '#f15959' : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.02em', textAlign: 'left' }} aria-label={isPrivate ? 'Only you can see this — click to share with friends' : 'Friends can see this — click to make it private'}>
                   {isPrivate ? <EyeOff size={14} /> : <Eye size={14} style={{ color: 'var(--text-dim)' }} />}
                   <span style={{ flex: 1 }}>{isPrivate ? 'Private — hidden from friends' : 'Visible to friends'}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{isPrivate ? 'PRIVATE' : 'SHARED'}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>{isPrivate ? 'Private' : 'Shared'}</span>
                 </button>
               </div>
+
+              <div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {([
+                    ['Added', dateAdded, setDateAdded, 'date-added'],
+                    ['Started', dateStarted, setDateStarted, 'date-started'],
+                    [isRecipe ? 'First made' : statusLabelFor(hobby, 'completed'), dateCompleted, setDateCompleted, 'date-completed'],
+                  ] as const).map(([text, value, set, id]) => (
+                    <div key={id} style={{ flex: '1 1 140px' }}>
+                      <label htmlFor={id} style={{ ...label, display: 'block' }}>{text}</label>
+                      <input id={id} type="date" value={value} max={todayIso()} onChange={(e) => set(e.target.value)} style={inp} />
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  Left blank, the start and finish dates fill in with today when the status changes. Set them by hand for anything you finished earlier.
+                </p>
+              </div>
+
+              {/* Finishing it more than once */}
+              {canRepeat && (entry.status === 'completed' || pastFinishes.length > 0) && (
+                <div>
+                  <p style={label}>Finished More Than Once</p>
+                  {pastFinishes.length > 0 && (
+                    <ul style={{ listStyle: 'none', margin: '0 0 10px', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {pastFinishes.map((f, i) => (
+                        <li key={`${f.completed ?? 'undated'}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', flexShrink: 0, minWidth: 64 }}>{ordinal(i + 1)} time</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-hi)', flex: 1 }}>
+                            {f.completed ? `Finished ${formatDay(f.completed)}` : 'Finished, date not recorded'}
+                          </span>
+                          <button onClick={() => removePastFinish(i)} aria-label={`Remove the ${ordinal(i + 1)} finish`} title="Remove this finish"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, background: 'none', border: '1px solid var(--border-dim)', color: '#f87171', cursor: 'pointer', flexShrink: 0 }}>
+                            <X size={14} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {entry.status === 'completed' && status === 'completed' && (
+                      <>
+                        <button onClick={finishedAgain} disabled={busy}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#22c55e', background: '#22c55e18', border: '1px solid #22c55e88', cursor: busy ? 'wait' : 'pointer' }}>
+                          Finished It Again
+                        </button>
+                        <button onClick={startAgain} disabled={busy}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: accent, background: 'transparent', border: `1px solid ${accent}88`, cursor: busy ? 'wait' : 'pointer' }}>
+                          <RotateCcw size={14} aria-hidden="true" /> Start It Again
+                        </button>
+                      </>
+                    )}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <input type="date" aria-label="Date of an earlier finish" max={todayIso()} value={earlierDate} onChange={(e) => setEarlierDate(e.target.value)}
+                        style={{ ...inp, width: 'auto', padding: '7px 10px' }} />
+                      <button onClick={addEarlierFinish} disabled={!earlierDate || busy}
+                        style={{ minHeight: 36, padding: '0 14px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: earlierDate ? 'var(--text-hi)' : 'var(--text-mute)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: earlierDate && !busy ? 'pointer' : 'not-allowed' }}>
+                        Add Earlier Finish
+                      </button>
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    Each time through keeps its own date on your Shelf and in Stats. The dates above are for the latest.
+                    {entry.status === 'completed' && status === 'completed' ? ' Start It Again puts it back in progress without losing the finish you have.' : ''}
+                  </p>
+                </div>
+              )}
 
               {isTV && (
                 <div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>SEASON</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} /></div>
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>EPISODE</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Season</p><input type="number" min={1} value={season} onChange={(e) => setSeason(e.target.value)} placeholder="—" style={inp} aria-label="Season" /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Episode</p><input type="number" min={1} value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="—" style={inp} aria-label="Episode" /></div>
                   </div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '6px 0 0', lineHeight: 1.5 }}>
                     {tmdbId ? 'Saving converts season + episode into total episodes watched automatically.' : 'Add this show via search to auto-convert; otherwise set Progress below by hand.'}
                   </p>
                 </div>
@@ -429,20 +697,20 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
 
               {isManga && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUME</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} /></div>
-                  <div style={{ flex: '1 1 100px' }}><p style={label}>VOLUMES TOTAL</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volume</p><input type="number" min={0} value={volumeCurrent} onChange={(e) => setVolumeCurrent(e.target.value)} placeholder="—" style={inp} aria-label="Volume" /></div>
+                  <div style={{ flex: '1 1 100px' }}><p style={label}>Volumes Total</p><input type="number" min={0} value={volumeTotal} onChange={(e) => setVolumeTotal(e.target.value)} placeholder="—" style={inp} aria-label="Volumes Total" /></div>
                 </div>
               )}
 
               {(!hobby?.hideRating || !isPercent) && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {!hobby?.hideRating && (
-                    <div style={{ flex: '1 1 100px' }}><p style={label}>RATING /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} /></div>
+                    <div style={{ flex: '1 1 100px' }}><p style={label}>Rating /10</p><input type="number" min={0} max={10} step={0.5} value={rating} onChange={(e) => setRating(e.target.value)} placeholder="—" style={inp} aria-label="Rating /10" /></div>
                   )}
                   {!isPercent && !isRecipe && (
                     <>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>PROGRESS ({progUnit})</p><input type="number" min={0} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
-                      <div style={{ flex: '1 1 100px' }}><p style={label}>TOTAL</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Progress ({progUnit})</p><input type="number" min={0} aria-label={`Progress in ${progUnit}`} value={progressCurrent} onChange={(e) => setProgressCurrent(e.target.value)} style={inp} /></div>
+                      <div style={{ flex: '1 1 100px' }}><p style={label}>Total</p><input type="number" min={0} value={progressTotal} onChange={(e) => setProgressTotal(e.target.value)} placeholder="—" style={inp} aria-label="Total" /></div>
                     </>
                   )}
                 </div>
@@ -452,50 +720,37 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 <ProjectChecklist items={checklist} accent={accent} onChange={persistChecklist} />
               )}
 
-              {community && community.count > 0 && community.avg != null && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-mono)', fontSize: 12, padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
-                  <span style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>THE CROWD</span>
-                  <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={12} fill="#d97706" /> {community.avg}/10</span>
-                  <span style={{ color: 'var(--text-dim)' }}>· {community.count} other{community.count === 1 ? '' : 's'}</span>
-                  {rating && (
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: parseFloat(rating) >= community.avg ? '#22c55e' : '#ef4444' }}>
-                      you {parseFloat(rating) - community.avg >= 0 ? '+' : ''}{Math.round((parseFloat(rating) - community.avg) * 10) / 10}
-                    </span>
-                  )}
-                </div>
-              )}
-
               {progressPct !== null && !isPercent && (
                 <div>
                   <div style={{ height: 4, background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, progressPct)}%`, background: accent }} />
                   </div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', textAlign: 'right', margin: '4px 0 0' }}>{progressPct}%</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', textAlign: 'right', margin: '4px 0 0' }}>{progressPct}%</p>
                 </div>
               )}
 
               {!isCompleted && (
                 <div>
-                  <p style={label}>{isRecipe ? 'NOTES FOR NEXT TIME' : 'NOTES'}</p>
-                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
+                  <p style={label}>{isRecipe ? 'Notes for Next Time' : 'Notes'}</p>
+                  <textarea aria-label={isRecipe ? 'Notes for next time' : 'Notes'} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} spellCheck autoCapitalize="sentences" placeholder={isRecipe ? 'Less salt, longer rest, double the sauce…' : 'Notes…'} style={{ ...inp, resize: 'vertical' }} />
                 </div>
               )}
 
-              {note && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{note}</p>}
+              {note && <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{note}</p>}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border-dim)', paddingTop: 14 }}>
-                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #ef444455', cursor: 'pointer' }}><Trash2 size={11} /> DELETE</button>
+                <button onClick={remove} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid #f1595955', cursor: 'pointer' }}><Trash2 size={11} /> Delete</button>
                 <div style={{ flex: 1 }} />
-                {canRefetch && <button onClick={updateDetails} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer' }}><Pencil size={11} /> UPDATE DETAILS</button>}
-                <button onClick={save} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}><Save size={12} /> {busy ? '…' : 'SAVE'}</button>
+                {canRefetch && <button onClick={updateDetails} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border-dim)', cursor: busy ? 'wait' : 'pointer' }}><Pencil size={11} /> Update Details</button>}
+                <button onClick={save} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', color: accent, background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}><Save size={12} /> {busy ? '…' : 'Save'}</button>
               </div>
             </div>
           </div>
 
           {/* Session log */}
           <div>
-            <p style={{ ...label, marginBottom: 4 }}>{isRecipe ? 'LOG A COOK' : 'LOG A SESSION'}</p>
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            <p style={{ ...label, marginBottom: 4 }}>{isRecipe ? 'Log a Cook' : 'Log a Session'}</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
               {isRecipe
                 ? 'Each log counts as one more time you made it. Time and notes are optional.'
                 : isGameEntry
@@ -503,16 +758,16 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                 : `How long you spent${showSessionProgress ? `, and how much ${progUnit} you got through` : ''}.`}
             </p>
             {(() => {
-              const miniLabel: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }
+              const miniLabel: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 4 }
               return (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
                   <div>
                     <span style={miniLabel}>{isGameEntry ? 'Time played' : 'Time spent'}</span>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input type="number" min={0} value={sHours} onChange={(e) => setSHours(e.target.value)} placeholder="0" aria-label="Hours" style={{ ...inp, width: 56, textAlign: 'center' }} />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>h</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>h</span>
                       <input type="number" min={0} max={59} value={sMinutes} onChange={(e) => setSMinutes(e.target.value)} placeholder="0" aria-label="Minutes" style={{ ...inp, width: 56, textAlign: 'center' }} />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)' }}>m</span>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>m</span>
                     </div>
                   </div>
                   {showSessionProgress && (
@@ -523,19 +778,19 @@ export default function EntryDetail({ entry, onBack, onChanged }: {
                   )}
                   <div style={{ flex: '1 1 140px' }}>
                     <span style={miniLabel}>Notes</span>
-                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} />
+                    <input value={sNotes} onChange={(e) => setSNotes(e.target.value)} placeholder={isRecipe ? 'How did it turn out? (optional)' : 'What did you do? (optional)'} style={{ ...inp, width: '100%' }} aria-label="Notes" />
                   </div>
-                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#0891b2', background: '#0891b222', border: '1px solid #0891b2', borderLeft: '3px solid #0891b2', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I MADE THIS' : 'LOG'}</button>
+                  <button onClick={addSession} disabled={busy} style={{ padding: '9px 18px', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: '#099bbe', background: '#099bbe22', border: '1px solid #099bbe', borderLeft: '3px solid #099bbe', cursor: busy ? 'wait' : 'pointer' }}>{isRecipe ? 'I Made This' : 'Log'}</button>
                 </div>
               )
             })()}
             {sessions.map((s) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 6 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{s.date}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{formatDay(s.date)}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.duration_minutes ? `${Math.floor(s.duration_minutes / 60)}h ${s.duration_minutes % 60}m ` : ''}{s.progress_logged && !isRecipe ? `· +${s.progress_logged} ` : ''}{s.notes ?? ''}
                 </span>
-                <button onClick={async () => { await deleteSession(s.id); loadExtras() }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
+                <button onClick={() => removeSession(s)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
               </div>
             ))}
           </div>

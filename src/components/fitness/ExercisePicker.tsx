@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Search, Plus, Dumbbell } from 'lucide-react'
 import type { Exercise, TrackingType } from '@/types/fitness'
 import type { CatalogExercise } from '@/lib/fitness/catalog'
 import { exerciseFromCatalog, findOrCreateExercise } from '@/lib/fitness/db'
+import { MUSCLE_LABELS, asMuscle, guessMuscles, type MuscleId } from '@/lib/fitness/muscles'
+import { useCatalog } from './useCatalog'
+import { MuscleSelect } from './MuscleSelect'
 import { Modal, Input, Select, Button, Label, ACCENT, Empty } from './ui'
 
 export const TRACKING_LABELS: Record<TrackingType, string> = {
@@ -21,12 +24,6 @@ const TRACKING_HINTS: Record<TrackingType, string> = {
   time_distance: 'Running, rowing, cycling — logs a duration and how far you went.',
 }
 
-// The catalog is ~52 KB of generated data, so it only loads when the picker opens.
-function useCatalog() {
-  const [mod, setMod] = useState<typeof import('@/lib/fitness/catalog') | null>(null)
-  useEffect(() => { import('@/lib/fitness/catalog').then(setMod) }, [])
-  return mod
-}
 
 export default function ExercisePicker({ mine, onPick, onClose }: {
   mine: Exercise[]
@@ -38,7 +35,9 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Set when the user opts to define an exercise the catalog doesn't have.
-  const [custom, setCustom] = useState<{ name: string; tracking: TrackingType } | null>(null)
+  // `muscle` stays undefined until the user touches the field, and until then
+  // the form follows whatever the name suggests.
+  const [custom, setCustom] = useState<{ name: string; tracking: TrackingType; muscle?: MuscleId | null } | null>(null)
 
   const q = query.trim().toLowerCase()
 
@@ -72,7 +71,8 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
     setBusy(true)
     setError(null)
     try {
-      onPick(await findOrCreateExercise({ name: custom.name, tracking_type: custom.tracking }))
+      const muscle = custom.muscle !== undefined ? custom.muscle : guessMuscles(custom.name)?.primary ?? null
+      onPick(await findOrCreateExercise({ name: custom.name, tracking_type: custom.tracking, muscle }))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create that exercise')
       setBusy(false)
@@ -80,16 +80,18 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
   }
 
   if (custom) {
+    const guessed = guessMuscles(custom.name)?.primary ?? null
+    const muscle = custom.muscle !== undefined ? custom.muscle : guessed
     return (
       <Modal title="New exercise" onClose={onClose} width={480}>
-        <Label style={{ marginBottom: 6 }}>NAME</Label>
+        <Label style={{ marginBottom: 6 }}>Name</Label>
         <Input
           autoFocus value={custom.name}
           onChange={(e) => setCustom({ ...custom, name: e.target.value })}
           placeholder="e.g. Sled Push"
         />
 
-        <Label style={{ margin: '16px 0 6px' }}>HOW IS IT MEASURED?</Label>
+        <Label style={{ margin: '16px 0 6px' }}>How is it measured?</Label>
         <Select
           value={custom.tracking}
           onChange={(e) => setCustom({ ...custom, tracking: e.target.value as TrackingType })}
@@ -100,18 +102,29 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
           ))}
         </Select>
         <p style={{
-          fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)',
+          fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
           marginTop: 8, lineHeight: 1.6,
         }}>
           {TRACKING_HINTS[custom.tracking]}
         </p>
 
-        {error && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 12 }}>{error}</p>}
+        <Label style={{ margin: '16px 0 6px' }}>Main muscle worked</Label>
+        <MuscleSelect value={muscle} onChange={(m) => setCustom({ ...custom, muscle: m })} />
+        <p style={{
+          fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)',
+          marginTop: 8, lineHeight: 1.6,
+        }}>
+          {custom.muscle === undefined && guessed
+            ? `Filled in from the name: ${MUSCLE_LABELS[guessed]}. Change it if that's wrong.`
+            : 'Used to suggest swaps and to draw the body map. Leave it if you\'re not sure. You can set it later.'}
+        </p>
+
+        {error && <p style={{ color: '#f15959', fontSize: 13, marginTop: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-          <Button variant="quiet" onClick={() => setCustom(null)}>BACK</Button>
+          <Button variant="quiet" onClick={() => setCustom(null)}>Back</Button>
           <Button variant="solid" onClick={saveCustom} disabled={busy || !custom.name.trim()}>
-            {busy ? 'SAVING…' : 'ADD EXERCISE'}
+            {busy ? 'Saving…' : 'Add Exercise'}
           </Button>
         </div>
       </Modal>
@@ -124,21 +137,21 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
         <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-dim)' }} />
         <Input
           autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search 873 exercises, or type your own name"
+          placeholder="Search the catalog, or type your own name"
           style={{ paddingLeft: 30 }}
         />
       </div>
 
-      {error && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>}
+      {error && <p style={{ color: '#f15959', fontSize: 13, marginTop: 10 }}>{error}</p>}
 
       <div style={{ maxHeight: '52vh', overflowY: 'auto', marginTop: 14 }}>
         {mineHits.length > 0 && (
           <>
-            <Label style={{ marginBottom: 6 }}>YOUR EXERCISES</Label>
+            <Label style={{ marginBottom: 6 }}>Your Exercises</Label>
             {mineHits.map((e) => (
               <Row
                 key={e.id} name={e.name} disabled={busy}
-                meta={[TRACKING_LABELS[e.tracking_type], e.muscle, e.equipment].filter(Boolean).join(' · ')}
+                meta={[TRACKING_LABELS[e.tracking_type], asMuscle(e.muscle) ? MUSCLE_LABELS[asMuscle(e.muscle)!] : e.muscle, e.equipment].filter(Boolean).join(' · ')}
                 onClick={() => onPick(e)}
               />
             ))}
@@ -147,11 +160,11 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
 
         {catalogHits.length > 0 && (
           <>
-            <Label style={{ margin: mineHits.length ? '16px 0 6px' : '0 0 6px' }}>EXERCISE CATALOG</Label>
+            <Label style={{ margin: mineHits.length ? '16px 0 6px' : '0 0 6px' }}>Exercise Catalog</Label>
             {catalogHits.map((c) => (
               <Row
                 key={c.id} name={c.name} disabled={busy}
-                meta={[c.muscles[0], c.equipment, c.category].filter(Boolean).join(' · ')}
+                meta={[asMuscle(c.muscles[0]) ? MUSCLE_LABELS[asMuscle(c.muscles[0])!] : c.muscles[0], c.equipment, c.category].filter(Boolean).join(' · ')}
                 onClick={() => pickCatalog(c)}
               />
             ))}
@@ -159,13 +172,13 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
         )}
 
         {!catalog && (
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-dim)', padding: '12px 2px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', padding: '12px 2px' }}>
             Loading catalog…
           </p>
         )}
 
         {catalog && mineHits.length === 0 && catalogHits.length === 0 && (
-          <Empty title="NO MATCHES" hint="Nothing in the catalog matches that. You can still add it as your own exercise." />
+          <Empty title="No matches" hint="Nothing in the catalog matches that. You can still add it as your own exercise." />
         )}
       </div>
 
@@ -175,7 +188,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
           variant="solid" style={{ width: '100%', marginTop: 14 }}
           onClick={() => setCustom({ name: query.trim(), tracking: 'weight_reps' })}
         >
-          <Plus size={13} /> ADD “{query.trim().toUpperCase()}” AS CUSTOM
+          <Plus size={13} /> ADD “{query.trim()}” AS CUSTOM
         </Button>
       )}
       {!q && (
@@ -183,7 +196,7 @@ export default function ExercisePicker({ mine, onPick, onClose }: {
           variant="ghost" style={{ width: '100%', marginTop: 14 }}
           onClick={() => setCustom({ name: '', tracking: 'weight_reps' })}
         >
-          <Plus size={13} /> CREATE A CUSTOM EXERCISE
+          <Plus size={13} /> Create a Custom Exercise
         </Button>
       )}
     </Modal>
@@ -202,7 +215,7 @@ function Row({ name, meta, onClick, disabled }: {
         display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
         padding: '9px 10px', background: hover ? `${ACCENT}14` : 'transparent',
         border: '1px solid transparent', borderLeft: `2px solid ${hover ? ACCENT : 'var(--border-dim)'}`,
-        cursor: disabled ? 'wait' : 'pointer', marginBottom: 3, transition: 'all 0.12s ease',
+        cursor: disabled ? 'wait' : 'pointer', marginBottom: 3, transition: 'var(--t-fast)',
       }}
     >
       <Dumbbell size={13} style={{ color: hover ? ACCENT : 'var(--text-dim)', flexShrink: 0 }} />
@@ -210,8 +223,8 @@ function Row({ name, meta, onClick, disabled }: {
         <span style={{ display: 'block', fontSize: 14, color: 'var(--text-hi)' }}>{name}</span>
         {meta && (
           <span style={{
-            display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11,
-            color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2,
+            display: 'block', fontFamily: 'var(--font-body)', fontSize: 12,
+            color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: 2,
           }}>
             {meta}
           </span>

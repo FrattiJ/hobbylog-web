@@ -6,6 +6,7 @@ import { insertPhoto, deletePhoto, type Photo } from '@/lib/db'
 import { compressImageBlob } from '@/lib/image'
 import { mechInput } from './mechStyles'
 import { useToast } from './Toast'
+import { useConfirm } from '@/components/ConfirmDialog'
 
 interface PhotoGalleryProps {
   entryId: string
@@ -22,11 +23,11 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
 }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 12 }}>
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12 }}>
         {label}
       </p>
       {items.length === 0 ? (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mute)', letterSpacing: '0.1em' }}>NO PHOTOS</p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.05em' }}>No photos</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
           {items.map((photo) => (
@@ -39,21 +40,21 @@ function PhotoGrid({ items, label, accent, onOpen, onDelete }: {
                 border: `1px solid ${accent}44`,
                 overflow: 'hidden',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                transition: 'var(--t-fast)',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.filter = `drop-shadow(0 0 6px ${accent}22)` }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${accent}44`; e.currentTarget.style.filter = 'none' }}
               onClick={() => onOpen(photo)}
             >
-              <img src={photo.url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={photo.url} alt={photo.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
               {photo.caption && (
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'rgba(0,0,0,0.7)', fontSize: 14, color: 'var(--text-hi)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
                   {photo.caption}
                 </div>
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(photo.id) }}
-                style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: '#ef444455', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: '#f1595955', border: 'none', color: '#f87171', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
               >
@@ -78,6 +79,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   const [lightbox, setLightbox] = useState<Photo | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { error: toastError } = useToast()
+  const confirm = useConfirm()
 
   const progressPhotos = photos.filter((p) => p.photo_type === 'progress')
   const completedPhotos = photos.filter((p) => p.photo_type === 'completed')
@@ -121,6 +123,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
   }
 
   async function handleDelete(id: string) {
+    if (!(await confirm({ title: 'Delete this photo?', body: 'This cannot be undone.', confirmLabel: 'Delete Photo', danger: true }))) return
     try {
       await deletePhoto(id)
       onPhotosChange(photos.filter((p) => p.id !== id))
@@ -136,8 +139,8 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
         <ImagePlus size={14} style={{ color: accent }} />
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.08em', margin: 0 }}>
-          PROJECT PHOTOS
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text-hi)', letterSpacing: '0.05em', margin: 0 }}>
+          Project Photos
         </p>
       </div>
 
@@ -149,8 +152,8 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
 
       {/* Upload controls */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-dim)', padding: 16, borderLeft: `3px solid ${accent}` }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 12, margin: 0 }}>
-          ADD PHOTO
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', letterSpacing: '0.08em', marginBottom: 12, margin: 0 }}>
+          Add Photo
         </p>
 
         {/* Type toggle */}
@@ -161,19 +164,18 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
               onClick={() => setUploadType(t)}
               style={{
                 padding: '5px 12px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-body)',
                 fontSize: 14,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
                 background: uploadType === t ? `${accent}22` : 'transparent',
                 border: `1px solid ${uploadType === t ? accent : 'var(--border-dim)'}`,
                 borderLeft: uploadType === t ? `2px solid ${accent}` : '1px solid var(--border-dim)',
                 color: uploadType === t ? accent : 'var(--text-dim)',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                transition: 'var(--t-fast)',
               }}
             >
-              {t === 'completed' ? '✓ COMPLETED' : '⋯ PROGRESS'}
+              {t === 'completed' ? 'Completed' : 'Progress'}
             </button>
           ))}
         </div>
@@ -183,7 +185,7 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
         {pending ? (
           <>
             {/* Preview */}
-            <img src={pending.preview} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} />
+            <img src={pending.preview} alt="" style={{ display: 'block', width: '100%', maxHeight: 240, objectFit: 'contain', background: 'var(--bg-base)', border: '1px solid var(--border-dim)', marginBottom: 12 }} loading="lazy" decoding="async" />
             {/* Caption written after the photo is taken */}
             <input
               type="text"
@@ -193,15 +195,15 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
               spellCheck
               autoCapitalize="sentences"
               style={{ ...inp, marginBottom: 12 }}
-            />
+ aria-label="Add a caption or comment" />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={upload} disabled={busy}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '8px 12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
-                <Upload size={11} /> {busy ? 'UPLOADING…' : 'UPLOAD'}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '8px 12px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+                <Upload size={11} /> {busy ? 'Uploading…' : 'Upload'}
               </button>
               <button onClick={discard} disabled={busy}
-                style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 13, letterSpacing: '0.08em', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: busy ? 'wait' : 'pointer' }}>
-                DISCARD
+                style={{ padding: '8px 14px', fontFamily: 'var(--font-body)', fontSize: 13, letterSpacing: '0.05em', background: 'transparent', border: '1px solid var(--border-dim)', color: 'var(--text-dim)', cursor: busy ? 'wait' : 'pointer' }}>
+                Discard
               </button>
             </div>
           </>
@@ -209,10 +211,10 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
           <button
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '8px 12px', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, justifyContent: 'center' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '8px 12px', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', background: `${accent}22`, border: `1px solid ${accent}`, borderLeft: `3px solid ${accent}`, color: accent, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, justifyContent: 'center' }}
           >
             <ImagePlus size={11} />
-            {busy ? 'PROCESSING…' : 'CHOOSE OR TAKE PHOTO'}
+            {busy ? 'Processing…' : 'Choose or Take Photo'}
           </button>
         )}
       </div>
@@ -236,27 +238,26 @@ export default function PhotoGallery({ entryId, accent, photos, onPhotosChange }
               src={lightbox.url}
               alt={lightbox.caption ?? ''}
               style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', border: `1px solid color-mix(in srgb, var(--text-dim) 27%, transparent)` }}
-            />
+ loading="lazy" decoding="async" />
             {lightbox.caption && (
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-mid)', letterSpacing: '0.04em', textAlign: 'center', margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', letterSpacing: '0.02em', textAlign: 'center', margin: 0 }}>
                 {lightbox.caption}
               </p>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <span
                 style={{
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-body)',
                   fontSize: 14,
                   padding: '4px 10px',
-                  textTransform: 'uppercase',
                   background: lightbox.photo_type === 'completed' ? 'rgba(34,197,94,0.15)' : 'color-mix(in srgb, var(--text-hi) 8%, transparent)',
                   color: lightbox.photo_type === 'completed' ? '#22c55e' : 'var(--text-mid)',
-                  letterSpacing: '0.1em',
+                  letterSpacing: '0.05em',
                 }}
               >
-                {lightbox.photo_type === 'completed' ? '✓ COMPLETED' : '⋯ PROGRESS'}
+                {lightbox.photo_type === 'completed' ? 'Completed' : 'Progress'}
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)' }}>
                 {new Date(lightbox.created_at).toLocaleDateString()}
               </span>
             </div>

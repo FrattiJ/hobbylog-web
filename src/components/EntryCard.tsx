@@ -1,22 +1,24 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Star, Check, Clock } from 'lucide-react'
 import MechCard from './MechCard'
 import type { Entry } from '@/types/database'
 import { HOBBY_MAP, BOOK_SUBTYPE_MAP, STATUS_COLORS, statusLabelFor } from '@/lib/hobbies'
 import { readRecipe, formatCookTime, DIFFICULTIES, MEAL_TAG_LABEL } from '@/lib/recipe'
 
-export default function EntryCard({ entry, index = 0, selectable = false, selected = false, onToggleSelect }: {
+export default function EntryCard({ entry, index = 0, showType = true, selectable = false, selected = false, onToggleSelect }: {
   entry: Entry
   index?: number
+  // The hobby badge. Worth showing where hobbies are mixed (dashboard, search);
+  // on a hobby's own page it only repeats the heading.
+  showType?: boolean
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: (id: string) => void
 }) {
-  const router = useRouter()
   const hobby  = HOBBY_MAP[entry.hobby_category]
-  const accent = hobby?.accent ?? '#7c3aed'
+  const accent = hobby?.accent ?? '#a577f2'
 
   const displayLabel = entry.hobby_category === 'books' && entry.book_subtype
     ? BOOK_SUBTYPE_MAP[entry.book_subtype]?.label ?? 'Book'
@@ -36,9 +38,9 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
     ? Math.min(100, Math.round((entry.progress_current / effectiveProgressTotal) * 100))
     : null
 
-  return (
-    <MechCard accent={selected ? accent : accent} index={index} hoverable
-      onClick={() => (selectable ? onToggleSelect?.(entry.id) : router.push(`/entry?id=${entry.id}`))}>
+  const card = (
+    <MechCard accent={accent} index={index} hoverable
+      onClick={selectable ? () => onToggleSelect?.(entry.id) : undefined}>
       <div style={{ display: 'flex', gap: 12, padding: '16px 14px 14px', position: 'relative', background: selected ? `${accent}1f` : undefined }}>
         {selectable && (
           <span style={{ position: 'absolute', top: 8, right: 10, width: 20, height: 20, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selected ? accent : 'var(--bg-base)', border: `1px solid ${selected ? accent : 'var(--border-dim)'}`, color: '#fff', zIndex: 2 }}>
@@ -48,8 +50,8 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
         {/* Cover */}
         <div
           style={{
-            width: 52,
-            height: 74,
+            width: 56,
+            height: 84,
             flexShrink: 0,
             background: 'var(--bg-base)',
             border: `1px solid ${accent}33`,
@@ -58,12 +60,13 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
           }}
         >
           {entry.cover_url ? (
-            <img src={entry.cover_url} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={entry.cover_url} alt="" loading="lazy" decoding="async" width={56} height={84} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{
+            <div aria-hidden="true" style={{
               width: '100%', height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
+              fontFamily: 'var(--font-body)',
               fontSize: 20, fontWeight: 900, color: `${accent}88`,
             }}>
               {entry.title[0]}
@@ -80,11 +83,11 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
-            fontFamily: 'var(--font-display)',
+            fontFamily: 'var(--font-body)',
             fontSize: 14,
             fontWeight: 700,
             color: 'var(--text-hi)',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.02em',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -98,9 +101,9 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
             {entry.status === 'backlog' && entry.priority != null && (
               <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 14,
-                letterSpacing: '0.12em',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12.5,
+                fontWeight: 500,
                 padding: '2px 7px',
                 background: '#d9770618',
                 color: '#d97706',
@@ -110,36 +113,34 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
               </span>
             )}
             <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 14,
-              letterSpacing: '0.12em',
+              fontFamily: 'var(--font-body)',
+              fontSize: 12.5,
+              fontWeight: 500,
               padding: '2px 7px',
               background: `${STATUS_COLORS[entry.status]}18`,
               color: STATUS_COLORS[entry.status],
               border: `1px solid ${STATUS_COLORS[entry.status]}44`,
-              textTransform: 'uppercase',
             }}>
               {statusLabelFor(hobby, entry.status)}
             </span>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 14,
-              letterSpacing: '0.12em',
+            {showType && <span style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 12.5,
+              fontWeight: 500,
               padding: '2px 7px',
               background: `${accent}18`,
               color: accent,
               border: `1px solid ${accent}44`,
-              textTransform: 'uppercase',
             }}>
               {displayLabel}
-            </span>
+            </span>}
           </div>
 
           {/* Rating */}
           {entry.rating != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
               <Star size={10} style={{ fill: '#d97706', color: '#d97706' }} />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: '#d97706' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#d97706' }}>
                 {entry.rating}/10
               </span>
             </div>
@@ -147,11 +148,11 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
 
           {/* Recipe facts: time, difficulty, meal tags, times made */}
           {recipe && (recipeTime || recipeDifficulty || recipe.meal_tags.length > 0 || entry.progress_current > 0) && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.02em' }}>
               {recipeTime && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={11} /> {recipeTime}</span>}
-              {recipeDifficulty && <span style={{ color: recipeDifficulty.color }}>{recipeDifficulty.label.toUpperCase()}</span>}
+              {recipeDifficulty && <span style={{ color: recipeDifficulty.color }}>{recipeDifficulty.label}</span>}
               {recipe.meal_tags.length > 0 && <span>{recipe.meal_tags.map((t) => MEAL_TAG_LABEL[t] ?? t).join(' · ')}</span>}
-              {entry.progress_current > 0 && <span style={{ color: accent }}>MADE {entry.progress_current}x</span>}
+              {entry.progress_current > 0 && <span style={{ color: accent }}>Made {entry.progress_current}x</span>}
             </div>
           )}
 
@@ -167,10 +168,10 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
                 }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-dim)' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)' }}>
                   {`${entry.progress_current}/${effectiveProgressTotal} ${progressUnit}`}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: accent }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: accent }}>
                   {progress}%
                 </span>
               </div>
@@ -180,4 +181,8 @@ export default function EntryCard({ entry, index = 0, selectable = false, select
       </div>
     </MechCard>
   )
+  // A real link when it opens the entry, so it can go in a new tab; in select
+  // mode the card itself is the toggle.
+  if (selectable) return card
+  return <Link href={`/entry?id=${entry.id}`} className="card-link" style={{ display: 'block', textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>{card}</Link>
 }

@@ -1,18 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Dumbbell } from 'lucide-react'
 import TodayTab from './TodayTab'
 import RoutinesTab from './RoutinesTab'
 import HistoryTab from './HistoryTab'
 import ProgressTab from './ProgressTab'
 import { ACCENT } from './ui'
+import { readParamOneOf, useUrlParams } from '@/lib/urlState'
 
 const TABS = [
-  { id: 'today', label: 'TODAY' },
-  { id: 'routines', label: 'ROUTINES' },
-  { id: 'history', label: 'HISTORY' },
-  { id: 'progress', label: 'PROGRESS' },
+  { id: 'today', label: 'Today' },
+  { id: 'routines', label: 'Routines' },
+  { id: 'history', label: 'History' },
+  { id: 'progress', label: 'Progress' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -20,12 +21,19 @@ type TabId = (typeof TABS)[number]['id']
 const TAB_KEY = 'fitness-tab'
 
 export default function FitnessPage() {
-  // Remembered for the session, matching how HobbyPage keeps its filters.
-  const [tab, setTab] = useState<TabId>('today')
-  useEffect(() => {
-    const saved = sessionStorage.getItem(TAB_KEY) as TabId | null
-    if (saved && TABS.some((t) => t.id === saved)) setTab(saved)
-  }, [])
+  // The tab is in the URL (so History or Progress can be linked to), and
+  // remembered for the session for arrivals that do not name one.
+  const [tab, setTab] = useState<TabId>(() => {
+    const ids = TABS.map((t) => t.id)
+    const fromUrl = readParamOneOf('tab', ids)
+    if (fromUrl) return fromUrl
+    try {
+      const saved = sessionStorage.getItem(TAB_KEY) as TabId | null
+      if (saved && ids.includes(saved)) return saved
+    } catch { /* storage unavailable */ }
+    return 'today'
+  })
+  useUrlParams({ tab: tab === 'today' ? null : tab })
 
   function select(id: TabId) {
     setTab(id)
@@ -33,37 +41,34 @@ export default function FitnessPage() {
   }
 
   return (
-    <div style={{ padding: 'clamp(16px, 4vw, 32px)', maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <Dumbbell size={20} style={{ color: ACCENT }} />
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900,
-          letterSpacing: '0.1em', color: 'var(--text-hi)',
-        }}>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: 'var(--text-hi)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Dumbbell size={22} aria-hidden="true" style={{ color: ACCENT, flexShrink: 0 }} />
           FITNESS
         </h1>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-dim)', margin: '4px 0 0' }}>
+          Build routines, log sets and track records
+        </p>
       </div>
-      <p style={{
-        fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.14em',
-        color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 18,
-      }}>
-        BUILD ROUTINES · LOG SETS · TRACK RECORDS
-      </p>
 
-      <div className="scroll-hide" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 18, overflowX: 'auto' }}>
+      {/* One row that scrolls sideways if it has to; each tab is a full-height target. */}
+      <div className="scroll-hide" role="tablist" aria-label="Fitness sections" style={{ display: 'flex', borderBottom: '1px solid var(--border-dim)', marginBottom: 20, overflowX: 'auto' }}>
         {TABS.map((t) => {
           const active = tab === t.id
           return (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={active}
               onClick={() => select(t.id)}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: '10px 16px',
-                fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: active ? 700 : 400,
-                letterSpacing: '0.12em', whiteSpace: 'nowrap',
-                color: active ? ACCENT : 'var(--text-dim)',
+                background: 'none', border: 'none', cursor: 'pointer', minHeight: 44, padding: '0 18px',
+                fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: active ? 600 : 500,
+                whiteSpace: 'nowrap',
+                color: active ? ACCENT : 'var(--text-mid)',
                 borderBottom: `2px solid ${active ? ACCENT : 'transparent'}`,
-                marginBottom: -1, transition: 'all 0.15s ease',
+                marginBottom: -1, transition: 'var(--t-fast)',
               }}
             >
               {t.label}
