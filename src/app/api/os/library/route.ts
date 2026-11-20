@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { badRequest, hobbyName, libraryQuery, ok, osContext, searchParamsObject } from '@/lib/os/server'
+import { badRequest, hobbyName, isPercent, libraryQuery, ok, osContext, searchParamsObject } from '@/lib/os/server'
 
 // GET /api/os/library?since=YYYY-MM-DD, read-only, for Personal OS.
 // This user's entries updated on or after `since` (default: all). The OS's
@@ -59,6 +59,7 @@ export async function GET(req: Request) {
       rating: e.rating,
       progressCurrent: e.progress_current,
       progressTotal: e.progress_total,
+      percent: isPercent(e.hobby_category),
       notes: e.notes ?? '',
       completedAt: e.date_completed ? e.date_completed.slice(0, 10) : null,
       updatedAt: e.updated_at,

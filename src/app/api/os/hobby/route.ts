@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { badRequest, hobbyQuery, ok, osContext, searchParamsObject, weekdayOf } from '@/lib/os/server'
+import { badRequest, hobbyName, hobbyQuery, isPercent, ok, osContext, searchParamsObject, weekdayOf } from '@/lib/os/server'
 import { osGoals } from '@/lib/os/goals'
 
 // GET /api/os/hobby?date=YYYY-MM-DD, read-only, for Personal OS.
@@ -23,11 +23,11 @@ function toNext(e: EntryRow) {
   return {
     id: e.id,
     title: e.title,
-    // A manga reads better as "manga" than as "books".
-    hobby: e.hobby_category === 'books' && e.book_subtype && e.book_subtype !== 'book' ? e.book_subtype : e.hobby_category,
+    hobby: hobbyName(e.hobby_category, e.book_subtype),
     status: e.status,
     progressCurrent: e.progress_current,
     progressTotal: e.progress_total,
+    percent: isPercent(e.hobby_category),
   }
 }
 

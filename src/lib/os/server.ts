@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { SUPABASE_URL } from '@/lib/supabaseConfig'
+import { BOOK_SUBTYPE_MAP, HOBBY_MAP } from '@/lib/hobbies'
+import type { BookSubtype, HobbyCategory } from '@/types/database'
 
 // Shared plumbing for the two read-only endpoints Personal OS calls
 // (/api/os/workouts, /api/os/hobby and /api/os/library). Only the OS server calls them, so there
@@ -60,10 +62,21 @@ export const hobbyQuery = z.object({ date: isoDate })
 
 export const libraryQuery = z.object({ since: isoDate.optional() })
 
-// 'manga' reads better than 'books' for a manga. Shared by the hobby and
-// library endpoints so both name a hobby the same way.
+// The hobby as hobbylog's own UI words it, lower case: 'project' for the
+// category stored as 'gundams', 'tv show' for 'tv', and the subtype for a
+// book that is not a plain book ('manga'). Shared by the hobby and library
+// endpoints so both name a hobby the same way.
 export function hobbyName(category: string, subtype: string | null): string {
-  return category === 'books' && subtype && subtype !== 'book' ? subtype : category
+  if (category === 'books' && subtype && subtype !== 'book') {
+    return (BOOK_SUBTYPE_MAP[subtype as BookSubtype]?.label ?? subtype).toLowerCase()
+  }
+  return (HOBBY_MAP[category as HobbyCategory]?.label ?? category).toLowerCase()
+}
+
+// True when progress is a 0 to 100 completion (projects, art), so the OS
+// shows "40%" rather than "40 of 100".
+export function isPercent(category: string): boolean {
+  return HOBBY_MAP[category as HobbyCategory]?.percentBased === true
 }
 
 export function daysBetween(from: string, to: string): number {
