@@ -40,15 +40,22 @@ export async function GET(req: Request) {
   const { admin, userId } = ctx
 
   try {
-    const [winRes, planRes, goals] = await Promise.all([
+    const [winRes, planRes, goals, progRes] = await Promise.all([
       admin.from('web_time_windows')
         .select('label, start_min, end_min, share')
         .eq('user_id', userId).eq('active', true).eq('day_of_week', weekdayOf(parsed.data.date))
         .order('start_min', { ascending: true }),
       admin.from('web_plans').select('entry_ids').eq('user_id', userId).maybeSingle(),
       osGoals(admin, userId),
+      // Always the three most recently touched, whatever the saved plan says:
+      // the OS shows these as a pick-list every day.
+      admin.from('web_entries').select(ENTRY_COLUMNS)
+        .eq('user_id', userId).eq('status', 'in_progress')
+        .order('updated_at', { ascending: false }).limit(3),
     ])
     if (winRes.error) throw winRes.error
+    if (progRes.error) throw progRes.error
+    const inProgress = ((progRes.data ?? []) as EntryRow[]).map(toNext)
 
     const windows = ((winRes.data ?? []) as { label: string | null; start_min: number; end_min: number; share: number }[])
       .map((w) => ({ label: w.label, start: w.start_min, end: w.end_min, share: Number(w.share) }))
@@ -68,14 +75,10 @@ export async function GET(req: Request) {
         .slice(0, 3)
         .map(toNext)
     } else {
-      const { data, error } = await admin.from('web_entries').select(ENTRY_COLUMNS)
-        .eq('user_id', userId).eq('status', 'in_progress')
-        .order('updated_at', { ascending: false }).limit(3)
-      if (error) throw error
-      next = ((data ?? []) as EntryRow[]).map(toNext)
+      next = inProgress
     }
 
-    return ok({ windows, next, goals })
+    return ok({ windows, next, goals, inProgress })
   } catch {
     return NextResponse.json({ error: 'query_failed' }, { status: 500 })
   }

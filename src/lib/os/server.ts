@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { SUPABASE_URL } from '@/lib/supabaseConfig'
 
 // Shared plumbing for the two read-only endpoints Personal OS calls
-// (/api/os/workouts and /api/os/hobby). Only the OS server calls them, so there
+// (/api/os/workouts, /api/os/hobby and /api/os/library). Only the OS server calls them, so there
 // are no CORS headers. Every query is pinned to OS_USER_ID; the service role is
 // what lets a request with no browser session read anything at all.
 
@@ -57,6 +57,14 @@ export const workoutsQuery = z
   .refine(({ from, to }) => daysBetween(from, to) + 1 <= MAX_RANGE_DAYS)
 
 export const hobbyQuery = z.object({ date: isoDate })
+
+export const libraryQuery = z.object({ since: isoDate.optional() })
+
+// 'manga' reads better than 'books' for a manga. Shared by the hobby and
+// library endpoints so both name a hobby the same way.
+export function hobbyName(category: string, subtype: string | null): string {
+  return category === 'books' && subtype && subtype !== 'book' ? subtype : category
+}
 
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
